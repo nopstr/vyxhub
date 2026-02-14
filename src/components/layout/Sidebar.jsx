@@ -5,13 +5,16 @@ import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../ui/Avatar'
 import { cn } from '../../lib/utils'
 
-const navItems = [
+const publicNavItems = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/explore', icon: TrendingUp, label: 'Explore' },
+  { to: '/reels', icon: Video, label: 'Reels' },
+]
+
+const authNavItems = [
   { to: '/notifications', icon: Bell, label: 'Notifications', countKey: 'notifications' },
   { to: '/messages', icon: Mail, label: 'Messages' },
   { to: '/bookmarks', icon: Bookmark, label: 'Bookmarks' },
-  { to: '/reels', icon: Video, label: 'Reels' },
 ]
 
 function SidebarLink({ to, icon: Icon, label, count }) {
@@ -47,7 +50,7 @@ function SidebarLink({ to, icon: Icon, label, count }) {
 }
 
 export default function Sidebar() {
-  const { profile } = useAuthStore()
+  const { profile, user } = useAuthStore()
   const { unreadCount } = useNotificationStore()
   const navigate = useNavigate()
 
@@ -65,37 +68,63 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <div className="flex-1 space-y-1">
-        {navItems.map(item => (
+        {publicNavItems.map(item => (
           <SidebarLink
             key={item.to}
             to={item.to}
             icon={item.icon}
             label={item.label}
-            count={item.countKey === 'notifications' ? unreadCount : 0}
           />
         ))}
+
+        {user && (
+          <>
+            <div className="h-px bg-zinc-800/50 my-2 mx-4" />
+            {authNavItems.map(item => (
+              <SidebarLink
+                key={item.to}
+                to={item.to}
+                icon={item.icon}
+                label={item.label}
+                count={item.countKey === 'notifications' ? unreadCount : 0}
+              />
+            ))}
+          </>
+        )}
       </div>
 
-      {/* Create Post Button */}
-      <button
-        onClick={() => navigate('/compose')}
-        className="my-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20 cursor-pointer"
-      >
-        <PlusCircle size={20} />
-        <span className="hidden xl:inline">Create Post</span>
-      </button>
+      {user ? (
+        <>
+          {/* Create Post Button */}
+          <button
+            onClick={() => navigate('/compose')}
+            className="my-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20 cursor-pointer"
+          >
+            <PlusCircle size={20} />
+            <span className="hidden xl:inline">Create Post</span>
+          </button>
 
-      {/* Profile Quick Access */}
-      {profile && (
+          {/* Profile Quick Access */}
+          {profile && (
+            <NavLink
+              to={`/@${profile.username}`}
+              className="flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-800/50 transition-colors"
+            >
+              <Avatar src={profile.avatar_url} alt={profile.display_name} size="md" />
+              <div className="hidden xl:block min-w-0">
+                <p className="text-sm font-bold text-white truncate">{profile.display_name}</p>
+                <p className="text-xs text-zinc-500 truncate">@{profile.username}</p>
+              </div>
+            </NavLink>
+          )}
+        </>
+      ) : (
         <NavLink
-          to={`/@${profile.username}`}
-          className="flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-800/50 transition-colors"
+          to="/auth"
+          className="my-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20 cursor-pointer"
         >
-          <Avatar src={profile.avatar_url} alt={profile.display_name} size="md" />
-          <div className="hidden xl:block min-w-0">
-            <p className="text-sm font-bold text-white truncate">{profile.display_name}</p>
-            <p className="text-xs text-zinc-500 truncate">@{profile.username}</p>
-          </div>
+          <User size={20} />
+          <span className="hidden xl:inline">Sign In</span>
         </NavLink>
       )}
     </nav>

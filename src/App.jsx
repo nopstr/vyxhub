@@ -58,34 +58,31 @@ export default function App() {
               }
             />
 
-            {/* Protected routes within Layout */}
-            <Route
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route index element={<HomePage />} />
-              <Route path="explore" element={<ExplorePage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="messages" element={<MessagesPage />} />
-              <Route path="bookmarks" element={<BookmarksPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-              <Route path="dashboard" element={<CreatorDashboardPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path=":username" element={<ProfilePage />} />
-            </Route>
+{/* Public routes within Layout (viewable without login) */}
+          <Route element={<Layout />}>
+            <Route index element={<HomePage />} />
+            <Route path="explore" element={<ExplorePage />} />
+            <Route path=":username" element={<ProfilePage />} />
+          </Route>
 
-            {/* Reels - full-screen layout, no sidebar */}
-            <Route
-              path="/reels"
-              element={
-                <ProtectedRoute>
-                  <ReelsPage />
-                </ProtectedRoute>
-              }
-            />
+          {/* Protected routes within Layout (require auth) */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="messages" element={<MessagesPage />} />
+            <Route path="bookmarks" element={<BookmarksPage />} />
+            <Route path="settings" element={<SettingsPage />} />
+            <Route path="dashboard" element={<CreatorDashboardPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+          </Route>
+
+          {/* Reels - public full-screen layout */}
+          <Route path="/reels" element={<ReelsPage />} />
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
