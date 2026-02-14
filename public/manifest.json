@@ -1,0 +1,17 @@
+{
+  "name": "VyxHub",
+  "short_name": "VyxHub",
+  "description": "Premium content platform for creators and fans",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

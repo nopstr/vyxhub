@@ -1,0 +1,201 @@
+import { useState, useRef } from 'react'
+import { Image, Video, Lock, Globe, Users, X, Loader2 } from 'lucide-react'
+import { useAuthStore } from '../../stores/authStore'
+import { usePostStore } from '../../stores/postStore'
+import Avatar from '../ui/Avatar'
+import Button from '../ui/Button'
+import { toast } from 'sonner'
+import { cn } from '../../lib/utils'
+import { MAX_POST_LENGTH, VISIBILITY_OPTIONS, MAX_MEDIA_PER_POST } from '../../lib/constants'
+
+const visibilityIcons = { public: Globe, followers_only: Users, subscribers_only: Lock }
+
+export default function CreatePost({ onSuccess }) {
+  const { profile, user } = useAuthStore()
+  const { createPost } = usePostStore()
+  const [content, setContent] = useState('')
+  const [visibility, setVisibility] = useState('public')
+  const [mediaFiles, setMediaFiles] = useState([])
+  const [mediaPreviews, setMediaPreviews] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [showVisibility, setShowVisibility] = useState(false)
+  const fileRef = useRef(null)
+  const textRef = useRef(null)
+
+  if (!profile) return null
+
+  const handleMedia = (e) => {
+    const files = Array.from(e.target.files || [])
+    if (mediaFiles.length + files.length > MAX_MEDIA_PER_POST) {
+      toast.error(`Maximum ${MAX_MEDIA_PER_POST} files per post`)
+      return
+    }
+
+    const validFiles = files.filter(f =>
+      f.type.startsWith('image/') || f.type.startsWith('video/')
+    )
+
+    setMediaFiles(prev => [...prev, ...validFiles])
+    validFiles.forEach(file => {
+      const url = URL.createObjectURL(file)
+      setMediaPreviews(prev => [...prev, { url, type: file.type.startsWith('video') ? 'video' : 'image' }])
+    })
+  }
+
+  const removeMedia = (index) => {
+    URL.revokeObjectURL(mediaPreviews[index].url)
+    setMediaFiles(prev => prev.filter((_, i) => i !== index))
+    setMediaPreviews(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleSubmit = async () => {
+    if (!content.trim() && mediaFiles.length === 0) return
+    setLoading(true)
+
+    try {
+      await createPost({
+        content: content.trim(),
+        visibility,
+        postType: 'post',
+        mediaFiles,
+        userId: user.id,
+      })
+      setContent('')
+      setMediaFiles([])
+      setMediaPreviews([])
+      toast.success('Post created!')
+      onSuccess?.()
+    } catch (err) {
+      toast.error(err.message || 'Failed to create post')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const VisIcon = visibilityIcons[visibility]
+  const charsLeft = MAX_POST_LENGTH - content.length
+  const canPost = (content.trim() || mediaFiles.length > 0) && charsLeft >= 0
+
+  return (
+    <div className="p-5 border-b border-zinc-800/50">
+      <div className="flex gap-4">
+        <Avatar src={profile.avatar_url} alt={profile.display_name} size="lg" />
+        <div className="flex-1 min-w-0">
+          <textarea
+            ref={textRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="What's on your mind?"
+            rows={3}
+            maxLength={MAX_POST_LENGTH}
+            className="w-full bg-transparent text-lg text-zinc-200 placeholder:text-zinc-600 outline-none resize-none py-2 leading-relaxed"
+          />
+
+          {/* Media Preview */}
+          {mediaPreviews.length > 0 && (
+            <div className={cn(
+              'grid gap-2 mt-3 rounded-2xl overflow-hidden',
+              mediaPreviews.length === 1 && 'grid-cols-1',
+              mediaPreviews.length === 2 && 'grid-cols-2',
+              mediaPreviews.length >= 3 && 'grid-cols-2 grid-rows-2'
+            )}>
+              {mediaPreviews.map((preview, i) => (
+                <div key={i} className="relative aspect-square group">
+                  {preview.type === 'video' ? (
+                    <video src={preview.url} className="w-full h-full object-cover rounded-lg" />
+                  ) : (
+                    <img src={preview.url} alt="" className="w-full h-full object-cover rounded-lg" />
+                  )}
+                  <button
+                    onClick={() => removeMedia(i)}
+                    className="absolute top-2 right-2 p-1.5 bg-black/70 rounded-full hover:bg-black transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <X size={14} className="text-white" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex items-center justify-between mt-4 pt-3 border-t border-zinc-800/50">
+            <div className="flex items-center gap-1">
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleMedia}
+              />
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="p-2.5 rounded-xl text-indigo-400 hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                title="Add photos"
+              >
+                <Image size={20} />
+              </button>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="p-2.5 rounded-xl text-indigo-400 hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                title="Add video"
+              >
+                <Video size={20} />
+              </button>
+
+              <div className="relative">
+                <button
+                  onClick={() => setShowVisibility(!showVisibility)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-400 hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                >
+                  <VisIcon size={14} />
+                  <span className="hidden sm:inline">{VISIBILITY_OPTIONS.find(v => v.value === visibility)?.label}</span>
+                </button>
+                {showVisibility && (
+                  <div className="absolute bottom-full left-0 mb-2 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl py-1 z-10 min-w-[200px]">
+                    {VISIBILITY_OPTIONS.map(opt => {
+                      const OptIcon = visibilityIcons[opt.value]
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={() => { setVisibility(opt.value); setShowVisibility(false) }}
+                          className={cn(
+                            'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer',
+                            visibility === opt.value ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-zinc-800'
+                          )}
+                        >
+                          <OptIcon size={16} />
+                          <div className="text-left">
+                            <p className="font-medium">{opt.label}</p>
+                            <p className="text-xs text-zinc-500">{opt.description}</p>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {content.length > 0 && (
+                <span className={cn('text-xs font-medium', charsLeft < 50 ? 'text-amber-400' : 'text-zinc-600')}>
+                  {charsLeft}
+                </span>
+              )}
+              <Button
+                onClick={handleSubmit}
+                disabled={!canPost}
+                loading={loading}
+                size="sm"
+                className="px-5"
+              >
+                Post
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
