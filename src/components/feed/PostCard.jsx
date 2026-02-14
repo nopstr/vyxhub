@@ -3,14 +3,14 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
-  Flame, ThumbsUp, Sparkles
+  Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
-import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
+import { cn, formatRelativeTime, formatNumber, formatCurrency } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 
@@ -69,23 +69,142 @@ function MediaGrid({ media }) {
   )
 }
 
-function PaywallGate({ creator }) {
+/* Set Preview: shows unblurred previews + blurred locked images */
+function SetPreview({ media, isUnlocked }) {
+  if (!media || media.length === 0) return null
+
+  const previewMedia = media.filter(m => m.is_preview)
+  const lockedMedia = media.filter(m => !m.is_preview)
+  const displayMedia = isUnlocked ? media : previewMedia
+
+  return (
+    <div className="mt-3">
+      {/* Preview images */}
+      <div className={cn(
+        'grid gap-1 rounded-2xl overflow-hidden border border-zinc-800/50',
+        displayMedia.length === 1 && 'grid-cols-1',
+        displayMedia.length === 2 && 'grid-cols-2',
+        displayMedia.length >= 3 && 'grid-cols-3',
+      )}>
+        {displayMedia.slice(0, isUnlocked ? undefined : 3).map((item, i) => (
+          <div key={item.id} className="relative aspect-square overflow-hidden bg-zinc-950 group">
+            <img
+              src={item.url}
+              alt=""
+              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+              loading="lazy"
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* Blurred locked image teaser */}
+      {!isUnlocked && lockedMedia.length > 0 && (
+        <div className="relative mt-1 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-[16/8]">
+          <div className="absolute inset-0 grid grid-cols-3 gap-0.5">
+            {lockedMedia.slice(0, 3).map((item, i) => (
+              <div key={item.id} className="overflow-hidden">
+                <img
+                  src={item.url}
+                  alt=""
+                  className="w-full h-full object-cover blur-xl brightness-50 scale-110"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex items-center gap-2 text-white/90">
+              <Lock size={16} />
+              <span className="text-sm font-bold">+{lockedMedia.length} locked photos</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* Video Preview: shows thumbnail with play overlay, gated playback */
+function VideoPreview({ media, isUnlocked, post }) {
+  const videoMedia = media?.find(m => m.media_type === 'video')
+  if (!videoMedia) return null
+
+  if (isUnlocked) {
+    return (
+      <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800/50">
+        <video
+          src={videoMedia.url}
+          className="w-full aspect-video object-contain bg-black"
+          controls
+          preload="metadata"
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950">
+      {/* Blurred thumbnail from video */}
+      <video
+        src={videoMedia.url}
+        className="w-full h-full object-cover blur-lg brightness-50 scale-110"
+        preload="metadata"
+        muted
+      />
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20">
+            <Play size={28} className="text-white ml-1" fill="currentColor" />
+          </div>
+          <div className="flex items-center gap-1.5 text-white/80">
+            <Lock size={14} />
+            <span className="text-sm font-semibold">Subscribe to watch</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PaywallGate({ creator, post }) {
+  const isPPV = post?.price && post.price > 0
+
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 bg-zinc-950 aspect-[16/10] flex items-center justify-center">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-violet-900/20" />
       <div className="relative z-10 flex flex-col items-center text-center p-8 bg-black/40 backdrop-blur-xl rounded-3xl border border-white/5 mx-4 max-w-sm">
-        <div className="w-14 h-14 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl flex items-center justify-center mb-5">
-          <Lock size={24} className="text-white" />
+        <div className={cn(
+          'w-14 h-14 rounded-2xl flex items-center justify-center mb-5',
+          isPPV
+            ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+            : 'bg-gradient-to-br from-indigo-500 to-violet-600'
+        )}>
+          {isPPV ? <DollarSign size={24} className="text-white" /> : <Lock size={24} className="text-white" />}
         </div>
-        <h3 className="text-xl font-black text-white mb-1.5">Subscriber Only</h3>
-        <p className="text-zinc-400 text-sm mb-5">Subscribe to @{creator.username} to unlock this content</p>
-        <Link
-          to={`/@${creator.username}`}
-          className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95"
-        >
-          <Zap size={16} className="fill-current" />
-          Subscribe for {creator.subscription_price > 0 ? `$${creator.subscription_price}/mo` : 'Free'}
-        </Link>
+        <h3 className="text-xl font-black text-white mb-1.5">
+          {isPPV ? 'Pay-Per-View' : 'Subscriber Only'}
+        </h3>
+        <p className="text-zinc-400 text-sm mb-5">
+          {isPPV
+            ? `Unlock this ${post.post_type === 'video' ? 'video' : 'content'} for a one-time purchase`
+            : `Subscribe to @${creator.username} to unlock this content`
+          }
+        </p>
+        {isPPV ? (
+          <button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+            <DollarSign size={16} />
+            Buy for ${parseFloat(post.price).toFixed(2)}
+          </button>
+        ) : (
+          <Link
+            to={`/@${creator.username}`}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95"
+          >
+            <Zap size={16} className="fill-current" />
+            Subscribe for {creator.subscription_price > 0 ? `$${creator.subscription_price}/mo` : 'Free'}
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -98,28 +217,46 @@ export default function PostCard({ post }) {
   const author = post.author
   const [showReactions, setShowReactions] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
+  const [hasPurchased, setHasPurchased] = useState(false)
   const reactionsRef = useRef(null)
   const reactionsTimeout = useRef(null)
 
   if (!author) return null
 
   const isOwn = user?.id === author.id
+  const isPPV = post.price && parseFloat(post.price) > 0
+  const isSet = post.post_type === 'set'
+  const isVideo = post.post_type === 'video'
 
   // Check if current user is subscribed to this creator
   useEffect(() => {
     if (!user || isOwn) return
-    const checkSubscription = async () => {
-      const { data } = await supabase
+    const checkAccess = async () => {
+      const { data: subData } = await supabase
         .from('subscriptions')
         .select('id')
         .eq('subscriber_id', user.id)
         .eq('creator_id', author.id)
         .eq('status', 'active')
         .maybeSingle()
-      setIsSubscribed(!!data)
+      setIsSubscribed(!!subData)
+
+      // Check PPV purchase
+      if (isPPV) {
+        const { data: purchaseData } = await supabase
+          .from('purchases')
+          .select('id')
+          .eq('buyer_id', user.id)
+          .eq('post_id', post.id)
+          .maybeSingle()
+        setHasPurchased(!!purchaseData)
+      }
     }
-    checkSubscription()
-  }, [user, author.id, isOwn])
+    checkAccess()
+  }, [user, author.id, isOwn, isPPV, post.id])
+
+  // Determine if content is unlocked
+  const isContentUnlocked = isOwn || isSubscribed || hasPurchased || post.visibility === 'public'
 
   // Get the user's own reactions on this post
   const userReactions = post.likes?.filter(l => l.user_id === user?.id) || []
@@ -136,8 +273,9 @@ export default function PostCard({ post }) {
   const primaryUserReaction = userReactions[0]?.reaction_type
   const primaryDef = REACTION_TYPES.find(r => r.type === primaryUserReaction) || REACTION_TYPES[0]
 
-  const isBookmarked = post.bookmarks?.some(b => b.user_id === user?.id)
   const isLocked = post.visibility === 'subscribers_only' && !isOwn
+  const showPaywall = (isLocked && !isSubscribed && !hasPurchased) || (isPPV && !isOwn && !hasPurchased)
+  const isBookmarked = post.bookmarks?.some(b => b.user_id === user?.id)
 
   const handleReaction = (reactionType, e) => {
     e?.stopPropagation()
@@ -239,11 +377,43 @@ export default function PostCard({ post }) {
             </p>
           )}
 
-          {/* Media or Paywall */}
-          {isLocked ? (
-            <PaywallGate creator={author} />
+          {/* Post type badge */}
+          {(isSet || isVideo) && (
+            <div className="flex items-center gap-2 mt-1 mb-1">
+              {isSet && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md">
+                  <Grid3x3 size={12} /> Set · {post.media?.length || 0} photos
+                </span>
+              )}
+              {isVideo && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded-md">
+                  <Film size={12} /> Video
+                </span>
+              )}
+              {isPPV && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md">
+                  <DollarSign size={12} /> ${parseFloat(post.price).toFixed(2)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Media / Set / Video / Paywall */}
+          {showPaywall && !isSet && !isVideo ? (
+            <PaywallGate creator={author} post={post} />
+          ) : isSet ? (
+            <SetPreview media={post.media} isUnlocked={isContentUnlocked} />
+          ) : isVideo ? (
+            <VideoPreview media={post.media} isUnlocked={isContentUnlocked} post={post} />
           ) : (
             <MediaGrid media={post.media} />
+          )}
+
+          {/* PPV gate below set/video if not unlocked */}
+          {(isSet || isVideo) && showPaywall && (
+            <div className="mt-2">
+              <PaywallGate creator={author} post={post} />
+            </div>
           )}
 
           {/* Reaction Summary */}

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Calendar, MapPin, LinkIcon, ShieldCheck, Settings, Mail,
-  Grid3x3, Video, Lock, MoreHorizontal, Image
+  Grid3x3, Video, Lock, MoreHorizontal, Image, Film, Play, DollarSign
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
@@ -79,7 +79,7 @@ export default function ProfilePage() {
           *,
           author:profiles!author_id(*),
           media(*),
-          likes(user_id),
+          likes(user_id, reaction_type),
           bookmarks(user_id)
         `)
         .eq('author_id', profileData.id)
@@ -144,9 +144,9 @@ export default function ProfilePage() {
     )
   }
 
-  const mediaPosts = posts.filter(p => p.media?.length > 0)
-  const lockedPosts = posts.filter(p => p.visibility === 'subscribers_only')
-  const displayPosts = tab === 'media' ? mediaPosts : tab === 'locked' ? lockedPosts : posts
+  const regularPosts = posts.filter(p => p.post_type === 'post' || !p.post_type)
+  const setContent = posts.filter(p => p.post_type === 'set')
+  const videoContent = posts.filter(p => p.post_type === 'video')
 
   return (
     <div>
@@ -236,9 +236,9 @@ export default function ProfilePage() {
       {/* Tabs */}
       <div className="flex border-b border-zinc-800/50">
         {[
-          { key: 'posts', label: 'Posts', icon: null },
-          { key: 'media', label: 'Media', icon: Image },
-          { key: 'locked', label: 'Locked', icon: Lock },
+          { key: 'posts', label: 'Posts', icon: null, count: regularPosts.length },
+          { key: 'sets', label: 'Sets', icon: Grid3x3, count: setContent.length },
+          { key: 'videos', label: 'Videos', icon: Film, count: videoContent.length },
         ].map(t => (
           <button
             key={t.key}
@@ -250,21 +250,152 @@ export default function ProfilePage() {
           >
             {t.icon && <t.icon size={16} />}
             {t.label}
+            {t.count > 0 && (
+              <span className="text-[10px] text-zinc-500 font-normal">{t.count}</span>
+            )}
             {tab === t.key && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />}
           </button>
         ))}
       </div>
 
-      {/* Posts */}
+      {/* Tab Content */}
       <div>
-        {displayPosts.length > 0 ? (
-          displayPosts.map(post => <PostCard key={post.id} post={post} />)
-        ) : (
-          <div className="text-center py-16">
-            <p className="text-zinc-500">No {tab} to show</p>
-          </div>
+        {/* Posts Tab - Timeline View */}
+        {tab === 'posts' && (
+          regularPosts.length > 0 ? (
+            regularPosts.map(post => <PostCard key={post.id} post={post} />)
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-zinc-500">No posts yet</p>
+            </div>
+          )
+        )}
+
+        {/* Sets Tab - Grid View */}
+        {tab === 'sets' && (
+          setContent.length > 0 ? (
+            <div className="grid grid-cols-3 gap-0.5 p-0.5">
+              {setContent.map(post => (
+                <ContentGridCard key={post.id} post={post} type="set" isOwnProfile={isOwnProfile} isSubscribed={isSubscribed} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Grid3x3 size={40} className="mx-auto mb-3 text-zinc-700" />
+              <p className="text-zinc-500">No sets yet</p>
+            </div>
+          )
+        )}
+
+        {/* Videos Tab - Grid View */}
+        {tab === 'videos' && (
+          videoContent.length > 0 ? (
+            <div className="grid grid-cols-3 gap-0.5 p-0.5">
+              {videoContent.map(post => (
+                <ContentGridCard key={post.id} post={post} type="video" isOwnProfile={isOwnProfile} isSubscribed={isSubscribed} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Film size={40} className="mx-auto mb-3 text-zinc-700" />
+              <p className="text-zinc-500">No videos yet</p>
+            </div>
+          )
         )}
       </div>
     </div>
+  )
+}
+
+/* Grid card for Sets and Videos on profile page */
+function ContentGridCard({ post, type, isOwnProfile, isSubscribed }) {
+  const isPPV = post.price && parseFloat(post.price) > 0
+  const isLocked = !isOwnProfile && !isSubscribed && post.visibility === 'subscribers_only'
+
+  // Get cover image
+  const coverMedia = type === 'set'
+    ? post.media?.find(m => m.is_preview) || post.media?.[0]
+    : post.media?.find(m => m.media_type === 'video') || post.media?.[0]
+
+  const coverUrl = coverMedia?.url || post.cover_image_url
+
+  return (
+    <Link
+      to={`/post/${post.id}`}
+      className="relative aspect-square bg-zinc-900 overflow-hidden group cursor-pointer"
+    >
+      {/* Cover Image / Video Thumbnail */}
+      {type === 'video' && coverMedia?.media_type === 'video' ? (
+        <video
+          src={coverUrl}
+          className={cn(
+            'w-full h-full object-cover transition-transform duration-300 group-hover:scale-105',
+            isLocked && !isPPV && 'blur-sm brightness-50'
+          )}
+          preload="metadata"
+          muted
+        />
+      ) : (
+        <img
+          src={coverUrl}
+          alt=""
+          className={cn(
+            'w-full h-full object-cover transition-transform duration-300 group-hover:scale-105',
+            isLocked && !isPPV && 'blur-sm brightness-50'
+          )}
+          loading="lazy"
+        />
+      )}
+
+      {/* Hover overlay */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+        <div className="flex items-center gap-4 text-white">
+          {type === 'set' && (
+            <span className="flex items-center gap-1 font-bold text-sm">
+              <Image size={16} /> {post.media?.length || 0}
+            </span>
+          )}
+          {type === 'video' && (
+            <Play size={32} className="drop-shadow-lg" fill="currentColor" />
+          )}
+        </div>
+      </div>
+
+      {/* Lock overlay for gated content */}
+      {isLocked && (
+        <div className="absolute top-2 right-2 z-10">
+          <div className="bg-black/60 backdrop-blur-sm rounded-lg p-1.5">
+            <Lock size={14} className="text-white" />
+          </div>
+        </div>
+      )}
+
+      {/* PPV price badge */}
+      {isPPV && (
+        <div className="absolute bottom-2 left-2 z-10">
+          <span className="inline-flex items-center gap-0.5 bg-amber-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+            <DollarSign size={10} />{parseFloat(post.price).toFixed(2)}
+          </span>
+        </div>
+      )}
+
+      {/* Image count badge for sets */}
+      {type === 'set' && post.media?.length > 1 && (
+        <div className="absolute top-2 left-2 z-10">
+          <span className="inline-flex items-center gap-0.5 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+            <Grid3x3 size={10} /> {post.media.length}
+          </span>
+        </div>
+      )}
+
+      {/* Video indicator */}
+      {type === 'video' && !isLocked && (
+        <div className="absolute top-2 left-2 z-10">
+          <div className="bg-black/60 backdrop-blur-sm rounded-lg p-1.5">
+            <Play size={12} className="text-white" fill="currentColor" />
+          </div>
+        </div>
+      )}
+    </Link>
   )
 }

@@ -67,15 +67,20 @@ export const usePostStore = create((set, get) => ({
     return data
   },
 
-  createPost: async ({ content, visibility, postType, mediaFiles, userId }) => {
+  createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl }) => {
+    const postInsert = {
+      author_id: userId,
+      content,
+      visibility: visibility || 'public',
+      post_type: postType || 'post',
+    }
+
+    if (price && price > 0) postInsert.price = price
+    if (coverImageUrl) postInsert.cover_image_url = coverImageUrl
+
     const { data: post, error: postError } = await supabase
       .from('posts')
-      .insert({
-        author_id: userId,
-        content,
-        visibility: visibility || 'public',
-        post_type: postType || 'post',
-      })
+      .insert(postInsert)
       .select(`
         *,
         author:profiles!author_id(*)
@@ -101,6 +106,8 @@ export const usePostStore = create((set, get) => ({
           .from('posts')
           .getPublicUrl(filePath)
 
+        const isPreview = previewIndices ? previewIndices.includes(i) : false
+
         mediaInserts.push({
           post_id: post.id,
           uploader_id: userId,
@@ -108,6 +115,7 @@ export const usePostStore = create((set, get) => ({
           url: publicUrl,
           sort_order: i,
           file_size_bytes: file.size,
+          is_preview: isPreview,
         })
       }
 
