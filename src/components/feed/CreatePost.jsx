@@ -22,7 +22,7 @@ export default function CreatePost({ onSuccess }) {
   const fileRef = useRef(null)
   const textRef = useRef(null)
 
-  if (!profile) return null
+  if (!profile || !profile.is_creator) return null
 
   const handleMedia = (e) => {
     const files = Array.from(e.target.files || [])

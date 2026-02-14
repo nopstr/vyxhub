@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import CreatePost from '../../components/feed/CreatePost'
+
 import PostCard from '../../components/feed/PostCard'
 import { SkeletonPost } from '../../components/ui/Spinner'
 import { useInView } from 'react-intersection-observer'
 
 export default function HomePage() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const { posts, loading, hasMore, fetchFeed } = usePostStore()
   const [tab, setTab] = useState('foryou')
   const { ref, inView } = useInView({ threshold: 0 })
@@ -52,8 +53,8 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Create Post */}
-      {user && <CreatePost />}
+      {/* Create Post — only for creators */}
+      {user && profile?.is_creator && <CreatePost />}
 
       {/* Posts Feed */}
       <div>

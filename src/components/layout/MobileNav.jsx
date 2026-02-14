@@ -14,7 +14,7 @@ const authItems = [
 ]
 
 export default function MobileNav() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-zinc-950/90 backdrop-blur-xl border-t border-zinc-800/50 z-50 safe-area-bottom">
@@ -35,11 +35,13 @@ export default function MobileNav() {
 
         {user ? (
           <>
-            <NavLink to="/compose" className="flex flex-col items-center">
-              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center -mt-6 shadow-lg shadow-indigo-600/30">
-                <PlusCircle size={22} className="text-white" />
-              </div>
-            </NavLink>
+            {profile?.is_creator && (
+              <NavLink to="/compose" className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center -mt-6 shadow-lg shadow-indigo-600/30">
+                  <PlusCircle size={22} className="text-white" />
+                </div>
+              </NavLink>
+            )}
             {authItems.map(item => (
               <NavLink
                 key={item.to}

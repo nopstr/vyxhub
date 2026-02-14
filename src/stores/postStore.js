@@ -22,7 +22,7 @@ export const usePostStore = create((set, get) => ({
         *,
         author:profiles!author_id(*),
         media(*),
-        likes(user_id),
+        likes(user_id, reaction_type),
         bookmarks(user_id)
       `)
       .order('created_at', { ascending: false })
@@ -52,7 +52,7 @@ export const usePostStore = create((set, get) => ({
         *,
         author:profiles!author_id(*),
         media(*),
-        likes(user_id),
+        likes(user_id, reaction_type),
         bookmarks(user_id)
       `)
       .eq('author_id', userId)
@@ -127,7 +127,7 @@ export const usePostStore = create((set, get) => ({
       post.media = []
     }
 
-    post.likes = []
+    post.likes = [] // reactions stored in likes table with reaction_type
     post.bookmarks = []
     set({ posts: [post, ...get().posts] })
     return post
@@ -139,28 +139,36 @@ export const usePostStore = create((set, get) => ({
     set({ posts: get().posts.filter(p => p.id !== postId) })
   },
 
-  toggleLike: async (postId, userId) => {
+  toggleReaction: async (postId, userId, reactionType = 'heart') => {
     const posts = get().posts
     const post = posts.find(p => p.id === postId)
     if (!post) return
 
-    const isLiked = post.likes?.some(l => l.user_id === userId)
+    const existingReaction = post.likes?.find(
+      l => l.user_id === userId && l.reaction_type === reactionType
+    )
 
-    if (isLiked) {
-      await supabase.from('likes').delete().eq('post_id', postId).eq('user_id', userId)
+    if (existingReaction) {
+      await supabase.from('likes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .eq('reaction_type', reactionType)
     } else {
-      await supabase.from('likes').insert({ post_id: postId, user_id: userId })
+      await supabase.from('likes')
+        .insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
     }
 
     set({
       posts: posts.map(p => {
         if (p.id !== postId) return p
+        const newLikes = existingReaction
+          ? p.likes.filter(l => !(l.user_id === userId && l.reaction_type === reactionType))
+          : [...(p.likes || []), { user_id: userId, reaction_type: reactionType }]
         return {
           ...p,
-          like_count: isLiked ? p.like_count - 1 : p.like_count + 1,
-          likes: isLiked
-            ? p.likes.filter(l => l.user_id !== userId)
-            : [...(p.likes || []), { user_id: userId }],
+          like_count: existingReaction ? p.like_count - 1 : p.like_count + 1,
+          likes: newLikes,
         }
       }),
     })

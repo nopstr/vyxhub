@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
-  Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin
+  Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
+  Flame, ThumbsUp, Sparkles
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
@@ -11,6 +12,14 @@ import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
 import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
 import { toast } from 'sonner'
+import { supabase } from '../../lib/supabase'
+
+const REACTION_TYPES = [
+  { type: 'heart', icon: Heart, label: 'Love', color: 'text-rose-500', bg: 'bg-rose-500/10', fill: true },
+  { type: 'fire', icon: Flame, label: 'Hot', color: 'text-orange-500', bg: 'bg-orange-500/10', fill: true },
+  { type: 'nice', icon: ThumbsUp, label: 'Nice', color: 'text-emerald-500', bg: 'bg-emerald-500/10', fill: false },
+  { type: 'sparkle', icon: Sparkles, label: 'Amazing', color: 'text-indigo-400', bg: 'bg-indigo-500/10', fill: true },
+]
 
 function MediaGrid({ media }) {
   if (!media || media.length === 0) return null
@@ -83,23 +92,76 @@ function PaywallGate({ creator }) {
 }
 
 export default function PostCard({ post }) {
-  const { user } = useAuthStore()
-  const { toggleLike, toggleBookmark, deletePost } = usePostStore()
+  const { user, profile } = useAuthStore()
+  const { toggleReaction, toggleBookmark, deletePost } = usePostStore()
   const navigate = useNavigate()
   const author = post.author
+  const [showReactions, setShowReactions] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const reactionsRef = useRef(null)
+  const reactionsTimeout = useRef(null)
 
   if (!author) return null
 
   const isOwn = user?.id === author.id
-  const isLiked = post.likes?.some(l => l.user_id === user?.id)
+
+  // Check if current user is subscribed to this creator
+  useEffect(() => {
+    if (!user || isOwn) return
+    const checkSubscription = async () => {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('subscriber_id', user.id)
+        .eq('creator_id', author.id)
+        .eq('status', 'active')
+        .maybeSingle()
+      setIsSubscribed(!!data)
+    }
+    checkSubscription()
+  }, [user, author.id, isOwn])
+
+  // Get the user's own reactions on this post
+  const userReactions = post.likes?.filter(l => l.user_id === user?.id) || []
+  const hasReacted = userReactions.length > 0
+
+  // Count reactions by type
+  const reactionCounts = REACTION_TYPES.reduce((acc, r) => {
+    acc[r.type] = post.likes?.filter(l => l.reaction_type === r.type).length || 0
+    return acc
+  }, {})
+  const totalReactions = post.likes?.length || post.like_count || 0
+
+  // Find primary reaction to display (first one user made, or heart as default display)
+  const primaryUserReaction = userReactions[0]?.reaction_type
+  const primaryDef = REACTION_TYPES.find(r => r.type === primaryUserReaction) || REACTION_TYPES[0]
+
   const isBookmarked = post.bookmarks?.some(b => b.user_id === user?.id)
   const isLocked = post.visibility === 'subscribers_only' && !isOwn
-  // In a real app, check subscription status
 
-  const handleLike = (e) => {
+  const handleReaction = (reactionType, e) => {
+    e?.stopPropagation()
+    if (!user) return toast.error('Sign in to react to posts')
+    toggleReaction(post.id, user.id, reactionType)
+    setShowReactions(false)
+  }
+
+  const handleReactionHover = () => {
+    clearTimeout(reactionsTimeout.current)
+    setShowReactions(true)
+  }
+
+  const handleReactionLeave = () => {
+    reactionsTimeout.current = setTimeout(() => setShowReactions(false), 300)
+  }
+
+  const handleComment = (e) => {
     e.stopPropagation()
-    if (!user) return toast.error('Sign in to like posts')
-    toggleLike(post.id, user.id)
+    if (!user) return toast.error('Sign in to interact')
+    if (!isOwn && !isSubscribed) {
+      return toast.error(`Subscribe to @${author.username} to comment`)
+    }
+    navigate(`/post/${post.id}`)
   }
 
   const handleBookmark = (e) => {
@@ -184,23 +246,85 @@ export default function PostCard({ post }) {
             <MediaGrid media={post.media} />
           )}
 
+          {/* Reaction Summary */}
+          {totalReactions > 0 && (
+            <div className="flex items-center gap-1 mt-2.5 px-1">
+              <div className="flex -space-x-0.5">
+                {REACTION_TYPES.filter(r => reactionCounts[r.type] > 0)
+                  .slice(0, 3)
+                  .map(r => (
+                    <div key={r.type} className={cn('w-5 h-5 rounded-full flex items-center justify-center', r.bg)}>
+                      <r.icon size={11} className={r.color} fill={r.fill ? 'currentColor' : 'none'} />
+                    </div>
+                  ))}
+              </div>
+              <span className="text-xs text-zinc-500 font-medium">{formatNumber(totalReactions)}</span>
+            </div>
+          )}
+
           {/* Actions */}
-          <div className="flex items-center gap-1 mt-3 -ml-2">
+          <div className="flex items-center gap-1 mt-2 -ml-2">
+            {/* Reaction Button with Picker */}
+            <div
+              className="relative"
+              ref={reactionsRef}
+              onMouseEnter={handleReactionHover}
+              onMouseLeave={handleReactionLeave}
+            >
+              <button
+                onClick={(e) => handleReaction(primaryDef.type, e)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors group cursor-pointer',
+                  hasReacted ? primaryDef.color : 'text-zinc-500 hover:text-rose-400'
+                )}
+              >
+                <primaryDef.icon
+                  size={18}
+                  fill={hasReacted && primaryDef.fill ? 'currentColor' : 'none'}
+                  className="group-hover:scale-110 transition-transform"
+                />
+                <span className="text-xs font-semibold">{formatNumber(totalReactions)}</span>
+              </button>
+
+              {/* Reaction Picker Popup */}
+              {showReactions && (
+                <div
+                  className="absolute bottom-full left-0 mb-2 flex items-center gap-0.5 bg-zinc-900 border border-zinc-700/50 rounded-2xl p-1.5 shadow-xl z-20 animate-dropdown-in"
+                  onMouseEnter={handleReactionHover}
+                  onMouseLeave={handleReactionLeave}
+                >
+                  {REACTION_TYPES.map(r => {
+                    const isActive = userReactions.some(ur => ur.reaction_type === r.type)
+                    return (
+                      <button
+                        key={r.type}
+                        onClick={(e) => handleReaction(r.type, e)}
+                        title={r.label}
+                        className={cn(
+                          'p-2 rounded-xl transition-all hover:scale-125 cursor-pointer',
+                          isActive ? cn(r.bg, r.color) : 'text-zinc-400 hover:bg-zinc-800'
+                        )}
+                      >
+                        <r.icon size={20} fill={isActive && r.fill ? 'currentColor' : 'none'} />
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Comment Button — subscriber-only */}
             <button
-              onClick={handleLike}
+              onClick={handleComment}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors group cursor-pointer',
-                isLiked ? 'text-rose-500' : 'text-zinc-500 hover:text-rose-400'
+                !user || (!isOwn && !isSubscribed)
+                  ? 'text-zinc-600'
+                  : 'text-zinc-500 hover:text-indigo-400'
               )}
+              title={!user ? 'Sign in' : (!isOwn && !isSubscribed) ? 'Subscribe to comment' : 'Comment'}
             >
-              <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} className="group-hover:scale-110 transition-transform" />
-              <span className="text-xs font-semibold">{formatNumber(post.like_count)}</span>
-            </button>
-
-            <button
-              onClick={() => navigate(`/post/${post.id}`)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-500 hover:text-indigo-400 transition-colors group cursor-pointer"
-            >
+              {(!user || (!isOwn && !isSubscribed)) && <Lock size={12} className="mr-0.5 opacity-70" />}
               <MessageCircle size={18} className="group-hover:scale-110 transition-transform" />
               <span className="text-xs font-semibold">{formatNumber(post.comment_count)}</span>
             </button>
