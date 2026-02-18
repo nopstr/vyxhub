@@ -14,11 +14,6 @@ export const useAuthStore = create((set, get) => ({
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
-        // Check email verification
-        if (!session.user.email_confirmed_at) {
-          set({ user: null, session: null, profile: null, loading: false, initialized: true })
-          return
-        }
         const profile = await get().fetchProfile(session.user.id)
         set({ user: session.user, session, profile, loading: false, initialized: true })
       } else {
@@ -32,10 +27,6 @@ export const useAuthStore = create((set, get) => ({
 
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          // Only allow verified users
-          if (!session.user.email_confirmed_at) {
-            return
-          }
           const profile = await get().fetchProfile(session.user.id)
           set({ user: session.user, session, profile, loading: false })
         } else if (event === 'SIGNED_OUT') {

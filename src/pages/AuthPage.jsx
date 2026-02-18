@@ -38,7 +38,8 @@ export default function AuthPage() {
           username: username.toLowerCase().replace(/[^a-z0-9_]/g, ''),
           display_name: displayName || username,
         })
-        toast.success('Account created! Check your email to verify.')
+        toast.success('Welcome to VyxHub!')
+        navigate('/')
       } else {
         await resetPassword(email)
         toast.success('Password reset link sent to your email')
