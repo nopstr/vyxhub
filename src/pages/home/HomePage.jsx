@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import { useSubscriptionCache } from '../../stores/subscriptionCache'
@@ -11,32 +11,37 @@ import { useInView } from 'react-intersection-observer'
 export default function HomePage() {
   const { user, profile } = useAuthStore()
   const { posts, loading, hasMore, fetchFeed, fetchFollowingFeed } = usePostStore()
-  const { loadForUser } = useSubscriptionCache()
+  const loadForUser = useSubscriptionCache((s) => s.loadForUser)
   const [tab, setTab] = useState('foryou')
   const { ref, inView } = useInView({ threshold: 0 })
+  const initialLoadDone = useRef(false)
 
   // Pre-load subscription cache once when user is available
   useEffect(() => {
     if (user?.id) loadForUser(user.id)
-  }, [user?.id])
+  }, [user?.id, loadForUser])
 
+  // Initial load + tab change
   useEffect(() => {
-    loadFeed(true)
-  }, [tab])
-
-  useEffect(() => {
-    if (inView && hasMore && !loading) {
-      loadFeed(false)
-    }
-  }, [inView, hasMore, loading])
-
-  const loadFeed = (reset) => {
+    initialLoadDone.current = false
     if (tab === 'following' && user) {
-      fetchFollowingFeed(user.id, reset)
+      fetchFollowingFeed(user.id, true).then(() => { initialLoadDone.current = true })
     } else {
-      fetchFeed(reset)
+      fetchFeed(true).then(() => { initialLoadDone.current = true })
     }
-  }
+  }, [tab, user?.id, fetchFeed, fetchFollowingFeed])
+
+  // Infinite scroll — only after initial load
+  useEffect(() => {
+    if (!initialLoadDone.current) return
+    if (inView && hasMore && !loading) {
+      if (tab === 'following' && user) {
+        fetchFollowingFeed(user.id, false)
+      } else {
+        fetchFeed(false)
+      }
+    }
+  }, [inView, hasMore, loading, tab, user?.id, fetchFeed, fetchFollowingFeed])
 
   const handleTabChange = (newTab) => {
     if (newTab === tab) return

@@ -71,8 +71,8 @@ export const usePostStore = create((set, get) => ({
       })
       return data
     } catch (error) {
-      set({ loading: false })
-      throw error
+      set({ loading: false, hasMore: false })
+      console.error('Feed fetch error:', error)
     }
   },
 
@@ -119,8 +119,8 @@ export const usePostStore = create((set, get) => ({
       })
       return data
     } catch (error) {
-      set({ loading: false })
-      throw error
+      set({ loading: false, hasMore: false })
+      console.error('Following feed fetch error:', error)
     }
   },
 

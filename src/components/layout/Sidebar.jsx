@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Search, Bell, Mail, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video } from 'lucide-react'
+import { Home, Search, Bell, Mail, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../ui/Avatar'
@@ -89,6 +89,15 @@ export default function Sidebar() {
                 count={item.countKey === 'notifications' ? unreadCount : 0}
               />
             ))}
+
+            {/* Creator Dashboard — only for creators */}
+            {profile?.is_creator && (
+              <>
+                <div className="h-px bg-zinc-800/50 my-2 mx-4" />
+                <SidebarLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+                <SidebarLink to="/settings" icon={Settings} label="Settings" />
+              </>
+            )}
           </>
         )}
       </div>
