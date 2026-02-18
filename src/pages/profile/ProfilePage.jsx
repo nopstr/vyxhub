@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Calendar, MapPin, LinkIcon, ShieldCheck, Settings, Mail,
-  Grid3x3, Video, Lock, MoreHorizontal, Image, Film, Play, DollarSign
+  Grid3x3, Video, Lock, MoreHorizontal, Image, Film, Play, DollarSign, Zap
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
+import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
@@ -13,6 +14,7 @@ import PostCard from '../../components/feed/PostCard'
 import { SkeletonProfile, SkeletonPost } from '../../components/ui/Spinner'
 import { formatNumber, formatRelativeTime, cn } from '../../lib/utils'
 import { toast } from 'sonner'
+import { PLATFORM_FEE_PERCENT } from '../../lib/constants'
 
 export default function ProfilePage() {
   const { username } = useParams()
@@ -24,6 +26,8 @@ export default function ProfilePage() {
   const [isFollowing, setIsFollowing] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [followLoading, setFollowLoading] = useState(false)
+  const [subLoading, setSubLoading] = useState(false)
+  const { addSubscription } = useSubscriptionCache()
 
   const cleanUsername = username?.replace('@', '')
   const isOwnProfile = myProfile?.username === cleanUsername
@@ -120,6 +124,38 @@ export default function ProfilePage() {
     }
   }
 
+  const handleSubscribe = async () => {
+    if (!user) return toast.error('Sign in to subscribe')
+    setSubLoading(true)
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .insert({
+          subscriber_id: user.id,
+          creator_id: profile.id,
+          status: 'active',
+          amount: profile.subscription_price,
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        })
+      if (error) throw error
+      setIsSubscribed(true)
+      addSubscription(profile.id)
+      setProfile(p => ({ ...p, subscriber_count: (p.subscriber_count || 0) + 1 }))
+      // Also auto-follow if not already
+      if (!isFollowing) {
+        await supabase.from('follows').insert({ follower_id: user.id, following_id: profile.id }).catch(() => {})
+        setIsFollowing(true)
+        setProfile(p => ({ ...p, follower_count: p.follower_count + 1 }))
+      }
+      toast.success(`Subscribed to @${profile.username}!`)
+    } catch (err) {
+      toast.error(err.message || 'Failed to subscribe')
+    } finally {
+      setSubLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-5">
@@ -194,9 +230,13 @@ export default function ProfilePage() {
                   {isFollowing ? 'Following' : 'Follow'}
                 </Button>
                 {profile.is_creator && profile.subscription_price > 0 && !isSubscribed && (
-                  <Button variant="premium" size="sm">
+                  <Button variant="premium" size="sm" onClick={handleSubscribe} loading={subLoading}>
+                    <Zap size={14} className="fill-current" />
                     Subscribe ${profile.subscription_price}/mo
                   </Button>
+                )}
+                {isSubscribed && (
+                  <Badge variant="premium" className="!px-3 !py-1.5">Subscribed</Badge>
                 )}
               </>
             )}

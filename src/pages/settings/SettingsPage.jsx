@@ -1,8 +1,11 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  User, Mail, Shield, Bell, CreditCard, Palette, LogOut,
-  Camera, Save, Trash2, Eye, EyeOff, Lock
+  User, Mail, Shield, Bell, CreditCard, LogOut,
+  Camera, Save, Trash2, Eye, EyeOff, Lock,
+  DollarSign, Globe, MessageCircle, Droplets, MapPin,
+  Link as LinkIcon, Star, Package, Percent, ShieldCheck, Zap,
+  Heart, AlertTriangle
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../../components/ui/Avatar'
@@ -11,6 +14,30 @@ import Input, { Textarea } from '../../components/ui/Input'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
 import { uploadAvatar, uploadBanner } from '../../lib/storage'
+import { PLATFORM_FEE_PERCENT, MIN_SUBSCRIPTION_PRICE, MAX_SUBSCRIPTION_PRICE } from '../../lib/constants'
+
+const MODEL_CATEGORIES = [
+  { value: 'female', label: 'Female' },
+  { value: 'male', label: 'Male' },
+  { value: 'couple', label: 'Couple' },
+  { value: 'trans', label: 'Trans' },
+  { value: 'nonbinary', label: 'Non-binary' },
+  { value: 'other', label: 'Other' },
+]
+
+const PAYOUT_METHODS = [
+  { value: 'bank_transfer', label: 'Bank Transfer (ACH/SEPA)' },
+  { value: 'paypal', label: 'PayPal' },
+  { value: 'crypto', label: 'Cryptocurrency (USDT/BTC)' },
+  { value: 'wise', label: 'Wise (TransferWise)' },
+]
+
+const GEO_REGIONS = [
+  'United States', 'United Kingdom', 'Canada', 'Australia', 'Germany',
+  'France', 'India', 'Brazil', 'Japan', 'South Korea', 'Russia',
+  'China', 'Italy', 'Spain', 'Mexico', 'Netherlands', 'Sweden',
+  'Turkey', 'Saudi Arabia', 'UAE',
+]
 
 const tabs = [
   { id: 'profile', label: 'Profile', icon: User },
@@ -19,12 +46,49 @@ const tabs = [
   { id: 'creator', label: 'Creator', icon: CreditCard },
 ]
 
+function Toggle({ checked, onChange, label, description }) {
+  return (
+    <label className="flex items-center justify-between p-4 rounded-2xl bg-zinc-900/30 hover:bg-zinc-900/50 cursor-pointer transition-colors group">
+      <div className="flex-1 pr-4">
+        <span className="text-sm text-zinc-300 font-medium">{label}</span>
+        {description && <p className="text-xs text-zinc-500 mt-0.5">{description}</p>}
+      </div>
+      <div
+        onClick={(e) => { e.preventDefault(); onChange(!checked) }}
+        className={cn(
+          'w-11 h-6 rounded-full transition-colors relative cursor-pointer flex-shrink-0',
+          checked ? 'bg-indigo-600' : 'bg-zinc-700'
+        )}
+      >
+        <div className={cn(
+          'absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform',
+          checked ? 'translate-x-5.5' : 'translate-x-0.5'
+        )} />
+      </div>
+    </label>
+  )
+}
+
+function SectionHeader({ icon: Icon, title, description }) {
+  return (
+    <div className="mb-4">
+      <h3 className="flex items-center gap-2 text-base font-bold text-white">
+        {Icon && <Icon size={18} className="text-indigo-400" />}
+        {title}
+      </h3>
+      {description && <p className="text-xs text-zinc-500 mt-1">{description}</p>}
+    </div>
+  )
+}
+
 function ProfileSettings() {
   const { profile, updateProfile, user } = useAuthStore()
   const [form, setForm] = useState({
     display_name: profile?.display_name || '',
     username: profile?.username || '',
     bio: profile?.bio || '',
+    location: profile?.location || '',
+    website_url: profile?.website_url || '',
   })
   const [saving, setSaving] = useState(false)
   const avatarRef = useRef(null)
@@ -131,6 +195,24 @@ function ProfileSettings() {
         maxLength={500}
       />
 
+      <Input
+        label="Location"
+        icon={MapPin}
+        value={form.location}
+        onChange={(e) => setForm(f => ({ ...f, location: e.target.value }))}
+        placeholder="City, Country"
+        maxLength={100}
+      />
+
+      <Input
+        label="Website"
+        icon={LinkIcon}
+        value={form.website_url}
+        onChange={(e) => setForm(f => ({ ...f, website_url: e.target.value }))}
+        placeholder="https://yourwebsite.com"
+        maxLength={200}
+      />
+
       <Button onClick={handleSave} loading={saving}>
         <Save size={16} />
         Save Changes
@@ -168,13 +250,34 @@ function AccountSettings() {
 
 function CreatorSettings() {
   const { profile, updateProfile } = useAuthStore()
-  const [price, setPrice] = useState(profile?.subscription_price || 0)
   const [saving, setSaving] = useState(false)
+  const [section, setSection] = useState('general')
+
+  const [form, setForm] = useState({
+    subscription_price: profile?.subscription_price || 9.99,
+    creator_category: profile?.creator_category || 'other',
+    tags: profile?.tags?.join(', ') || '',
+    welcome_message: profile?.welcome_message || '',
+    is_accepting_customs: profile?.is_accepting_customs ?? true,
+    custom_request_price: profile?.custom_request_price || 25,
+    allow_free_messages: profile?.allow_free_messages ?? false,
+    message_price: profile?.message_price || 5,
+    show_activity_status: profile?.show_activity_status ?? true,
+    watermark_enabled: profile?.watermark_enabled ?? false,
+    geoblocking_regions: profile?.geoblocking_regions || [],
+    payout_method: profile?.payout_method || 'bank_transfer',
+    payout_email: profile?.payout_email || '',
+    amazon_wishlist_url: profile?.amazon_wishlist_url || '',
+  })
 
   const handleBecomeCreator = async () => {
     setSaving(true)
     try {
-      await updateProfile({ is_creator: true, subscription_price: price })
+      await updateProfile({
+        is_creator: true,
+        subscription_price: form.subscription_price,
+        creator_category: form.creator_category,
+      })
       toast.success('Creator profile activated!')
     } catch (err) {
       toast.error('Failed to update')
@@ -183,53 +286,402 @@ function CreatorSettings() {
     }
   }
 
-  return (
-    <div className="space-y-6">
-      {!profile?.is_creator ? (
-        <div className="bg-gradient-to-br from-indigo-900/20 to-violet-900/20 p-6 rounded-3xl border border-white/5">
-          <h3 className="text-lg font-bold mb-2">Become a Creator</h3>
-          <p className="text-sm text-zinc-400 mb-4">
-            Start earning by sharing exclusive content with your subscribers.
-          </p>
-          <Input
-            label="Monthly Subscription Price ($)"
-            type="number"
-            min="0"
-            max="49.99"
-            step="0.01"
-            value={price}
-            onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-          />
-          <Button onClick={handleBecomeCreator} loading={saving} variant="premium" className="mt-4">
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
+      await updateProfile({
+        subscription_price: parseFloat(form.subscription_price) || 9.99,
+        creator_category: form.creator_category,
+        tags,
+        welcome_message: form.welcome_message,
+        is_accepting_customs: form.is_accepting_customs,
+        custom_request_price: parseFloat(form.custom_request_price) || 0,
+        allow_free_messages: form.allow_free_messages,
+        message_price: parseFloat(form.message_price) || 0,
+        show_activity_status: form.show_activity_status,
+        watermark_enabled: form.watermark_enabled,
+        geoblocking_regions: form.geoblocking_regions,
+        payout_method: form.payout_method,
+        payout_email: form.payout_email,
+        amazon_wishlist_url: form.amazon_wishlist_url,
+      })
+      toast.success('Creator settings saved!')
+    } catch (err) {
+      toast.error(err.message || 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (!confirm('Deactivate your creator profile? Existing subscribers will not be charged again. You can reactivate anytime.')) return
+    setSaving(true)
+    try {
+      await updateProfile({ is_creator: false })
+      toast.success('Creator profile deactivated')
+    } catch {
+      toast.error('Failed to deactivate')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleGeoblock = (region) => {
+    setForm(f => ({
+      ...f,
+      geoblocking_regions: f.geoblocking_regions.includes(region)
+        ? f.geoblocking_regions.filter(r => r !== region)
+        : [...f.geoblocking_regions, region]
+    }))
+  }
+
+  if (!profile?.is_creator) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-gradient-to-br from-pink-500/10 to-violet-600/10 p-6 rounded-3xl border border-pink-500/20">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-violet-600 rounded-2xl flex items-center justify-center">
+              <Star size={24} className="text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-white">Become a Creator</h3>
+              <p className="text-sm text-zinc-400">Start earning by sharing exclusive content</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-5">
+            {[
+              { icon: Percent, text: `Keep ${100 - PLATFORM_FEE_PERCENT}% of earnings` },
+              { icon: DollarSign, text: 'Set your own prices' },
+              { icon: ShieldCheck, text: 'Content protection' },
+              { icon: Globe, text: 'Global audience' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-zinc-300">
+                <item.icon size={14} className="text-pink-400 flex-shrink-0" />
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Category</label>
+              <select value={form.creator_category} onChange={(e) => setForm(f => ({ ...f, creator_category: e.target.value }))} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-pink-500/50 cursor-pointer">
+                {MODEL_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+              </select>
+            </div>
+            <Input
+              label="Monthly Subscription Price ($)"
+              type="number"
+              min={MIN_SUBSCRIPTION_PRICE}
+              max={MAX_SUBSCRIPTION_PRICE}
+              step="0.01"
+              value={form.subscription_price}
+              onChange={(e) => setForm(f => ({ ...f, subscription_price: e.target.value }))}
+            />
+            <p className="text-xs text-zinc-500">
+              You earn <strong className="text-emerald-400">${((parseFloat(form.subscription_price) || 0) * (100 - PLATFORM_FEE_PERCENT) / 100).toFixed(2)}/subscriber</strong> after {PLATFORM_FEE_PERCENT}% platform fee
+            </p>
+          </div>
+
+          <Button onClick={handleBecomeCreator} loading={saving} className="mt-5 w-full !bg-gradient-to-r !from-pink-500 !to-violet-600">
+            <Zap size={16} className="fill-current" />
             Activate Creator Profile
           </Button>
         </div>
-      ) : (
-        <>
-          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4">
-            <p className="text-sm text-emerald-400 font-medium">✓ Creator profile is active</p>
-          </div>
-          <Input
-            label="Monthly Subscription Price ($)"
-            type="number"
-            min="0"
-            max="49.99"
-            step="0.01"
-            value={price}
-            onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
-          />
-          <Button
-            onClick={async () => {
-              setSaving(true)
-              await updateProfile({ subscription_price: price })
-              setSaving(false)
-              toast.success('Price updated')
-            }}
-            loading={saving}
+      </div>
+    )
+  }
+
+  const creatorSections = [
+    { id: 'general', label: 'General', icon: Star },
+    { id: 'pricing', label: 'Pricing', icon: DollarSign },
+    { id: 'messaging', label: 'Messaging', icon: MessageCircle },
+    { id: 'privacy', label: 'Privacy & Safety', icon: Shield },
+    { id: 'payout', label: 'Payouts', icon: CreditCard },
+    { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
+  ]
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 flex items-center justify-between">
+        <p className="text-sm text-emerald-400 font-medium">✓ Creator profile is active</p>
+        <span className="text-xs text-zinc-500">{profile.subscriber_count || 0} subscribers</span>
+      </div>
+
+      {/* Sub-sections */}
+      <div className="flex flex-wrap gap-1.5">
+        {creatorSections.map(s => (
+          <button
+            key={s.id}
+            onClick={() => setSection(s.id)}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer',
+              section === s.id ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-zinc-500 hover:text-zinc-300 bg-zinc-900/30 border border-zinc-800/50'
+            )}
           >
-            Update Price
+            <s.icon size={13} />
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {/* General */}
+      {section === 'general' && (
+        <div className="space-y-5">
+          <SectionHeader icon={Star} title="Creator Profile" description="How your profile appears to fans" />
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Creator Category</label>
+            <select value={form.creator_category} onChange={(e) => setForm(f => ({ ...f, creator_category: e.target.value }))} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer">
+              {MODEL_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Tags</label>
+            <input
+              value={form.tags}
+              onChange={(e) => setForm(f => ({ ...f, tags: e.target.value }))}
+              placeholder="fitness, cosplay, lifestyle (comma separated)"
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              maxLength={200}
+            />
+            <p className="text-xs text-zinc-500 mt-1">Helps fans discover your content</p>
+          </div>
+
+          <Textarea
+            label="Welcome Message"
+            value={form.welcome_message}
+            onChange={(e) => setForm(f => ({ ...f, welcome_message: e.target.value }))}
+            placeholder="Hi! Thanks for subscribing 💕 Check out my pinned post for my schedule..."
+            rows={3}
+            maxLength={500}
+          />
+          <p className="text-xs text-zinc-500 -mt-4">Sent automatically when someone subscribes</p>
+
+          <Input
+            label="Amazon Wishlist URL"
+            icon={Package}
+            value={form.amazon_wishlist_url}
+            onChange={(e) => setForm(f => ({ ...f, amazon_wishlist_url: e.target.value }))}
+            placeholder="https://www.amazon.com/hz/wishlist/..."
+          />
+        </div>
+      )}
+
+      {/* Pricing */}
+      {section === 'pricing' && (
+        <div className="space-y-5">
+          <SectionHeader icon={DollarSign} title="Pricing" description="Set your subscription and content prices" />
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Monthly Subscription Price</label>
+            <div className="relative">
+              <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="number"
+                min={MIN_SUBSCRIPTION_PRICE}
+                max={MAX_SUBSCRIPTION_PRICE}
+                step="0.01"
+                value={form.subscription_price}
+                onChange={(e) => setForm(f => ({ ...f, subscription_price: e.target.value }))}
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              />
+            </div>
+            <div className="mt-2 bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50">
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-zinc-500">Price</span>
+                <span className="text-zinc-300">${parseFloat(form.subscription_price || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-zinc-500">Platform Fee ({PLATFORM_FEE_PERCENT}%)</span>
+                <span className="text-red-400">-${((parseFloat(form.subscription_price) || 0) * PLATFORM_FEE_PERCENT / 100).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs pt-1 border-t border-zinc-800">
+                <span className="text-zinc-400 font-medium">Your Earnings</span>
+                <span className="text-emerald-400 font-bold">${((parseFloat(form.subscription_price) || 0) * (100 - PLATFORM_FEE_PERCENT) / 100).toFixed(2)}/subscriber</span>
+              </div>
+            </div>
+          </div>
+
+          <Toggle
+            checked={form.is_accepting_customs}
+            onChange={(v) => setForm(f => ({ ...f, is_accepting_customs: v }))}
+            label="Accept Custom Requests"
+            description="Allow fans to request custom content"
+          />
+
+          {form.is_accepting_customs && (
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Custom Request Base Price</label>
+              <div className="relative">
+                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input
+                  type="number"
+                  min="5"
+                  max="500"
+                  step="1"
+                  value={form.custom_request_price}
+                  onChange={(e) => setForm(f => ({ ...f, custom_request_price: e.target.value }))}
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                />
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">Starting price for custom content requests</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Messaging */}
+      {section === 'messaging' && (
+        <div className="space-y-5">
+          <SectionHeader icon={MessageCircle} title="Messaging" description="Control how fans can message you" />
+
+          <Toggle
+            checked={form.allow_free_messages}
+            onChange={(v) => setForm(f => ({ ...f, allow_free_messages: v }))}
+            label="Allow Free Messages"
+            description="Let non-subscribers send you messages for free"
+          />
+
+          {!form.allow_free_messages && (
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Message Price (non-subscribers)</label>
+              <div className="relative">
+                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  step="0.5"
+                  value={form.message_price}
+                  onChange={(e) => setForm(f => ({ ...f, message_price: e.target.value }))}
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                />
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">Non-subscribers pay this to send you a message</p>
+            </div>
+          )}
+
+          <Toggle
+            checked={form.show_activity_status}
+            onChange={(v) => setForm(f => ({ ...f, show_activity_status: v }))}
+            label="Show Activity Status"
+            description="Let fans see when you were last active"
+          />
+        </div>
+      )}
+
+      {/* Privacy & Safety */}
+      {section === 'privacy' && (
+        <div className="space-y-5">
+          <SectionHeader icon={Shield} title="Privacy & Safety" description="Protect your content and control visibility" />
+
+          <Toggle
+            checked={form.watermark_enabled}
+            onChange={(v) => setForm(f => ({ ...f, watermark_enabled: v }))}
+            label="Watermark Content"
+            description="Automatically add a watermark to your photos and videos"
+          />
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-3">Geo-blocking</label>
+            <p className="text-xs text-zinc-500 mb-3">Block users from specific regions from seeing your content</p>
+            <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1">
+              {GEO_REGIONS.map(region => (
+                <label
+                  key={region}
+                  className={cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-xl text-xs cursor-pointer transition-colors border',
+                    form.geoblocking_regions.includes(region)
+                      ? 'bg-red-500/10 border-red-500/30 text-red-400'
+                      : 'bg-zinc-900/30 border-zinc-800/50 text-zinc-400 hover:bg-zinc-900/50'
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={form.geoblocking_regions.includes(region)}
+                    onChange={() => toggleGeoblock(region)}
+                    className="sr-only"
+                  />
+                  <Lock size={11} className={form.geoblocking_regions.includes(region) ? 'text-red-400' : 'text-zinc-600'} />
+                  {region}
+                </label>
+              ))}
+            </div>
+            {form.geoblocking_regions.length > 0 && (
+              <p className="text-xs text-red-400 mt-2">{form.geoblocking_regions.length} region(s) blocked</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Payouts */}
+      {section === 'payout' && (
+        <div className="space-y-5">
+          <SectionHeader icon={CreditCard} title="Payout Settings" description="How you receive your earnings" />
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Payout Method</label>
+            <select
+              value={form.payout_method}
+              onChange={(e) => setForm(f => ({ ...f, payout_method: e.target.value }))}
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+            >
+              {PAYOUT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+            </select>
+          </div>
+
+          <Input
+            label="Payout Email / Account"
+            icon={Mail}
+            type="email"
+            value={form.payout_email}
+            onChange={(e) => setForm(f => ({ ...f, payout_email: e.target.value }))}
+            placeholder="your@paypal.com or bank email"
+          />
+
+          <div className="bg-zinc-900/50 rounded-2xl p-4 border border-zinc-800/50">
+            <h4 className="text-sm font-medium text-zinc-300 mb-2">Payout Schedule</h4>
+            <p className="text-xs text-zinc-500">Payouts are processed weekly on Fridays. Minimum payout threshold is $50.00. Earnings from the previous period will be included in the next cycle.</p>
+          </div>
+
+          <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Percent size={14} className="text-indigo-400" />
+              <h4 className="text-sm font-medium text-white">Platform Fee</h4>
+            </div>
+            <p className="text-xs text-zinc-400">VyxHub takes a {PLATFORM_FEE_PERCENT}% platform fee on all earnings (subscriptions, tips, PPV, custom requests). You keep {100 - PLATFORM_FEE_PERCENT}% of all revenue.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Danger Zone */}
+      {section === 'danger' && (
+        <div className="space-y-5">
+          <SectionHeader icon={AlertTriangle} title="Danger Zone" description="Irreversible actions" />
+
+          <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-5">
+            <h4 className="text-sm font-bold text-red-400 mb-1">Deactivate Creator Profile</h4>
+            <p className="text-xs text-zinc-500 mb-4">
+              This will hide your subscription button and stop accepting new subscribers. Existing subscribers will keep access until their period ends. You can reactivate anytime.
+            </p>
+            <Button variant="danger" size="sm" onClick={handleDeactivate} loading={saving}>
+              Deactivate Creator Profile
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Save button - shown on all sections except danger */}
+      {section !== 'danger' && (
+        <div className="pt-4 border-t border-zinc-800/50">
+          <Button onClick={handleSave} loading={saving}>
+            <Save size={16} />
+            Save All Settings
           </Button>
-        </>
+        </div>
       )}
     </div>
   )
@@ -242,27 +694,20 @@ function NotificationSettings() {
     follows: true,
     messages: true,
     subscriptions: true,
-    livestreams: true,
+    tips: true,
+    mentions: true,
+    promotions: false,
   })
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       {Object.entries(prefs).map(([key, value]) => (
-        <label key={key} className="flex items-center justify-between p-4 rounded-2xl bg-zinc-900/30 hover:bg-zinc-900/50 cursor-pointer transition-colors">
-          <span className="text-sm text-zinc-300 capitalize">{key}</span>
-          <div
-            onClick={() => setPrefs(p => ({ ...p, [key]: !value }))}
-            className={cn(
-              'w-11 h-6 rounded-full transition-colors relative cursor-pointer',
-              value ? 'bg-indigo-600' : 'bg-zinc-700'
-            )}
-          >
-            <div className={cn(
-              'absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform',
-              value ? 'translate-x-5.5' : 'translate-x-0.5'
-            )} />
-          </div>
-        </label>
+        <Toggle
+          key={key}
+          checked={value}
+          onChange={(v) => setPrefs(p => ({ ...p, [key]: v }))}
+          label={key.charAt(0).toUpperCase() + key.slice(1)}
+        />
       ))}
     </div>
   )

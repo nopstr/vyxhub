@@ -170,6 +170,56 @@ function VideoPreview({ media, isUnlocked, post }) {
 
 function PaywallGate({ creator, post }) {
   const isPPV = post?.price && post.price > 0
+  const { user } = useAuthStore()
+  const { addSubscription, addPurchase } = useSubscriptionCache()
+  const [loading, setLoading] = useState(false)
+
+  const handleSubscribe = async () => {
+    if (!user) return toast.error('Sign in to subscribe')
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .insert({
+          subscriber_id: user.id,
+          creator_id: creator.id,
+          status: 'active',
+          amount: creator.subscription_price,
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        })
+      if (error) throw error
+      addSubscription(creator.id)
+      // Auto-follow
+      await supabase.from('follows').insert({ follower_id: user.id, following_id: creator.id }).catch(() => {})
+      toast.success(`Subscribed to @${creator.username}!`)
+    } catch (err) {
+      toast.error(err.message || 'Failed to subscribe')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePurchase = async () => {
+    if (!user) return toast.error('Sign in to purchase')
+    setLoading(true)
+    try {
+      const { error } = await supabase
+        .from('purchases')
+        .insert({
+          buyer_id: user.id,
+          post_id: post.id,
+          amount: post.price,
+        })
+      if (error) throw error
+      addPurchase(post.id)
+      toast.success('Content unlocked!')
+    } catch (err) {
+      toast.error(err.message || 'Failed to purchase')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 bg-zinc-950 aspect-[16/10] flex items-center justify-center">
@@ -193,18 +243,35 @@ function PaywallGate({ creator, post }) {
           }
         </p>
         {isPPV ? (
-          <button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
-            <DollarSign size={16} />
-            Buy for ${parseFloat(post.price).toFixed(2)}
+          <button
+            onClick={handlePurchase}
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50"
+          >
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <DollarSign size={16} />
+                Buy for ${parseFloat(post.price).toFixed(2)}
+              </>
+            )}
           </button>
         ) : (
-          <Link
-            to={`/@${creator.username}`}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95"
+          <button
+            onClick={handleSubscribe}
+            disabled={loading}
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50"
           >
-            <Zap size={16} className="fill-current" />
-            Subscribe for {creator.subscription_price > 0 ? `$${creator.subscription_price}/mo` : 'Free'}
-          </Link>
+            {loading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <Zap size={16} className="fill-current" />
+                Subscribe for {creator.subscription_price > 0 ? `$${creator.subscription_price}/mo` : 'Free'}
+              </>
+            )}
+          </button>
         )}
       </div>
     </div>
