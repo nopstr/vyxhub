@@ -132,7 +132,24 @@ export default function AuthPage() {
             </>
           )}
 
-          <div className="mt-6 text-center space-y-2">
+          {/* Become a Creator CTA */}
+          <Link
+            to="/become-creator"
+            className="mt-5 flex items-center justify-between bg-gradient-to-r from-pink-500/10 to-violet-600/10 border border-pink-500/20 rounded-2xl p-4 hover:border-pink-500/40 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 shadow-lg shadow-pink-500/20">
+                <Star size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Become a Creator</p>
+                <p className="text-xs text-zinc-500">Earn 70% — highest in the industry</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-zinc-600 group-hover:text-pink-400 transition-colors" />
+          </Link>
+
+          <div className="mt-5 text-center space-y-2">
             {mode === 'login' && (
               <>
                 <button onClick={() => setMode('forgot')} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer">Forgot password?</button>
@@ -153,23 +170,6 @@ export default function AuthPage() {
             )}
           </div>
         </div>
-
-        {/* Become a Creator CTA */}
-        <Link
-          to="/become-creator"
-          className="mt-5 flex items-center justify-between bg-gradient-to-r from-pink-500/10 to-violet-600/10 border border-pink-500/20 rounded-2xl p-4 hover:border-pink-500/40 transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 shadow-lg shadow-pink-500/20">
-              <Star size={18} className="text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-white">Become a Creator</p>
-              <p className="text-xs text-zinc-500">Earn 70% — highest in the industry</p>
-            </div>
-          </div>
-          <ChevronRight size={18} className="text-zinc-600 group-hover:text-pink-400 transition-colors" />
-        </Link>
       </div>
     </div>
   )
