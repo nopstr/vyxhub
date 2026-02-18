@@ -1,13 +1,26 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { FEED_PAGE_SIZE } from '../lib/constants'
+import { validateFile } from '../lib/storage'
+
+const POST_SELECT = `
+  *,
+  author:profiles!author_id(*),
+  media(*),
+  likes(user_id, reaction_type),
+  bookmarks(user_id)
+`
 
 export const usePostStore = create((set, get) => ({
   posts: [],
   loading: false,
   hasMore: true,
   page: 0,
+  feedType: 'foryou', // 'foryou' | 'following'
 
+  setFeedType: (type) => set({ feedType: type }),
+
+  // "For You" algorithm: mix of recent, popular, and followed creators
   fetchFeed: async (reset = false) => {
     const currentPage = reset ? 0 : get().page
     if (get().loading) return
@@ -16,55 +29,118 @@ export const usePostStore = create((set, get) => ({
     const from = currentPage * FEED_PAGE_SIZE
     const to = from + FEED_PAGE_SIZE - 1
 
-    const { data, error } = await supabase
-      .from('posts')
-      .select(`
-        *,
-        author:profiles!author_id(*),
-        media(*),
-        likes(user_id, reaction_type),
-        bookmarks(user_id)
-      `)
-      .order('created_at', { ascending: false })
-      .range(from, to)
+    try {
+      // Use ranked_posts view for algorithmic feed when available,
+      // fallback to chronological if view doesn't exist yet
+      let data, error
 
-    if (error) {
+      const ranked = await supabase
+        .from('ranked_posts')
+        .select(POST_SELECT)
+        .range(from, to)
+
+      if (ranked.error) {
+        // Fallback to chronological
+        const fallback = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .order('created_at', { ascending: false })
+          .range(from, to)
+        data = fallback.data
+        error = fallback.error
+      } else {
+        data = ranked.data
+        error = ranked.error
+      }
+
+      if (error) throw error
+
+      // Track views (fire and forget)
+      if (data?.length > 0) {
+        data.forEach(post => {
+          supabase.rpc('increment_view_count', { p_post_id: post.id }).catch(() => {})
+        })
+      }
+
+      const newPosts = reset ? data : [...get().posts, ...data]
+      set({
+        posts: newPosts,
+        loading: false,
+        hasMore: data.length === FEED_PAGE_SIZE,
+        page: currentPage + 1,
+      })
+      return data
+    } catch (error) {
       set({ loading: false })
       throw error
     }
-
-    const newPosts = reset ? data : [...get().posts, ...data]
-    set({
-      posts: newPosts,
-      loading: false,
-      hasMore: data.length === FEED_PAGE_SIZE,
-      page: currentPage + 1,
-    })
-    return data
   },
 
-  fetchUserPosts: async (userId, reset = false) => {
+  // "Following" feed: only posts from people the user follows
+  fetchFollowingFeed: async (userId, reset = false) => {
+    const currentPage = reset ? 0 : get().page
+    if (get().loading) return
     set({ loading: true })
 
-    const { data, error } = await supabase
-      .from('posts')
-      .select(`
-        *,
-        author:profiles!author_id(*),
-        media(*),
-        likes(user_id, reaction_type),
-        bookmarks(user_id)
-      `)
-      .eq('author_id', userId)
-      .order('created_at', { ascending: false })
+    try {
+      // Get IDs of followed users
+      const { data: follows, error: followError } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', userId)
 
-    if (error) {
+      if (followError) throw followError
+
+      const followIds = follows?.map(f => f.following_id) || []
+
+      if (followIds.length === 0) {
+        set({ posts: reset ? [] : get().posts, loading: false, hasMore: false })
+        return []
+      }
+
+      const from = currentPage * FEED_PAGE_SIZE
+      const to = from + FEED_PAGE_SIZE - 1
+
+      const { data, error } = await supabase
+        .from('posts')
+        .select(POST_SELECT)
+        .in('author_id', followIds)
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      if (error) throw error
+
+      const newPosts = reset ? data : [...get().posts, ...data]
+      set({
+        posts: newPosts,
+        loading: false,
+        hasMore: data.length === FEED_PAGE_SIZE,
+        page: currentPage + 1,
+      })
+      return data
+    } catch (error) {
       set({ loading: false })
       throw error
     }
+  },
 
-    set({ posts: data, loading: false })
-    return data
+  fetchUserPosts: async (userId) => {
+    set({ loading: true })
+
+    try {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(POST_SELECT)
+        .eq('author_id', userId)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      set({ posts: data, loading: false })
+      return data
+    } catch (error) {
+      set({ loading: false })
+      throw error
+    }
   },
 
   createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl }) => {
@@ -90,6 +166,11 @@ export const usePostStore = create((set, get) => ({
     if (postError) throw postError
 
     if (mediaFiles?.length > 0) {
+      // Validate all files first
+      for (const file of mediaFiles) {
+        validateFile(file)
+      }
+
       const mediaInserts = []
       for (let i = 0; i < mediaFiles.length; i++) {
         const file = mediaFiles[i]

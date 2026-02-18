@@ -1,26 +1,54 @@
-import { useLocation } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { Search, Flame, ShieldCheck } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
+import { debounce } from '../../lib/utils'
 
 function TrendingSection() {
-  const trends = [
-    { tag: '#SunsetVibes', posts: '12.4K' },
-    { tag: '#ExclusiveDrop', posts: '8.9K' },
-    { tag: '#NewCreator', posts: '5.2K' },
-    { tag: '#VyxVault', posts: '3.7K' },
-  ]
+  const [trending, setTrending] = useState([])
+
+  useEffect(() => {
+    fetchTrending()
+  }, [])
+
+  const fetchTrending = async () => {
+    // Get creators with most followers as "trending"
+    const { data } = await supabase
+      .from('profiles')
+      .select('username, display_name, avatar_url, is_verified, follower_count')
+      .eq('is_creator', true)
+      .order('follower_count', { ascending: false })
+      .limit(4)
+
+    setTrending(data || [])
+  }
+
+  if (trending.length === 0) return null
 
   return (
     <section>
-      <h3 className="font-bold text-sm text-zinc-400 uppercase tracking-wider mb-4 px-1">Trending</h3>
+      <h3 className="font-bold text-sm text-zinc-400 uppercase tracking-wider mb-4 px-1">Trending Creators</h3>
       <div className="space-y-1">
-        {trends.map(trend => (
-          <div key={trend.tag} className="p-3 rounded-2xl hover:bg-zinc-800/30 cursor-pointer transition-colors">
-            <p className="font-bold text-sm text-white">{trend.tag}</p>
-            <p className="text-xs text-zinc-500">{trend.posts} posts</p>
-          </div>
+        {trending.map(creator => (
+          <Link
+            key={creator.username}
+            to={`/@${creator.username}`}
+            className="block p-3 rounded-2xl hover:bg-zinc-800/30 cursor-pointer transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Avatar src={creator.avatar_url} alt={creator.display_name} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <p className="font-bold text-sm text-white truncate">{creator.display_name}</p>
+                  {creator.is_verified && <ShieldCheck size={12} className="text-indigo-400 flex-shrink-0" />}
+                </div>
+                <p className="text-xs text-zinc-500">@{creator.username}</p>
+              </div>
+            </div>
+          </Link>
         ))}
       </div>
     </section>
@@ -28,30 +56,51 @@ function TrendingSection() {
 }
 
 function SuggestedCreators() {
-  const suggestions = [
-    { name: 'Maya Rose', handle: 'mayarose', verified: true },
-    { name: 'Alex Storm', handle: 'alexstorm', verified: true },
-    { name: 'Luna Sky', handle: 'lunasky', verified: false },
-  ]
+  const { user } = useAuthStore()
+  const [suggestions, setSuggestions] = useState([])
+
+  useEffect(() => {
+    fetchSuggestions()
+  }, [user])
+
+  const fetchSuggestions = async () => {
+    // Get creators the user doesn't follow yet
+    let query = supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, is_verified, follower_count')
+      .eq('is_creator', true)
+      .order('follower_count', { ascending: false })
+      .limit(5)
+
+    if (user) {
+      query = query.neq('id', user.id)
+    }
+
+    const { data } = await query
+    setSuggestions(data || [])
+  }
+
+  if (suggestions.length === 0) return null
 
   return (
     <section>
       <h3 className="font-bold text-sm text-zinc-400 uppercase tracking-wider mb-4 px-1">Suggested Creators</h3>
       <div className="space-y-2">
         {suggestions.map(creator => (
-          <div key={creator.handle} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-800/30 cursor-pointer transition-colors">
-            <Avatar alt={creator.name} size="md" />
+          <Link
+            key={creator.id}
+            to={`/@${creator.username}`}
+            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors"
+          >
+            <Avatar src={creator.avatar_url} alt={creator.display_name} size="md" />
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
-                <span className="text-sm font-bold text-white truncate">{creator.name}</span>
-                {creator.verified && <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />}
+                <span className="text-sm font-bold text-white truncate">{creator.display_name}</span>
+                {creator.is_verified && <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />}
               </div>
-              <span className="text-xs text-zinc-500">@{creator.handle}</span>
+              <span className="text-xs text-zinc-500">@{creator.username}</span>
             </div>
-            <button className="text-xs font-bold text-indigo-400 hover:text-indigo-300 px-3 py-1.5 rounded-xl border border-indigo-500/30 hover:bg-indigo-500/10 transition-colors">
-              Follow
-            </button>
-          </div>
+          </Link>
         ))}
       </div>
     </section>
@@ -61,10 +110,39 @@ function SuggestedCreators() {
 export default function RightPanel() {
   const { profile } = useAuthStore()
   const location = useLocation()
+  const navigate = useNavigate()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [showResults, setShowResults] = useState(false)
 
   // Hide on certain pages
   if (['/messages', '/settings'].some(p => location.pathname.startsWith(p))) {
     return null
+  }
+
+  const performSearch = useCallback(
+    debounce(async (query) => {
+      if (!query || query.length < 2) {
+        setSearchResults([])
+        setShowResults(false)
+        return
+      }
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, is_verified, is_creator')
+        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+        .limit(5)
+
+      setSearchResults(data || [])
+      setShowResults(true)
+    }, 300),
+    []
+  )
+
+  const handleSearch = (e) => {
+    const q = e.target.value
+    setSearchQuery(q)
+    performSearch(q)
   }
 
   return (
@@ -74,36 +152,50 @@ export default function RightPanel() {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
         <input
           type="text"
+          value={searchQuery}
+          onChange={handleSearch}
+          onFocus={() => searchResults.length > 0 && setShowResults(true)}
+          onBlur={() => setTimeout(() => setShowResults(false), 200)}
           placeholder="Search VyxHub..."
           className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors"
         />
+
+        {/* Search results dropdown */}
+        {showResults && searchResults.length > 0 && (
+          <div className="absolute top-full mt-2 left-0 right-0 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl z-50 py-2 max-h-64 overflow-y-auto">
+            {searchResults.map(user => (
+              <button
+                key={user.id}
+                onMouseDown={() => { navigate(`/@${user.username}`); setShowResults(false); setSearchQuery('') }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-800/50 transition-colors cursor-pointer"
+              >
+                <Avatar src={user.avatar_url} alt={user.display_name} size="sm" />
+                <div className="text-left min-w-0">
+                  <div className="flex items-center gap-1">
+                    <span className="text-sm font-bold text-white truncate">{user.display_name}</span>
+                    {user.is_verified && <ShieldCheck size={12} className="text-indigo-400" />}
+                  </div>
+                  <span className="text-xs text-zinc-500">@{user.username}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="space-y-8">
-        {/* Premium CTA */}
-        <section className="bg-gradient-to-br from-indigo-900/30 via-violet-900/20 to-transparent p-6 rounded-3xl border border-white/5">
-          <Flame className="text-indigo-400 mb-3" size={24} />
-          <h3 className="text-lg font-black mb-1.5">Go Premium</h3>
-          <p className="text-xs text-zinc-400 leading-relaxed mb-4">
-            Unlock unlimited messaging, priority support, and badge perks.
-          </p>
-          <button className="w-full py-2.5 bg-white text-black font-bold text-xs rounded-xl uppercase tracking-widest hover:bg-zinc-200 transition-colors cursor-pointer">
-            Upgrade
-          </button>
-        </section>
-
         <TrendingSection />
         <SuggestedCreators />
 
         {/* Footer Links */}
         <div className="text-[11px] text-zinc-600 space-x-2 px-1 leading-relaxed">
-          <a href="/terms" className="hover:text-zinc-400">Terms</a>
+          <span className="hover:text-zinc-400 cursor-pointer">Terms</span>
           <span>·</span>
-          <a href="/privacy" className="hover:text-zinc-400">Privacy</a>
+          <span className="hover:text-zinc-400 cursor-pointer">Privacy</span>
           <span>·</span>
-          <a href="/dmca" className="hover:text-zinc-400">DMCA</a>
+          <span className="hover:text-zinc-400 cursor-pointer">DMCA</span>
           <span>·</span>
-          <a href="/support" className="hover:text-zinc-400">Support</a>
+          <span className="hover:text-zinc-400 cursor-pointer">Support</span>
           <p className="mt-2">© 2026 VyxHub</p>
         </div>
       </div>

@@ -98,7 +98,7 @@ export default function Sidebar() {
           {/* Create Post Button — creators only */}
           {profile?.is_creator && (
             <button
-              onClick={() => navigate('/compose')}
+              onClick={() => navigate('/')}
               className="my-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20 cursor-pointer"
             >
               <PlusCircle size={20} />

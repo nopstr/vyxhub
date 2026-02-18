@@ -17,6 +17,8 @@ const BookmarksPage = lazy(() => import('./pages/bookmarks/BookmarksPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const CreatorDashboardPage = lazy(() => import('./pages/dashboard/CreatorDashboardPage'))
 const ReelsPage = lazy(() => import('./pages/reels/ReelsPage'))
+const PostDetailPage = lazy(() => import('./pages/post/PostDetailPage'))
+const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuthStore()
@@ -58,10 +60,14 @@ export default function App() {
               }
             />
 
-{/* Public routes within Layout (viewable without login) */}
+{/* Reset password - standalone route (from email link) */}
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Public routes within Layout (viewable without login) */}
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="explore" element={<ExplorePage />} />
+            <Route path="post/:postId" element={<PostDetailPage />} />
             <Route path=":username" element={<ProfilePage />} />
           </Route>
 
@@ -78,7 +84,7 @@ export default function App() {
             <Route path="bookmarks" element={<BookmarksPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="dashboard" element={<CreatorDashboardPage />} />
-            <Route path="profile" element={<ProfilePage />} />
+            <Route path="compose" element={<HomePage />} />
           </Route>
 
           {/* Reels - public full-screen layout */}

@@ -36,7 +36,7 @@ export default function MobileNav() {
         {user ? (
           <>
             {profile?.is_creator && (
-              <NavLink to="/compose" className="flex flex-col items-center">
+              <NavLink to="/" className="flex flex-col items-center">
                 <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center -mt-6 shadow-lg shadow-indigo-600/30">
                   <PlusCircle size={22} className="text-white" />
                 </div>

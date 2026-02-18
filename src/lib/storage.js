@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES, ALLOWED_VIDEO_TYPES } from './constants'
 
 const BUCKET = {
   avatars: 'avatars',
@@ -7,12 +8,26 @@ const BUCKET = {
   messages: 'messages',
 }
 
+export function validateFile(file) {
+  const maxBytes = MAX_FILE_SIZE_MB * 1024 * 1024
+  if (file.size > maxBytes) {
+    throw new Error(`File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB`)
+  }
+  const allowed = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES]
+  if (!allowed.includes(file.type)) {
+    throw new Error(`File type ${file.type} is not supported`)
+  }
+  return true
+}
+
 export async function uploadFile(bucket, filePath, file) {
+  validateFile(file)
+
   const { data, error } = await supabase.storage
     .from(bucket)
     .upload(filePath, file, {
       cacheControl: '3600',
-      upsert: false,
+      upsert: true,
     })
 
   if (error) throw error

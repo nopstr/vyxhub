@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
+import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
@@ -213,11 +214,10 @@ function PaywallGate({ creator, post }) {
 export default function PostCard({ post }) {
   const { user, profile } = useAuthStore()
   const { toggleReaction, toggleBookmark, deletePost } = usePostStore()
+  const { isSubscribedTo, hasPurchasedPost } = useSubscriptionCache()
   const navigate = useNavigate()
   const author = post.author
   const [showReactions, setShowReactions] = useState(false)
-  const [isSubscribed, setIsSubscribed] = useState(false)
-  const [hasPurchased, setHasPurchased] = useState(false)
   const reactionsRef = useRef(null)
   const reactionsTimeout = useRef(null)
 
@@ -228,32 +228,9 @@ export default function PostCard({ post }) {
   const isSet = post.post_type === 'set'
   const isVideo = post.post_type === 'video'
 
-  // Check if current user is subscribed to this creator
-  useEffect(() => {
-    if (!user || isOwn) return
-    const checkAccess = async () => {
-      const { data: subData } = await supabase
-        .from('subscriptions')
-        .select('id')
-        .eq('subscriber_id', user.id)
-        .eq('creator_id', author.id)
-        .eq('status', 'active')
-        .maybeSingle()
-      setIsSubscribed(!!subData)
-
-      // Check PPV purchase
-      if (isPPV) {
-        const { data: purchaseData } = await supabase
-          .from('purchases')
-          .select('id')
-          .eq('buyer_id', user.id)
-          .eq('post_id', post.id)
-          .maybeSingle()
-        setHasPurchased(!!purchaseData)
-      }
-    }
-    checkAccess()
-  }, [user, author.id, isOwn, isPPV, post.id])
+  // O(1) lookups from subscription cache (no per-card DB queries)
+  const isSubscribed = isOwn || isSubscribedTo(author.id)
+  const hasPurchased = hasPurchasedPost(post.id)
 
   // Determine if content is unlocked
   const isContentUnlocked = isOwn || isSubscribed || hasPurchased || post.visibility === 'public'

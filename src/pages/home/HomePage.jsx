@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
+import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import CreatePost from '../../components/feed/CreatePost'
 
 import PostCard from '../../components/feed/PostCard'
@@ -9,19 +10,38 @@ import { useInView } from 'react-intersection-observer'
 
 export default function HomePage() {
   const { user, profile } = useAuthStore()
-  const { posts, loading, hasMore, fetchFeed } = usePostStore()
+  const { posts, loading, hasMore, fetchFeed, fetchFollowingFeed } = usePostStore()
+  const { loadForUser } = useSubscriptionCache()
   const [tab, setTab] = useState('foryou')
   const { ref, inView } = useInView({ threshold: 0 })
 
+  // Pre-load subscription cache once when user is available
   useEffect(() => {
-    fetchFeed(true)
-  }, [])
+    if (user?.id) loadForUser(user.id)
+  }, [user?.id])
+
+  useEffect(() => {
+    loadFeed(true)
+  }, [tab])
 
   useEffect(() => {
     if (inView && hasMore && !loading) {
-      fetchFeed()
+      loadFeed(false)
     }
   }, [inView, hasMore, loading])
+
+  const loadFeed = (reset) => {
+    if (tab === 'following' && user) {
+      fetchFollowingFeed(user.id, reset)
+    } else {
+      fetchFeed(reset)
+    }
+  }
+
+  const handleTabChange = (newTab) => {
+    if (newTab === tab) return
+    setTab(newTab)
+  }
 
   return (
     <div>
@@ -29,7 +49,7 @@ export default function HomePage() {
       <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50">
         <div className="flex">
           <button
-            onClick={() => setTab('foryou')}
+            onClick={() => handleTabChange('foryou')}
             className={`flex-1 py-4 text-sm font-semibold transition-colors relative cursor-pointer ${
               tab === 'foryou' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
             }`}
@@ -40,7 +60,7 @@ export default function HomePage() {
             )}
           </button>
           <button
-            onClick={() => setTab('following')}
+            onClick={() => handleTabChange('following')}
             className={`flex-1 py-4 text-sm font-semibold transition-colors relative cursor-pointer ${
               tab === 'following' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
             }`}

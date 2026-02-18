@@ -139,7 +139,7 @@ export default function ReelsPage() {
     try {
       const { data } = await supabase
         .from('posts')
-        .select('*, author:author_id(id, username, display_name, avatar_url, is_verified), media:post_media(*)')
+        .select('*, author:profiles!author_id(id, username, display_name, avatar_url, is_verified), media(*)')
         .not('media', 'is', null)
         .order('created_at', { ascending: false })
         .limit(20)

@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 
+let authSubscription = null
+
 export const useAuthStore = create((set, get) => ({
   user: null,
   profile: null,
@@ -12,20 +14,38 @@ export const useAuthStore = create((set, get) => ({
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
+        // Check email verification
+        if (!session.user.email_confirmed_at) {
+          set({ user: null, session: null, profile: null, loading: false, initialized: true })
+          return
+        }
         const profile = await get().fetchProfile(session.user.id)
         set({ user: session.user, session, profile, loading: false, initialized: true })
       } else {
         set({ user: null, session: null, profile: null, loading: false, initialized: true })
       }
 
-      supabase.auth.onAuthStateChange(async (event, session) => {
+      // Clean up previous listener if any
+      if (authSubscription) {
+        authSubscription.unsubscribe()
+      }
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
+          // Only allow verified users
+          if (!session.user.email_confirmed_at) {
+            return
+          }
           const profile = await get().fetchProfile(session.user.id)
           set({ user: session.user, session, profile, loading: false })
         } else if (event === 'SIGNED_OUT') {
           set({ user: null, session: null, profile: null, loading: false })
+        } else if (event === 'PASSWORD_RECOVERY') {
+          // User arrived from password reset link — session is set automatically
+          set({ user: session?.user, session, loading: false })
         }
       })
+      authSubscription = subscription
     } catch {
       set({ loading: false, initialized: true })
     }
@@ -83,6 +103,9 @@ export const useAuthStore = create((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut()
+    // Clear subscription cache
+    const { useSubscriptionCache } = await import('./subscriptionCache')
+    useSubscriptionCache.getState().clear()
     set({ user: null, session: null, profile: null })
   },
 
