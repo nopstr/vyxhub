@@ -16,6 +16,7 @@ const NotificationsPage = lazy(() => import('./pages/notifications/Notifications
 const BookmarksPage = lazy(() => import('./pages/bookmarks/BookmarksPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const CreatorDashboardPage = lazy(() => import('./pages/dashboard/CreatorDashboardPage'))
+const BecomeCreatorPage = lazy(() => import('./pages/BecomeCreatorPage'))
 const ReelsPage = lazy(() => import('./pages/reels/ReelsPage'))
 const PostDetailPage = lazy(() => import('./pages/post/PostDetailPage'))
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
@@ -67,6 +68,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="explore" element={<ExplorePage />} />
+            <Route path="become-creator" element={<BecomeCreatorPage />} />
             <Route path="post/:postId" element={<PostDetailPage />} />
             <Route path=":username" element={<ProfilePage />} />
           </Route>

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Search, PlusCircle, Mail, User, LogIn } from 'lucide-react'
+import { Home, Search, PlusCircle, Mail, User, LogIn, Star } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { cn } from '../../lib/utils'
 
@@ -35,11 +35,22 @@ export default function MobileNav() {
 
         {user ? (
           <>
-            {profile?.is_creator && (
+            {profile?.is_creator ? (
               <NavLink to="/" className="flex flex-col items-center">
                 <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center -mt-6 shadow-lg shadow-indigo-600/30">
                   <PlusCircle size={22} className="text-white" />
                 </div>
+              </NavLink>
+            ) : (
+              <NavLink
+                to="/become-creator"
+                className={({ isActive }) =>
+                  cn('flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-colors',
+                    isActive ? 'text-pink-400' : 'text-zinc-500')
+                }
+              >
+                <Star size={22} />
+                <span className="text-[10px] font-medium">Create</span>
               </NavLink>
             )}
             {authItems.map(item => (
