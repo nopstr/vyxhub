@@ -123,11 +123,12 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 
 -- Ensure updated_at is set on conversation updates too
-CREATE TRIGGER IF NOT EXISTS update_conversations_updated_at
+DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
+CREATE TRIGGER update_conversations_updated_at
   BEFORE UPDATE ON conversations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Partial index for active subscriptions only (most common query)
 CREATE INDEX IF NOT EXISTS idx_subscriptions_active_lookup
-  ON subscriptions(subscriber_id, creator_id, status, expires_at)
-  WHERE status = 'active' AND expires_at > NOW();
+  ON subscriptions(subscriber_id, creator_id, status)
+  WHERE status = 'active';
