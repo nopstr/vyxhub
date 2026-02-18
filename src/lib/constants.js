@@ -2,7 +2,8 @@ export const APP_NAME = 'VyxHub'
 export const APP_DESCRIPTION = 'Premium adult content platform'
 export const APP_URL = 'https://vyxhub.vercel.app'
 
-export const PLATFORM_FEE_PERCENT = 20
+export const PLATFORM_FEE_PERCENT = 30
+export const REFERRAL_EARNING_PERCENT = 80
 export const MIN_SUBSCRIPTION_PRICE = 4.99
 export const MAX_SUBSCRIPTION_PRICE = 49.99
 export const MIN_TIP_AMOUNT = 1

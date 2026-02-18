@@ -1,24 +1,14 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Zap, Mail, Lock, User, AtSign, Eye, EyeOff, Star, TrendingUp, Shield, Globe, Percent, DollarSign } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Zap, Mail, Lock, User, AtSign, Eye, EyeOff, Star, ChevronRight } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { toast } from 'sonner'
 import { cn } from '../lib/utils'
-import { PLATFORM_FEE_PERCENT, MIN_SUBSCRIPTION_PRICE, MAX_SUBSCRIPTION_PRICE } from '../lib/constants'
-
-const MODEL_CATEGORIES = [
-  { value: 'female', label: 'Female' },
-  { value: 'male', label: 'Male' },
-  { value: 'couple', label: 'Couple' },
-  { value: 'trans', label: 'Trans' },
-  { value: 'nonbinary', label: 'Non-binary' },
-  { value: 'other', label: 'Other' },
-]
 
 export default function AuthPage() {
-  const [mode, setMode] = useState('login') // login | signup | signup-model | forgot
+  const [mode, setMode] = useState('login') // login | signup | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -26,14 +16,10 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [agreedAge, setAgreedAge] = useState(false)
-  const [agreedTerms, setAgreedTerms] = useState(false)
-  const [subPrice, setSubPrice] = useState('9.99')
-  const [category, setCategory] = useState('other')
   const { signIn, signUp, resetPassword, signInWithOAuth } = useAuthStore()
   const navigate = useNavigate()
 
-  const isSignupMode = mode === 'signup' || mode === 'signup-model'
-  const isModelSignup = mode === 'signup-model'
+  const isSignupMode = mode === 'signup'
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -44,14 +30,9 @@ export default function AuthPage() {
         await signIn(email, password)
         toast.success('Welcome back!')
         navigate('/')
-      } else if (isSignupMode) {
+      } else if (mode === 'signup') {
         if (!agreedAge) {
           toast.error('You must confirm you are 18+')
-          setLoading(false)
-          return
-        }
-        if (isModelSignup && !agreedTerms) {
-          toast.error('You must agree to the Creator Terms')
           setLoading(false)
           return
         }
@@ -60,20 +41,7 @@ export default function AuthPage() {
           username: cleanUsername,
           display_name: displayName || username,
         })
-        // If model signup, activate creator profile after signup
-        if (isModelSignup) {
-          await new Promise(r => setTimeout(r, 600))
-          const { supabase } = await import('../lib/supabase')
-          const { data: { user: authUser } } = await supabase.auth.getUser()
-          if (authUser) {
-            await supabase.from('profiles').update({
-              is_creator: true,
-              subscription_price: parseFloat(subPrice) || 9.99,
-              creator_category: category,
-            }).eq('id', authUser.id)
-          }
-        }
-        toast.success(isModelSignup ? 'Welcome to VyxHub! Your creator profile is ready.' : 'Welcome to VyxHub!')
+        toast.success('Welcome to VyxHub!')
         navigate('/')
       } else {
         await resetPassword(email)
@@ -91,78 +59,28 @@ export default function AuthPage() {
       <div className="fixed inset-0">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 blur-[150px] rounded-full" />
         <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-violet-600/10 blur-[120px] rounded-full" />
-        {isModelSignup && <div className="absolute top-1/2 right-1/3 w-64 h-64 bg-pink-600/10 blur-[130px] rounded-full" />}
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className={cn(
-            'w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl',
-            isModelSignup ? 'bg-gradient-to-br from-pink-500 to-violet-600 shadow-pink-500/20' : 'bg-white shadow-white/10'
-          )}>
-            {isModelSignup ? <Star className="text-white fill-white" size={32} /> : <Zap className="text-black fill-black" size={32} />}
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl bg-white shadow-white/10">
+            <Zap className="text-black fill-black" size={32} />
           </div>
           <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
             VYXHUB
           </h1>
           <p className="text-sm text-zinc-500 mt-2">
-            {mode === 'login' ? 'Welcome back' : isModelSignup ? 'Start earning as a creator' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
+            {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}
           </p>
         </div>
-
-        {/* Signup toggle: Fan vs Model */}
-        {isSignupMode && (
-          <div className="flex items-center mb-5 bg-zinc-900/50 rounded-2xl p-1 border border-zinc-800/50">
-            <button
-              onClick={() => setMode('signup')}
-              className={cn(
-                'flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all cursor-pointer',
-                mode === 'signup' ? 'bg-white text-black shadow-lg' : 'text-zinc-400 hover:text-zinc-300'
-              )}
-            >
-              Fan Account
-            </button>
-            <button
-              onClick={() => setMode('signup-model')}
-              className={cn(
-                'flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5',
-                isModelSignup ? 'bg-gradient-to-r from-pink-500 to-violet-600 text-white shadow-lg shadow-pink-500/20' : 'text-zinc-400 hover:text-zinc-300'
-              )}
-            >
-              <Star size={14} /> Model / Creator
-            </button>
-          </div>
-        )}
-
-        {/* Model benefits */}
-        {isModelSignup && (
-          <div className="mb-5 bg-gradient-to-br from-pink-500/10 to-violet-600/10 border border-pink-500/20 rounded-2xl p-4">
-            <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <TrendingUp size={16} className="text-pink-400" /> Why creators love VyxHub
-            </h3>
-            <div className="grid grid-cols-2 gap-2.5">
-              {[
-                { icon: Percent, text: `Keep ${100 - PLATFORM_FEE_PERCENT}% of earnings` },
-                { icon: DollarSign, text: 'Set your own prices' },
-                { icon: Shield, text: 'Geo-blocking & watermarks' },
-                { icon: Globe, text: 'Global audience reach' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-2 text-xs text-zinc-300">
-                  <item.icon size={13} className="text-pink-400 flex-shrink-0" />
-                  <span>{item.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Form Card */}
         <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-3xl p-8 backdrop-blur-sm">
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignupMode && (
               <>
-                <Input label="Display Name" icon={User} value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={isModelSignup ? 'Your stage/display name' : 'Your name'} required />
+                <Input label="Display Name" icon={User} value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" required />
                 <Input label="Username" icon={AtSign} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" pattern="[a-zA-Z0-9_]{3,30}" title="3-30 characters, letters, numbers, and underscores only" required />
               </>
             )}
@@ -178,29 +96,6 @@ export default function AuthPage() {
               </div>
             )}
 
-            {/* Model-specific fields */}
-            {isModelSignup && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">Category</label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-pink-500/50 cursor-pointer">
-                    {MODEL_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-1.5">Monthly Subscription Price</label>
-                  <div className="relative">
-                    <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                    <input type="number" min={MIN_SUBSCRIPTION_PRICE} max={MAX_SUBSCRIPTION_PRICE} step="0.01" value={subPrice} onChange={(e) => setSubPrice(e.target.value)} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-pink-500/50" />
-                  </div>
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    You earn <strong className="text-emerald-400">${((parseFloat(subPrice) || 0) * (100 - PLATFORM_FEE_PERCENT) / 100).toFixed(2)}/subscriber</strong> after {PLATFORM_FEE_PERCENT}% platform fee
-                  </p>
-                </div>
-              </>
-            )}
-
             {isSignupMode && (
               <div className="space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">
@@ -209,23 +104,15 @@ export default function AuthPage() {
                     I confirm that I am <strong className="text-white">18 years or older</strong> and agree to the Terms of Service and Privacy Policy.
                   </span>
                 </label>
-                {isModelSignup && (
-                  <label className="flex items-start gap-3 cursor-pointer">
-                    <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-pink-600 focus:ring-pink-500 cursor-pointer" />
-                    <span className="text-xs text-zinc-400 leading-relaxed">
-                      I agree to the <strong className="text-white">Creator Agreement</strong> including {PLATFORM_FEE_PERCENT}% platform fee, content policies, and payout terms.
-                    </span>
-                  </label>
-                )}
               </div>
             )}
 
-            <Button type="submit" loading={loading} className={cn('w-full', isModelSignup && '!bg-gradient-to-r !from-pink-500 !to-violet-600 hover:!from-pink-400 hover:!to-violet-500')} size="lg">
-              {mode === 'login' ? 'Sign In' : isModelSignup ? 'Create Creator Account' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
+            <Button type="submit" loading={loading} className="w-full" size="lg">
+              {mode === 'login' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Send Reset Link'}
             </Button>
           </form>
 
-          {mode !== 'forgot' && !isModelSignup && (
+          {mode !== 'forgot' && (
             <>
               <div className="flex items-center gap-4 my-6">
                 <div className="flex-1 h-px bg-zinc-800" />
@@ -253,11 +140,6 @@ export default function AuthPage() {
                   No account?{' '}
                   <button onClick={() => setMode('signup')} className="text-indigo-400 font-semibold hover:underline cursor-pointer">Sign up</button>
                 </p>
-                <p className="text-sm">
-                  <button onClick={() => setMode('signup-model')} className="text-pink-400 font-semibold hover:underline cursor-pointer flex items-center gap-1 mx-auto">
-                    <Star size={13} /> Sign up as a Model
-                  </button>
-                </p>
               </>
             )}
             {isSignupMode && (
@@ -271,6 +153,23 @@ export default function AuthPage() {
             )}
           </div>
         </div>
+
+        {/* Become a Creator CTA */}
+        <Link
+          to="/become-creator"
+          className="mt-5 flex items-center justify-between bg-gradient-to-r from-pink-500/10 to-violet-600/10 border border-pink-500/20 rounded-2xl p-4 hover:border-pink-500/40 transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 shadow-lg shadow-pink-500/20">
+              <Star size={18} className="text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Become a Creator</p>
+              <p className="text-xs text-zinc-500">Earn 70% — highest in the industry</p>
+            </div>
+          </div>
+          <ChevronRight size={18} className="text-zinc-600 group-hover:text-pink-400 transition-colors" />
+        </Link>
       </div>
     </div>
   )
