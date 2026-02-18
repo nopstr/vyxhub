@@ -5,7 +5,8 @@ import {
   Camera, Heart, CheckCircle, ChevronRight, Sparkles,
   Upload, FileCheck, User, MapPin, Calendar, Phone,
   CreditCard, ArrowLeft, Megaphone, Link2, Award,
-  Eye, Zap, BadgeCheck, X, Image as ImageIcon,
+  Eye, EyeOff, Zap, BadgeCheck, X, Image as ImageIcon,
+  Mail, Lock, AtSign,
 } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import Button from '../components/ui/Button'
@@ -296,10 +297,18 @@ function FileUploadBox({ label, hint, file, onSelect, onClear, accept = 'image/*
 /* ─────── Application Form ─────── */
 
 function ApplicationForm({ onBack }) {
-  const { user, profile, updateProfile } = useAuthStore()
+  const { user, profile, updateProfile, signUp } = useAuthStore()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [formStep, setFormStep] = useState(1) // 1: personal, 2: ID, 3: confirm
+  const [formStep, setFormStep] = useState(1) // 1: personal (+account if not logged in), 2: ID, 3: confirm
+  const isGuest = !user
+
+  // Account fields (only for non-authenticated users)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   // Personal info
   const [legalFirst, setLegalFirst] = useState('')
@@ -321,7 +330,9 @@ function ApplicationForm({ onBack }) {
   const [agreedAge, setAgreedAge] = useState(false)
   const [agreedContent, setAgreedContent] = useState(false)
 
-  const canProceed1 = legalFirst && legalLast && dob && country && city
+  const canProceed1 = isGuest
+    ? (email && password && password.length >= 8 && username && legalFirst && legalLast && dob && country && city)
+    : (legalFirst && legalLast && dob && country && city)
   const canProceed2 = idFront && selfie
   const canSubmit = agreedTerms && agreedAge && agreedContent
 
@@ -330,9 +341,31 @@ function ApplicationForm({ onBack }) {
     setLoading(true)
 
     try {
+      let userId = user?.id
+
+      // If guest, create account first
+      if (isGuest) {
+        const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '')
+        const { data, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              username: cleanUsername,
+              display_name: displayName || username,
+            },
+          },
+        })
+        if (signUpError) throw signUpError
+        userId = data.user?.id
+        if (!userId) throw new Error('Account creation failed. Please try again.')
+        // Small delay to let the trigger create the profile row
+        await new Promise(r => setTimeout(r, 1500))
+      }
+
       // Upload verification documents
       const uploads = []
-      const docPath = `${user.id}/verification`
+      const docPath = `${userId}/verification`
 
       if (idFront) {
         const ext = idFront.name.split('.').pop()
@@ -355,14 +388,25 @@ function ApplicationForm({ onBack }) {
 
       await Promise.all(uploads)
 
-      // Activate creator profile
-      await updateProfile({
-        is_creator: true,
-        subscription_price: MIN_SUBSCRIPTION_PRICE,
-        creator_category: 'other',
-        legal_name: `${legalFirst} ${legalLast}`,
-        verification_status: 'pending',
-      })
+      // Activate creator profile — use direct supabase call with userId for guest flow
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          is_creator: true,
+          subscription_price: MIN_SUBSCRIPTION_PRICE,
+          creator_category: 'other',
+          legal_name: `${legalFirst} ${legalLast}`,
+          verification_status: 'pending',
+        })
+        .eq('id', userId)
+        .select()
+        .single()
+      if (profileError) throw profileError
+
+      // Update local state if we have the store user
+      if (user) {
+        useAuthStore.setState({ profile: updatedProfile })
+      }
 
       toast.success('Application submitted! Your creator profile is being reviewed. 🎉')
       navigate('/dashboard')
@@ -405,15 +449,41 @@ function ApplicationForm({ onBack }) {
       </header>
 
       <div className="p-5 max-w-md mx-auto">
-        {/* Step 1: Personal Info */}
+        {/* Step 1: Account (if guest) + Personal Info */}
         {formStep === 1 && (
           <div className="space-y-4">
-            <div className="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 mb-6">
-              <div className="flex items-center gap-2 text-sm text-zinc-300">
-                <Shield size={16} className="text-pink-400" />
-                <span>Your information is <strong className="text-white">encrypted</strong> and only used for verification purposes.</span>
+            {isGuest && (
+              <>
+                <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 rounded-2xl p-4 mb-2">
+                  <div className="flex items-center gap-2 text-sm text-zinc-300">
+                    <Zap size={16} className="text-indigo-400" />
+                    <span>Create your account and apply as a creator in one step.</span>
+                  </div>
+                </div>
+
+                <Input label="Display Name" icon={User} value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" required />
+                <Input label="Username" icon={AtSign} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="username" pattern="[a-zA-Z0-9_]{3,30}" title="3-30 characters, letters, numbers, and underscores only" required />
+                <Input label="Email" icon={Mail} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="your@email.com" required />
+                <div className="relative">
+                  <Input label="Password" icon={Lock} type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" minLength={8} required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-[38px] text-zinc-500 hover:text-zinc-300 cursor-pointer">
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+
+                <div className="h-px bg-zinc-800/50 my-2" />
+                <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Personal Information</p>
+              </>
+            )}
+
+            {!isGuest && (
+              <div className="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 mb-6">
+                <div className="flex items-center gap-2 text-sm text-zinc-300">
+                  <Shield size={16} className="text-pink-400" />
+                  <span>Your information is <strong className="text-white">encrypted</strong> and only used for verification purposes.</span>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Input
@@ -489,6 +559,14 @@ function ApplicationForm({ onBack }) {
             >
               Continue to ID Verification <ChevronRight size={18} />
             </Button>
+
+            {isGuest && (
+              <p className="text-center text-xs text-zinc-600">
+                Already have an account?{' '}
+                <Link to="/auth" className="text-indigo-400 hover:underline">Sign in</Link>{' '}
+                then come back here.
+              </p>
+            )}
           </div>
         )}
 
@@ -575,7 +653,7 @@ function ApplicationForm({ onBack }) {
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white">{legalFirst} {legalLast}</p>
-                  <p className="text-xs text-zinc-500">@{profile?.username}</p>
+                  <p className="text-xs text-zinc-500">@{profile?.username || username || 'you'}</p>
                 </div>
               </div>
 
@@ -669,12 +747,6 @@ export default function BecomeCreatorPage() {
   }
 
   const handleStartEarning = () => {
-    if (!user) {
-      toast('Please create an account first', {
-        action: { label: 'Sign Up', onClick: () => navigate('/auth') },
-      })
-      return
-    }
     setView('apply')
   }
 

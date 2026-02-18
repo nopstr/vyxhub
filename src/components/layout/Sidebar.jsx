@@ -97,7 +97,10 @@ export default function Sidebar() {
                 <SidebarLink to="/settings" icon={Settings} label="Settings" />
               </>
             ) : (
-              <SidebarLink to="/become-creator" icon={Star} label="Become a Creator" />
+              <>
+                <SidebarLink to="/become-creator" icon={Star} label="Become a Creator" />
+                <SidebarLink to="/settings" icon={Settings} label="Settings" />
+              </>
             )}
           </>
         )}
