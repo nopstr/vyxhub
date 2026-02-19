@@ -178,8 +178,15 @@ export const useMessageStore = create((set, get) => ({
   },
 
   subscribeToMessages: (conversationId) => {
+    // Clean up existing subscription for this conversation if it exists
+    const channelName = `messages-${conversationId}`
+    const existingChannel = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`)
+    if (existingChannel) {
+      supabase.removeChannel(existingChannel)
+    }
+
     const channel = supabase
-      .channel(`messages-${conversationId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -199,17 +206,18 @@ export const useMessageStore = create((set, get) => ({
             return
           }
 
-          // INSERT
-          const { data } = await supabase
-            .from('profiles')
-            .select('id, username, display_name, avatar_url')
-            .eq('id', payload.new.sender_id)
-            .single()
+          if (payload.eventType === 'INSERT') {
+            const { data } = await supabase
+              .from('profiles')
+              .select('id, username, display_name, avatar_url')
+              .eq('id', payload.new.sender_id)
+              .single()
 
-          const newMsg = { ...payload.new, sender: data }
-          const msgs = get().messages
-          if (!msgs.find(m => m.id === newMsg.id)) {
-            set({ messages: [...msgs, newMsg] })
+            const newMsg = { ...payload.new, sender: data }
+            const msgs = get().messages
+            if (!msgs.find(m => m.id === newMsg.id)) {
+              set({ messages: [...msgs, newMsg] })
+            }
           }
         }
       )

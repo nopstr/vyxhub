@@ -105,8 +105,14 @@ export const useNotificationStore = create((set, get) => ({
   },
 
   subscribeToNotifications: (userId) => {
+    const channelName = `notifications-${userId}`
+    const existingChannel = supabase.getChannels().find(c => c.topic === `realtime:${channelName}`)
+    if (existingChannel) {
+      supabase.removeChannel(existingChannel)
+    }
+
     const channel = supabase
-      .channel('notifications')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
