@@ -188,6 +188,35 @@ export async function getSignedMediaUrl(path, mediaType = 'image') {
  * @param {Object|Object[]} posts - Post object(s) with nested `media` arrays
  * @returns {Object|Object[]} The same reference(s) with `signedUrl` populated
  */
+/**
+ * Generate a low-resolution blur preview URL from any image URL.
+ * Returns a genuinely tiny image (16-20px) that cannot be recovered even
+ * if the CSS blur is removed in devtools.
+ *
+ * @param {string} url - Full signed URL or external URL
+ * @returns {string|null} Low-res URL suitable for blur preview
+ */
+export function getBlurPreviewUrl(url) {
+  if (!url) return null
+
+  // Unsplash: use native resize — returns a ~16px wide, 1% quality image
+  if (url.includes('unsplash.com')) {
+    const base = url.split('?')[0]
+    return `${base}?w=16&q=1`
+  }
+
+  // Supabase signed URLs: switch to render endpoint with tiny transform
+  // /storage/v1/object/sign/{bucket}/{path}?token=... → /storage/v1/render/image/sign/{bucket}/{path}?token=...&width=16&quality=1
+  if (url.includes('/storage/v1/object/sign/')) {
+    return url.replace('/storage/v1/object/sign/', '/storage/v1/render/image/sign/') +
+      '&width=16&height=16&quality=1&resize=cover'
+  }
+
+  // Google storage / other external CDNs: can't resize server-side,
+  // return null — CSS blur on a hidden-overflow tiny container will suffice
+  return url
+}
+
 export async function resolvePostMediaUrls(posts) {
   if (!posts) return posts
   const isSingle = !Array.isArray(posts)

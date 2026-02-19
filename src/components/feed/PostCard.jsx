@@ -9,6 +9,7 @@ import {
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import { useSubscriptionCache } from '../../stores/subscriptionCache'
+import { getBlurPreviewUrl } from '../../lib/storage'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
@@ -27,8 +28,53 @@ const REACTION_TYPES = [
 
 function MediaGrid({ media, isUnlocked = true }) {
   if (!media || media.length === 0) return null
-  // Never render actual media URLs if content is not unlocked
-  if (!isUnlocked) return null
+
+  // Locked: show blurred low-res thumbnails
+  if (!isUnlocked) {
+    const previewItems = media.slice(0, 4)
+    return (
+      <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50">
+        <div className={cn(
+          'grid',
+          previewItems.length === 1 && 'grid-cols-1',
+          previewItems.length === 2 && 'grid-cols-2 gap-0.5',
+          previewItems.length >= 3 && 'grid-cols-2 grid-rows-2 gap-0.5',
+        )}>
+          {previewItems.map((item, i) => {
+            const blurSrc = getBlurPreviewUrl(item.signedUrl || item.url)
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  'relative overflow-hidden bg-zinc-950',
+                  previewItems.length === 1 && 'aspect-[16/10]',
+                  previewItems.length === 2 && 'aspect-square',
+                  previewItems.length === 3 && i === 0 && 'row-span-2 aspect-auto h-full',
+                  previewItems.length >= 3 && i > 0 && 'aspect-square',
+                )}
+              >
+                {blurSrc && (
+                  <img
+                    src={blurSrc}
+                    alt=""
+                    className="w-full h-full object-cover scale-110 blur-xl brightness-75"
+                    loading="lazy"
+                    draggable={false}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-white/80 bg-black/30 backdrop-blur-sm px-4 py-2 rounded-full">
+            <Lock size={14} />
+            <span className="text-sm font-semibold">Subscriber content</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={cn(
@@ -75,7 +121,7 @@ function MediaGrid({ media, isUnlocked = true }) {
   )
 }
 
-/* Set Preview: shows unblurred previews + placeholder for locked images */
+/* Set Preview: shows unblurred previews + blurred low-res placeholder for locked images */
 function SetPreview({ media, isUnlocked, totalMediaCount }) {
   if (!media || media.length === 0) return null
 
@@ -108,17 +154,30 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
         </div>
       )}
 
-      {/* Gradient placeholder for locked images — NO real URLs */}
+      {/* Blurred low-res placeholder for locked images — genuinely tiny resolution */}
       {!isUnlocked && lockedCount > 0 && (
         <div className="relative mt-1 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-[16/8]">
           <div className="absolute inset-0 grid grid-cols-3 gap-0.5">
-            {Array.from({ length: Math.min(lockedCount, 3) }).map((_, i) => (
-              <div key={i} className="overflow-hidden">
-                <div className="w-full h-full bg-gradient-to-br from-zinc-800/80 via-zinc-900 to-zinc-950" />
-              </div>
-            ))}
+            {media.slice(0, 3).map((item, i) => {
+              const blurSrc = getBlurPreviewUrl(item.signedUrl || item.url)
+              return (
+                <div key={item.id || i} className="overflow-hidden">
+                  {blurSrc ? (
+                    <img
+                      src={blurSrc}
+                      alt=""
+                      className="w-full h-full object-cover scale-110 blur-xl brightness-50"
+                      loading="lazy"
+                      draggable={false}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-zinc-800/80 via-zinc-900 to-zinc-950" />
+                  )}
+                </div>
+              )
+            })}
           </div>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="flex items-center gap-2 text-white/90">
               <Lock size={16} />
               <span className="text-sm font-bold">+{lockedCount} locked photos</span>
@@ -130,7 +189,7 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
   )
 }
 
-/* Video Preview: shows player for unlocked, gradient placeholder for locked — NEVER loads actual URL when locked */
+/* Video Preview: shows player for unlocked, blurred low-res thumbnail for locked — NEVER loads actual video when locked */
 function VideoPreview({ media, isUnlocked, post }) {
   const videoMedia = media?.find(m => m.media_type === 'video')
   if (!videoMedia) return null
@@ -148,16 +207,33 @@ function VideoPreview({ media, isUnlocked, post }) {
     )
   }
 
-  // LOCKED: Never load the real video URL — use a gradient placeholder
+  // LOCKED: show blurred low-res thumbnail, never load actual video
   const isPPV = post?.price && parseFloat(post.price) > 0
+  // Try to get a poster image for blur (first image media, or the video URL for Unsplash)
+  const posterMedia = media?.find(m => m.media_type === 'image') || videoMedia
+  const blurSrc = getBlurPreviewUrl(posterMedia?.signedUrl || posterMedia?.url)
+
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950">
-      {/* Gradient placeholder — no actual media loaded */}
-      <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/60 via-zinc-900 to-zinc-950" />
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-indigo-600/20 blur-[80px] rounded-full" />
-        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-violet-600/20 blur-[60px] rounded-full" />
-      </div>
+      {/* Blurred low-res background */}
+      {blurSrc && (
+        <img
+          src={blurSrc}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl brightness-50"
+          loading="lazy"
+          draggable={false}
+        />
+      )}
+      {!blurSrc && (
+        <>
+          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/60 via-zinc-900 to-zinc-950" />
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-indigo-600/20 blur-[80px] rounded-full" />
+            <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-violet-600/20 blur-[60px] rounded-full" />
+          </div>
+        </>
+      )}
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20">
@@ -181,6 +257,10 @@ function PaywallGate({ creator, post }) {
   const { user } = useAuthStore()
   const { addSubscription, addPurchase } = useSubscriptionCache()
   const [loading, setLoading] = useState(false)
+
+  // Get blur preview from first media item
+  const firstMedia = post?.media?.[0]
+  const blurSrc = firstMedia ? getBlurPreviewUrl(firstMedia.signedUrl || firstMedia.url) : null
 
   const handleSubscribe = async () => {
     if (!user) return toast.error('Sign in to subscribe')
@@ -261,7 +341,17 @@ function PaywallGate({ creator, post }) {
 
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 bg-zinc-950 aspect-[16/10] flex items-center justify-center">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-violet-900/20" />
+      {blurSrc ? (
+        <img
+          src={blurSrc}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl brightness-[0.35]"
+          loading="lazy"
+          draggable={false}
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-violet-900/20" />
+      )}
       <div className="relative z-10 flex flex-col items-center text-center p-8 bg-black/40 backdrop-blur-xl rounded-3xl border border-white/5 mx-4 max-w-sm">
         <div className={cn(
           'w-14 h-14 rounded-2xl flex items-center justify-center mb-5',
