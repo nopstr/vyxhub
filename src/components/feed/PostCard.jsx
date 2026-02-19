@@ -260,9 +260,7 @@ function VideoPreview({ media, isUnlocked, post, author }) {
   }
 
   // LOCKED: show 5s teaser, then paywall
-  const videoUrl = videoMedia.signedUrl || videoMedia.url
-  // Append #t=0,5 to only load the first 5 seconds
-  const teaserUrl = videoUrl ? `${videoUrl}#t=0,5` : null
+  const teaserUrl = videoMedia.signedUrl || videoMedia.url
 
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950 group">
@@ -279,7 +277,7 @@ function VideoPreview({ media, isUnlocked, post, author }) {
           playsInline
           controlsList="nodownload nofullscreen noremoteplayback"
           disablePictureInPicture
-          preload="auto"
+          preload="metadata"
         />
       )}
       
