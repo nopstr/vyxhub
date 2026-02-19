@@ -139,7 +139,7 @@ function MediaGrid({ media, isUnlocked = true }) {
 }
 
 /* Set Preview: first image clear, second blurred + "Unlock to view X more" when locked */
-function SetPreview({ media, isUnlocked, totalMediaCount }) {
+function SetPreview({ media, isUnlocked, totalMediaCount, post, author }) {
   if (!media || media.length === 0) return null
 
   const allMedia = media.filter(m => m.signedUrl || m.url)
@@ -170,10 +170,9 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
     )
   }
 
-  // Locked: first image clear, second blurred with "Unlock to view X more"
+  // Locked: first image clear, second blurred with PaywallGate
   const firstItem = allMedia[0]
   const secondItem = allMedia.length > 1 ? allMedia[1] : null
-  const remainingCount = Math.max(totalCount - 1, 0)
 
   return (
     <div className="mt-3">
@@ -193,7 +192,7 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
           </div>
         )}
 
-        {/* Second image — blurred with unlock overlay */}
+        {/* Second image — blurred with PaywallGate */}
         {secondItem && (
           <div className="relative aspect-square overflow-hidden bg-zinc-950">
             {(() => {
@@ -202,19 +201,16 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
                 <img
                   src={blurSrc}
                   alt=""
-                  className="w-full h-full object-cover scale-110 blur-xl brightness-50"
+                  className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl brightness-50"
                   loading="lazy"
                   draggable={false}
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-zinc-800/80 via-zinc-900 to-zinc-950" />
+                <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/80 via-zinc-900 to-zinc-950" />
               )
             })()}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-1.5 text-white/90">
-                <Lock size={18} />
-                <span className="text-sm font-bold text-center px-2">Unlock to view {remainingCount} more</span>
-              </div>
+            <div className="absolute inset-0 flex items-center justify-center p-2">
+              <PaywallGate creator={author} post={post} compact={true} />
             </div>
           </div>
         )}
@@ -223,10 +219,32 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
   )
 }
 
-/* Video Preview: shows player for unlocked, blurred low-res thumbnail for locked — NEVER loads actual video when locked */
-function VideoPreview({ media, isUnlocked, post }) {
+/* Video Preview: shows player for unlocked, 5s teaser for locked */
+function VideoPreview({ media, isUnlocked, post, author }) {
   const videoMedia = media?.find(m => m.media_type === 'video')
+  const [showPaywall, setShowPaywall] = useState(!isUnlocked)
+  const videoRef = useRef(null)
+
   if (!videoMedia) return null
+
+  const handleTimeUpdate = () => {
+    if (!isUnlocked && videoRef.current) {
+      if (videoRef.current.currentTime >= 5) {
+        videoRef.current.pause()
+        setShowPaywall(true)
+      }
+    }
+  }
+
+  const handlePlay = () => {
+    if (!isUnlocked && showPaywall) {
+      setShowPaywall(false)
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0
+        videoRef.current.play()
+      }
+    }
+  }
 
   if (isUnlocked && (videoMedia.signedUrl || videoMedia.url)) {
     return (
@@ -241,52 +259,39 @@ function VideoPreview({ media, isUnlocked, post }) {
     )
   }
 
-  // LOCKED: show blurred low-res thumbnail, never load actual video
-  const isPPV = post?.price && parseFloat(post.price) > 0
-  // Try to get a poster image for blur (first image media, or the video URL for Unsplash)
-  const posterMedia = media?.find(m => m.media_type === 'image') || videoMedia
-  const blurSrc = getBlurPreviewUrl(posterMedia?.signedUrl || posterMedia?.url)
+  // LOCKED: show 5s teaser, then paywall
+  const videoUrl = videoMedia.signedUrl || videoMedia.url
+  // Append #t=0,5 to only load the first 5 seconds
+  const teaserUrl = videoUrl ? `${videoUrl}#t=0,5` : null
 
   return (
-    <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950">
-      {/* Blurred low-res background */}
-      {blurSrc && (
-        <img
-          src={blurSrc}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover scale-110 blur-xl brightness-50"
-          loading="lazy"
-          draggable={false}
+    <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950 group">
+      {teaserUrl && (
+        <video
+          ref={videoRef}
+          src={teaserUrl}
+          className={cn(
+            "w-full h-full object-contain bg-black transition-all duration-500",
+            showPaywall ? "blur-xl brightness-50 scale-110" : ""
+          )}
+          onTimeUpdate={handleTimeUpdate}
+          controls={!showPaywall}
+          controlsList="nodownload nofullscreen noremoteplayback"
+          disablePictureInPicture
+          preload="metadata"
         />
       )}
-      {!blurSrc && (
-        <>
-          <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/60 via-zinc-900 to-zinc-950" />
-          <div className="absolute inset-0 opacity-30">
-            <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-indigo-600/20 blur-[80px] rounded-full" />
-            <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-violet-600/20 blur-[60px] rounded-full" />
-          </div>
-        </>
-      )}
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20">
-            <Play size={28} className="text-white ml-1" fill="currentColor" />
-          </div>
-          <div className="flex items-center gap-1.5 text-white/80">
-            <Lock size={14} />
-            <span className="text-sm font-semibold">{isPPV ? 'Purchase to watch' : 'Subscribe to watch'}</span>
-          </div>
-          {videoMedia.duration_seconds > 0 && (
-            <span className="text-xs text-zinc-500">{Math.floor(videoMedia.duration_seconds / 60)}:{String(videoMedia.duration_seconds % 60).padStart(2, '0')}</span>
-          )}
+      
+      {showPaywall && (
+        <div className="absolute inset-0 flex items-center justify-center p-4 bg-black/20">
+          <PaywallGate creator={author} post={post} onReplay={handlePlay} />
         </div>
-      </div>
+      )}
     </div>
   )
 }
 
-function PaywallGate({ creator, post }) {
+function PaywallGate({ creator, post, compact = false, onReplay }) {
   const isPPV = post?.price && post.price > 0
   const isSet = post?.post_type === 'set'
   const mediaCount = post?.media?.length || post?.media_count || 0
@@ -378,7 +383,10 @@ function PaywallGate({ creator, post }) {
   }
 
   return (
-    <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 bg-zinc-950 aspect-[16/10] flex items-center justify-center">
+    <div className={cn(
+      "relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 bg-zinc-950 flex items-center justify-center",
+      compact ? "w-full h-full" : "aspect-[16/10]"
+    )}>
       {blurSrc ? (
         <img
           src={blurSrc}
@@ -390,36 +398,45 @@ function PaywallGate({ creator, post }) {
       ) : (
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-violet-900/20" />
       )}
-      <div className="relative z-10 flex flex-col items-center text-center p-8 bg-black/40 backdrop-blur-xl rounded-3xl border border-white/5 mx-4 max-w-sm">
+      <div className={cn(
+        "relative z-10 flex flex-col items-center text-center bg-black/40 backdrop-blur-xl rounded-3xl border border-white/5",
+        compact ? "p-4 w-full max-w-[200px]" : "p-8 mx-4 max-w-sm"
+      )}>
         <div className={cn(
-          'w-14 h-14 rounded-2xl flex items-center justify-center mb-5',
+          'rounded-2xl flex items-center justify-center mb-3',
+          compact ? 'w-10 h-10' : 'w-14 h-14 mb-5',
           isPPV
             ? 'bg-gradient-to-br from-amber-500 to-orange-600'
             : 'bg-gradient-to-br from-indigo-500 to-violet-600'
         )}>
-          {isPPV ? <DollarSign size={24} className="text-white" /> : <Lock size={24} className="text-white" />}
+          {isPPV ? <DollarSign size={compact ? 18 : 24} className="text-white" /> : <Lock size={compact ? 18 : 24} className="text-white" />}
         </div>
-        <h3 className="text-xl font-black text-white mb-1.5">
+        <h3 className={cn("font-black text-white mb-1.5", compact ? "text-sm" : "text-xl")}>
           {isPPV ? `Unlock to view ${lockedCount} more` : 'Subscriber Only'}
         </h3>
-        <p className="text-zinc-400 text-sm mb-5">
-          {isPPV
-            ? `One-time purchase to unlock ${lockedCount > 1 ? `all ${lockedCount} items` : 'this content'}`
-            : `Subscribe to @${creator.username} to unlock this content`
-          }
-        </p>
+        {!compact && (
+          <p className="text-zinc-400 text-sm mb-5">
+            {isPPV
+              ? `One-time purchase to unlock ${lockedCount > 1 ? `all ${lockedCount} items` : 'this content'}`
+              : `Subscribe to @${creator.username} to unlock this content`
+            }
+          </p>
+        )}
         {isPPV ? (
           <button
             onClick={handlePurchase}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50"
+            className={cn(
+              "w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50",
+              compact ? "py-2 text-sm mt-2" : "py-3"
+            )}
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <DollarSign size={16} />
-                Buy for ${parseFloat(post.price).toFixed(2)}
+                Buy ${parseFloat(post.price).toFixed(2)}
               </>
             )}
           </button>
@@ -427,16 +444,27 @@ function PaywallGate({ creator, post }) {
           <button
             onClick={handleSubscribe}
             disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50"
+            className={cn(
+              "w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50",
+              compact ? "py-2 text-sm mt-2" : "py-3"
+            )}
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <>
                 <Zap size={16} className="fill-current" />
-                Subscribe for {creator.subscription_price > 0 ? `$${creator.subscription_price}/mo` : 'Free'}
+                Subscribe
               </>
             )}
+          </button>
+        )}
+        {onReplay && (
+          <button 
+            onClick={onReplay}
+            className="mt-3 text-xs text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+          >
+            <Play size={12} /> Replay Teaser
           </button>
         )}
       </div>
@@ -722,18 +750,11 @@ export default function PostCard({ post }) {
           {showPaywall && !isSet && !isVideo ? (
             <PaywallGate creator={author} post={post} />
           ) : isSet ? (
-            <SetPreview media={post.media} isUnlocked={isContentUnlocked} totalMediaCount={post.media_count || post.media?.length} />
+            <SetPreview media={post.media} isUnlocked={isContentUnlocked} totalMediaCount={post.media_count || post.media?.length} post={post} author={author} />
           ) : isVideo ? (
-            <VideoPreview media={post.media} isUnlocked={isContentUnlocked} post={post} />
+            <VideoPreview media={post.media} isUnlocked={isContentUnlocked} post={post} author={author} />
           ) : (
             <MediaGrid media={post.media} isUnlocked={isContentUnlocked} />
-          )}
-
-          {/* PPV gate below set/video if not unlocked */}
-          {(isSet || isVideo) && showPaywall && (
-            <div className="mt-2">
-              <PaywallGate creator={author} post={post} />
-            </div>
           )}
 
           {/* Poll */}
