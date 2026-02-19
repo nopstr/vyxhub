@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Home, Search, PlusCircle, Mail, User, LogIn, Star } from 'lucide-react'
+import { Home, Search, PlusCircle, Mail, Unlock, User, LogIn, Star } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { cn } from '../../lib/utils'
 
@@ -12,6 +12,7 @@ const publicItems = [
 function getAuthItems(username) {
   return [
     { to: '/messages', icon: Mail, label: 'Messages' },
+    { to: '/unlocks', icon: Unlock, label: 'Unlocks' },
     { to: username ? `/@${username}` : '/auth', icon: User, label: 'Profile' },
   ]
 }

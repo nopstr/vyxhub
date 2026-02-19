@@ -16,6 +16,7 @@ const ProfilePage = lazy(() => import('./pages/profile/ProfilePage'))
 const MessagesPage = lazy(() => import('./pages/messages/MessagesPage'))
 const NotificationsPage = lazy(() => import('./pages/notifications/NotificationsPage'))
 const BookmarksPage = lazy(() => import('./pages/bookmarks/BookmarksPage'))
+const UnlocksPage = lazy(() => import('./pages/unlocks/UnlocksPage'))
 const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const CreatorDashboardPage = lazy(() => import('./pages/dashboard/CreatorDashboardPage'))
 const BecomeCreatorPage = lazy(() => import('./pages/BecomeCreatorPage'))
@@ -114,6 +115,7 @@ export default function App() {
           >
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="messages" element={<MessagesPage />} />
+            <Route path="unlocks" element={<UnlocksPage />} />
             <Route path="bookmarks" element={<BookmarksPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="dashboard" element={<CreatorDashboardPage />} />

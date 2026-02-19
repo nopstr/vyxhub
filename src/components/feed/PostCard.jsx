@@ -121,27 +121,24 @@ function MediaGrid({ media, isUnlocked = true }) {
   )
 }
 
-/* Set Preview: shows unblurred previews + blurred low-res placeholder for locked images */
+/* Set Preview: first image clear, second blurred + "Unlock to view X more" when locked */
 function SetPreview({ media, isUnlocked, totalMediaCount }) {
   if (!media || media.length === 0) return null
 
-  // Only show preview media (is_preview=true) when locked
-  // RLS will strip non-preview URLs, but double-check client-side
-  const previewMedia = media.filter(m => m.is_preview && (m.signedUrl || m.url))
-  const displayMedia = isUnlocked ? media.filter(m => m.signedUrl || m.url) : previewMedia
-  const lockedCount = isUnlocked ? 0 : (totalMediaCount || media.length) - previewMedia.length
+  const allMedia = media.filter(m => m.signedUrl || m.url)
+  const totalCount = totalMediaCount || media.length
 
-  return (
-    <div className="mt-3">
-      {/* Preview images (only ones with actual URLs) */}
-      {displayMedia.length > 0 && (
+  // Unlocked: show all media in a grid
+  if (isUnlocked) {
+    return (
+      <div className="mt-3">
         <div className={cn(
           'grid gap-1 rounded-2xl overflow-hidden border border-zinc-800/50',
-          displayMedia.length === 1 && 'grid-cols-1',
-          displayMedia.length === 2 && 'grid-cols-2',
-          displayMedia.length >= 3 && 'grid-cols-3',
+          allMedia.length === 1 && 'grid-cols-1',
+          allMedia.length === 2 && 'grid-cols-2',
+          allMedia.length >= 3 && 'grid-cols-3',
         )}>
-          {displayMedia.slice(0, isUnlocked ? undefined : 3).map((item, i) => (
+          {allMedia.map((item) => (
             <div key={item.id} className="relative aspect-square overflow-hidden bg-zinc-950 group">
               <img
                 src={item.signedUrl || item.url}
@@ -152,39 +149,59 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
             </div>
           ))}
         </div>
-      )}
+      </div>
+    )
+  }
 
-      {/* Blurred low-res placeholder for locked images — genuinely tiny resolution */}
-      {!isUnlocked && lockedCount > 0 && (
-        <div className="relative mt-1 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-[16/8]">
-          <div className="absolute inset-0 grid grid-cols-3 gap-0.5">
-            {media.slice(0, 3).map((item, i) => {
-              const blurSrc = getBlurPreviewUrl(item.signedUrl || item.url)
-              return (
-                <div key={item.id || i} className="overflow-hidden">
-                  {blurSrc ? (
-                    <img
-                      src={blurSrc}
-                      alt=""
-                      className="w-full h-full object-cover scale-110 blur-xl brightness-50"
-                      loading="lazy"
-                      draggable={false}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-zinc-800/80 via-zinc-900 to-zinc-950" />
-                  )}
-                </div>
-              )
-            })}
+  // Locked: first image clear, second blurred with "Unlock to view X more"
+  const firstItem = allMedia[0]
+  const secondItem = allMedia.length > 1 ? allMedia[1] : null
+  const remainingCount = Math.max(totalCount - 1, 0)
+
+  return (
+    <div className="mt-3">
+      <div className={cn(
+        'grid gap-1 rounded-2xl overflow-hidden border border-zinc-800/50',
+        secondItem ? 'grid-cols-2' : 'grid-cols-1',
+      )}>
+        {/* First image — shown clear as preview */}
+        {firstItem && (
+          <div className="relative aspect-square overflow-hidden bg-zinc-950">
+            <img
+              src={firstItem.signedUrl || firstItem.url}
+              alt=""
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
           </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="flex items-center gap-2 text-white/90">
-              <Lock size={16} />
-              <span className="text-sm font-bold">+{lockedCount} locked photos</span>
+        )}
+
+        {/* Second image — blurred with unlock overlay */}
+        {secondItem && (
+          <div className="relative aspect-square overflow-hidden bg-zinc-950">
+            {(() => {
+              const blurSrc = getBlurPreviewUrl(secondItem.signedUrl || secondItem.url)
+              return blurSrc ? (
+                <img
+                  src={blurSrc}
+                  alt=""
+                  className="w-full h-full object-cover scale-110 blur-xl brightness-50"
+                  loading="lazy"
+                  draggable={false}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-zinc-800/80 via-zinc-900 to-zinc-950" />
+              )
+            })()}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-1.5 text-white/90">
+                <Lock size={18} />
+                <span className="text-sm font-bold text-center px-2">Unlock to view {remainingCount} more</span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
@@ -254,6 +271,10 @@ function VideoPreview({ media, isUnlocked, post }) {
 
 function PaywallGate({ creator, post }) {
   const isPPV = post?.price && post.price > 0
+  const isSet = post?.post_type === 'set'
+  const mediaCount = post?.media?.length || post?.media_count || 0
+  // For sets, 1 image is already shown clear
+  const lockedCount = isSet ? Math.max(mediaCount - 1, 0) : mediaCount
   const { user } = useAuthStore()
   const { addSubscription, addPurchase } = useSubscriptionCache()
   const [loading, setLoading] = useState(false)
@@ -362,11 +383,11 @@ function PaywallGate({ creator, post }) {
           {isPPV ? <DollarSign size={24} className="text-white" /> : <Lock size={24} className="text-white" />}
         </div>
         <h3 className="text-xl font-black text-white mb-1.5">
-          {isPPV ? 'Pay-Per-View' : 'Subscriber Only'}
+          {isPPV ? `Unlock to view ${lockedCount} more` : 'Subscriber Only'}
         </h3>
         <p className="text-zinc-400 text-sm mb-5">
           {isPPV
-            ? `Unlock this ${post.post_type === 'video' ? 'video' : 'content'} for a one-time purchase`
+            ? `One-time purchase to unlock ${lockedCount > 1 ? `all ${lockedCount} items` : 'this content'}`
             : `Subscribe to @${creator.username} to unlock this content`
           }
         </p>

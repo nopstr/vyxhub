@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Search, Bell, Mail, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users } from 'lucide-react'
+import { Home, Search, Bell, Mail, Unlock, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../ui/Avatar'
@@ -14,6 +14,7 @@ const publicNavItems = [
 const authNavItems = [
   { to: '/notifications', icon: Bell, label: 'Notifications', countKey: 'notifications' },
   { to: '/messages', icon: Mail, label: 'Messages' },
+  { to: '/unlocks', icon: Unlock, label: 'My Unlocks' },
   { to: '/bookmarks', icon: Bookmark, label: 'Bookmarks' },
 ]
 
