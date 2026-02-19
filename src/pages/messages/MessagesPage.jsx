@@ -1,12 +1,99 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import { useMessageStore } from '../../stores/messageStore'
+import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/ui/Avatar'
 import { PageLoader } from '../../components/ui/Spinner'
-import { Send, ArrowLeft, ShieldCheck } from 'lucide-react'
+import { Send, ArrowLeft, ShieldCheck, PenSquare, Search, X } from 'lucide-react'
 import { formatMessageTime, cn } from '../../lib/utils'
 
-function ConversationList({ conversations, activeId, onSelect }) {
+function NewMessageModal({ onClose, onSelect }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const { user } = useAuthStore()
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 2) { setResults([]); return }
+
+    const timer = setTimeout(async () => {
+      setSearching(true)
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, is_verified')
+        .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+        .neq('id', user.id)
+        .limit(10)
+      setResults(data || [])
+      setSearching(false)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex items-center gap-3 p-4 border-b border-zinc-800">
+          <Search size={18} className="text-zinc-500 flex-shrink-0" />
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search users..."
+            className="flex-1 bg-transparent text-sm text-zinc-200 placeholder:text-zinc-600 outline-none"
+          />
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-zinc-800 cursor-pointer">
+            <X size={18} className="text-zinc-500" />
+          </button>
+        </div>
+        <div className="max-h-80 overflow-y-auto">
+          {searching && (
+            <div className="p-4 text-center text-sm text-zinc-500">Searching...</div>
+          )}
+          {!searching && query.length >= 2 && results.length === 0 && (
+            <div className="p-4 text-center text-sm text-zinc-500">No users found</div>
+          )}
+          {results.map(u => (
+            <button
+              key={u.id}
+              onClick={() => onSelect(u)}
+              className="w-full flex items-center gap-3 p-4 hover:bg-zinc-800/50 transition-colors text-left cursor-pointer"
+            >
+              <Avatar src={u.avatar_url} alt={u.display_name} size="md" />
+              <div>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-semibold text-white">{u.display_name}</span>
+                  {u.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+                </div>
+                <span className="text-xs text-zinc-500">@{u.username}</span>
+              </div>
+            </button>
+          ))}
+          {!searching && query.length < 2 && (
+            <div className="p-4 text-center text-sm text-zinc-500">Type at least 2 characters to search</div>
+          )}
+        </div>
+      </div>
+
+      {/* New Message Modal */}
+      {showNewMessage && (
+        <NewMessageModal
+          onClose={() => setShowNewMessage(false)}
+          onSelect={handleNewMessage}
+        />
+      )}
+    </div>
+  )
+}function ConversationList({ conversations, activeId, onSelect }) {
   if (conversations.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
@@ -149,12 +236,34 @@ function MessageThread({ conversationId, userId }) {
 
 export default function MessagesPage() {
   const { user } = useAuthStore()
-  const { conversations, loading, fetchConversations, activeConversation } = useMessageStore()
+  const { conversations, loading, fetchConversations, startConversation } = useMessageStore()
   const [selectedId, setSelectedId] = useState(null)
+  const [showNewMessage, setShowNewMessage] = useState(false)
+  const [searchParams] = useSearchParams()
 
   useEffect(() => {
     if (user) fetchConversations(user.id)
   }, [user])
+
+  // Auto-select conversation from URL query param (e.g. from ProfilePage DM button)
+  useEffect(() => {
+    const convId = searchParams.get('conv')
+    if (convId) setSelectedId(convId)
+  }, [searchParams])
+
+  const handleNewMessage = async (selectedUser) => {
+    if (!user) return
+    setShowNewMessage(false)
+    try {
+      const convId = await startConversation(user.id, selectedUser.id)
+      if (convId) {
+        await fetchConversations(user.id)
+        setSelectedId(convId)
+      }
+    } catch {
+      // Silently fail — conversation list will reload
+    }
+  }
 
   if (loading) return <PageLoader />
 
@@ -165,8 +274,15 @@ export default function MessagesPage() {
         'w-full md:w-80 border-r border-zinc-800/50 flex flex-col',
         selectedId && 'hidden md:flex'
       )}>
-        <header className="sticky top-0 z-10 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50 px-5 py-4">
+        <header className="sticky top-0 z-10 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50 px-5 py-4 flex items-center justify-between">
           <h1 className="text-xl font-bold text-white">Messages</h1>
+          <button
+            onClick={() => setShowNewMessage(true)}
+            className="p-2 rounded-xl hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            title="New message"
+          >
+            <PenSquare size={20} />
+          </button>
         </header>
         <div className="flex-1 overflow-y-auto">
           <ConversationList

@@ -32,7 +32,8 @@ export const useSubscriptionCache = create((set, get) => ({
           .from('subscriptions')
           .select('creator_id')
           .eq('subscriber_id', userId)
-          .eq('status', 'active'),
+          .eq('status', 'active')
+          .gt('expires_at', new Date().toISOString()),
         supabase
           .from('purchases')
           .select('post_id')

@@ -1,6 +1,10 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 
+// Throttle guard for sendMessage — prevents accidental double-sends
+let _lastSendTime = 0
+const SEND_THROTTLE_MS = 800
+
 export const useMessageStore = create((set, get) => ({
   conversations: [],
   activeConversation: null,
@@ -9,57 +13,87 @@ export const useMessageStore = create((set, get) => ({
 
   fetchConversations: async (userId) => {
     set({ loading: true })
-    const { data, error } = await supabase
+
+    // Single query: get all conversations with participants and last message
+    // This replaces the N+1 pattern (3 queries per conversation)
+    const { data: myParticipations, error } = await supabase
       .from('conversation_participants')
       .select(`
         conversation_id,
         last_read_at,
-        conversation:conversations(
-          id,
-          updated_at
-        )
+        conversation:conversations(id, updated_at)
       `)
       .eq('user_id', userId)
-      .order('last_read_at', { ascending: false })
 
-    if (error) {
-      set({ loading: false })
+    if (error || !myParticipations?.length) {
+      set({ conversations: [], loading: false })
       return
     }
 
-    // Get other participants and last messages
-    const enriched = await Promise.all(
-      (data || []).map(async (cp) => {
-        const { data: participants } = await supabase
-          .from('conversation_participants')
-          .select('user:profiles!user_id(id, username, display_name, avatar_url, is_verified)')
-          .eq('conversation_id', cp.conversation_id)
-          .neq('user_id', userId)
+    const conversationIds = myParticipations.map(cp => cp.conversation_id)
 
-        const { data: lastMessage } = await supabase
-          .from('messages')
-          .select('content, created_at, sender_id')
-          .eq('conversation_id', cp.conversation_id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single()
+    // Batch: fetch all other participants for all conversations at once
+    const { data: allParticipants } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id, user:profiles!user_id(id, username, display_name, avatar_url, is_verified)')
+      .in('conversation_id', conversationIds)
+      .neq('user_id', userId)
 
-        const { count } = await supabase
-          .from('messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', cp.conversation_id)
-          .eq('is_read', false)
-          .neq('sender_id', userId)
+    // Batch: fetch last message per conversation using a single query
+    // We get recent messages for all conversations, then pick the latest per conv
+    const { data: recentMessages } = await supabase
+      .from('messages')
+      .select('conversation_id, content, created_at, sender_id')
+      .in('conversation_id', conversationIds)
+      .order('created_at', { ascending: false })
 
-        return {
-          id: cp.conversation_id,
-          otherUser: participants?.[0]?.user,
-          lastMessage,
-          unreadCount: count || 0,
-          lastReadAt: cp.last_read_at,
-        }
+    // Batch: fetch unread counts for all conversations at once
+    const { data: unreadRows } = await supabase
+      .from('messages')
+      .select('conversation_id')
+      .in('conversation_id', conversationIds)
+      .eq('is_read', false)
+      .neq('sender_id', userId)
+
+    // Index participants by conversation_id
+    const participantsByConv = {}
+    allParticipants?.forEach(p => {
+      if (!participantsByConv[p.conversation_id]) {
+        participantsByConv[p.conversation_id] = []
+      }
+      participantsByConv[p.conversation_id].push(p.user)
+    })
+
+    // Index last message by conversation_id (first occurrence = latest due to ORDER BY)
+    const lastMessageByConv = {}
+    recentMessages?.forEach(m => {
+      if (!lastMessageByConv[m.conversation_id]) {
+        lastMessageByConv[m.conversation_id] = m
+      }
+    })
+
+    // Count unread per conversation
+    const unreadByConv = {}
+    unreadRows?.forEach(m => {
+      unreadByConv[m.conversation_id] = (unreadByConv[m.conversation_id] || 0) + 1
+    })
+
+    // Assemble enriched conversation list
+    const enriched = myParticipations
+      .map(cp => ({
+        id: cp.conversation_id,
+        otherUser: participantsByConv[cp.conversation_id]?.[0] || null,
+        lastMessage: lastMessageByConv[cp.conversation_id] || null,
+        unreadCount: unreadByConv[cp.conversation_id] || 0,
+        lastReadAt: cp.last_read_at,
+        updatedAt: cp.conversation?.updated_at,
+      }))
+      .sort((a, b) => {
+        // Sort by last message time descending, falling back to updatedAt
+        const aTime = a.lastMessage?.created_at || a.updatedAt || ''
+        const bTime = b.lastMessage?.created_at || b.updatedAt || ''
+        return bTime.localeCompare(aTime)
       })
-    )
 
     set({ conversations: enriched, loading: false })
   },
@@ -81,6 +115,11 @@ export const useMessageStore = create((set, get) => ({
   },
 
   sendMessage: async (conversationId, senderId, content) => {
+    // Throttle: prevent double-sends within 800ms
+    const now = Date.now()
+    if (now - _lastSendTime < SEND_THROTTLE_MS) return null
+    _lastSendTime = now
+
     const { data, error } = await supabase
       .from('messages')
       .insert({

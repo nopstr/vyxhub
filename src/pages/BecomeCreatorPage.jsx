@@ -363,26 +363,26 @@ function ApplicationForm({ onBack }) {
         await new Promise(r => setTimeout(r, 1500))
       }
 
-      // Upload verification documents
+      // Upload verification documents to PRIVATE bucket (never public!)
       const uploads = []
-      const docPath = `${userId}/verification`
+      const docPath = `${userId}`
 
       if (idFront) {
         const ext = idFront.name.split('.').pop()
         uploads.push(
-          supabase.storage.from('avatars').upload(`${docPath}/id_front.${ext}`, idFront, { upsert: true })
+          supabase.storage.from('verification-docs').upload(`${docPath}/id_front.${ext}`, idFront, { upsert: true })
         )
       }
       if (idBack) {
         const ext = idBack.name.split('.').pop()
         uploads.push(
-          supabase.storage.from('avatars').upload(`${docPath}/id_back.${ext}`, idBack, { upsert: true })
+          supabase.storage.from('verification-docs').upload(`${docPath}/id_back.${ext}`, idBack, { upsert: true })
         )
       }
       if (selfie) {
         const ext = selfie.name.split('.').pop()
         uploads.push(
-          supabase.storage.from('avatars').upload(`${docPath}/selfie.${ext}`, selfie, { upsert: true })
+          supabase.storage.from('verification-docs').upload(`${docPath}/selfie.${ext}`, selfie, { upsert: true })
         )
       }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
+import { resolvePostMediaUrls } from '../../lib/storage'
 import PostCard from '../../components/feed/PostCard'
 import { PageLoader } from '../../components/ui/Spinner'
 import { Bookmark } from 'lucide-react'
@@ -23,14 +24,16 @@ export default function BookmarksPage() {
           *,
           author:profiles!author_id(*),
           media(*),
-          likes(user_id),
+          likes(user_id, reaction_type),
           bookmarks(user_id)
         )
       `)
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
 
-    setPosts(data?.map(b => b.post).filter(Boolean) || [])
+    const bookmarkedPosts = data?.map(b => b.post).filter(Boolean) || []
+    if (bookmarkedPosts.length) await resolvePostMediaUrls(bookmarkedPosts)
+    setPosts(bookmarkedPosts)
     setLoading(false)
   }
 

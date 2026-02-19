@@ -1,0 +1,254 @@
+================================================================================
+TIER 2: HIGH-PRIORITY ISSUES
+Features that half-work, major missing functionality, and significant bugs
+that degrade the user experience but don't cause outright crashes.
+================================================================================
+
+H1. NO PAYMENT INTEGRATION
+----------------------------
+Severity:   HIGH — THE critical path blocker for monetization
+Location:   Entire platform
+Problem:    Subscriptions, PPV purchases, and tips all create database records
+            but no actual payment gateway exists. Stripe, PayPal, or any
+            payment processor is completely absent. When a user "subscribes,"
+            only a DB row is created — no money moves.
+Impact:     - The platform cannot generate any revenue
+            - Creators cannot earn money
+            - Business model is non-functional
+What's needed:
+            1. Stripe Connect integration (for creator payouts)
+            2. Stripe Checkout or Payment Intents (for subscriptions/PPV)
+            3. Webhook handler for payment events
+            4. Subscription billing cycle management
+            5. Failed payment handling and retry logic
+            6. Invoice/receipt generation
+Files:      - New: src/lib/stripe.js
+            - New: Supabase Edge Function for Stripe webhooks
+            - Update: all subscription/purchase flows
+
+H2. NO PAYOUT SYSTEM
+----------------------
+Severity:   HIGH
+Location:   src/pages/settings/SettingsPage.jsx (payout settings section)
+Problem:    Creator settings show payout configuration (bank info, payout
+            schedule, minimum threshold) but no actual withdrawal or payout
+            logic exists. The settings are saved to the profile but never
+            acted upon.
+Impact:     Creators set up payout preferences but can never actually
+            receive money.
+What's needed:
+            1. Stripe Connect Express onboarding flow
+            2. Automated payout scheduling (weekly/monthly)
+            3. Minimum payout threshold enforcement
+            4. Payout history and status tracking
+            5. Platform fee deduction (30% configured in constants)
+Files:      - New: payout edge function or cron job
+            - Update: src/pages/dashboard/CreatorDashboardPage.jsx
+
+H3. MOBILENAV PROFILE LINK IS BROKEN
+--------------------------------------
+Severity:   HIGH — mobile users can't access their profile
+Location:   src/components/layout/MobileNav.jsx (line ~10)
+Problem:    The "Profile" link in the mobile navigation bar points to
+            "/profile" which is not a defined route. The actual route
+            pattern is "/profile/:username".
+Impact:     Mobile users tapping "Profile" get a 404 or redirect to home.
+            Given most adult content consumption is mobile, this breaks
+            a primary navigation path.
+Fix:        Change the link to use the current user's username:
+              to={`/profile/${user?.username}`}
+            Need to import the user from authStore.
+Files:      - src/components/layout/MobileNav.jsx
+
+H4. NO WAY TO START NEW DM CONVERSATIONS
+------------------------------------------
+Severity:   HIGH
+Location:   src/pages/messages/MessagesPage.jsx
+Problem:    The messageStore has a startConversation() function, but there
+            is no UI anywhere to trigger it. Users can only see existing
+            conversations. There's no "New Message" button, no way to
+            search for users, and no way to initiate a DM from a profile.
+Impact:     Messaging only works if conversations already exist (e.g., seeded).
+            New organic conversations between users are impossible.
+Fix:        1. Add "New Message" button to MessagesPage
+            2. Add user search/select modal
+            3. Add "Message" button on ProfilePage
+            4. Wire up messageStore.startConversation()
+Files:      - src/pages/messages/MessagesPage.jsx
+            - src/pages/profile/ProfilePage.jsx
+            - New: UserSearchModal component
+
+H5. REELSPAGE ISSUES
+----------------------
+Severity:   HIGH
+Location:   src/pages/reels/ReelsPage.jsx
+Problem:    Multiple issues:
+            1. Like state is not initialized from existing likes data —
+               videos you've already liked don't show as liked on load
+            2. Media filter uses .not('media', 'is', null) which is incorrect
+               Supabase syntax for checking related table existence
+            3. Comments and sharing buttons exist but have no handlers
+Impact:     Reels feature is essentially non-functional for engagement.
+Fix:        1. Fetch user's existing likes and initialize state
+            2. Fix media filter or use a different query approach
+            3. Implement comment drawer and share functionality
+Files:      - src/pages/reels/ReelsPage.jsx
+
+H6. 10+ MISSING STORES FOR CORE FEATURES
+------------------------------------------
+Severity:   HIGH — many features have UI but no state management
+Location:   src/stores/
+Problem:    Only 5 stores exist (auth, posts, messages, notifications,
+            subscriptionCache). The following core features have NO store:
+            - Comments (reading, posting, deleting, threading)
+            - Follows (currently inline in ProfilePage)
+            - Subscriptions (manage, cancel, renew)
+            - Purchases (history, receipts)
+            - Transactions (earnings, payouts)
+            - Bookmarks list (separate from toggle)
+            - Explore/search (trending, categories)
+            - Livestreams (create, join, manage)
+            - Reports (submit, track)
+            - Tips (send, receive)
+            - Settings (preferences sync)
+Impact:     Each page re-implements data fetching inline with no caching,
+            no optimistic updates, no shared state. This causes:
+            - Duplicate API calls across pages
+            - Inconsistent state after mutations
+            - No offline support potential
+            - Harder to maintain and test
+Fix:        Incrementally create stores as features are built out.
+            Priority order: commentStore, subscriptionStore, followStore,
+            transactionStore, purchaseStore
+Files:      - New: src/stores/commentStore.js
+            - New: src/stores/subscriptionStore.js
+            - New: src/stores/followStore.js
+            - etc.
+
+H7. NO subscriber_count TRIGGER
+---------------------------------
+Severity:   HIGH
+Location:   Database — profiles.subscriber_count
+Problem:    The profiles table has a subscriber_count column, and the UI
+            displays it on profile pages. But unlike follower_count and
+            following_count (which have triggers), there is NO trigger
+            that increments/decrements subscriber_count when subscriptions
+            are created or expire.
+Impact:     subscriber_count is always 0 for all creators, regardless of
+            how many subscribers they actually have.
+Fix:        Create trigger function similar to on_follow_change:
+            CREATE FUNCTION on_subscription_change() ...
+              IF TG_OP = 'INSERT' THEN
+                UPDATE profiles SET subscriber_count = subscriber_count + 1
+                  WHERE id = NEW.creator_id;
+              ELSIF TG_OP = 'DELETE' THEN
+                UPDATE profiles SET subscriber_count = subscriber_count - 1
+                  WHERE id = OLD.creator_id;
+              END IF;
+            CREATE TRIGGER on_subscription_change
+              AFTER INSERT OR DELETE ON subscriptions
+              FOR EACH ROW EXECUTE FUNCTION on_subscription_change();
+Files:      - New migration file
+
+H8. like_count TRIGGER INFLATES WITH MULTIPLE REACTIONS
+---------------------------------------------------------
+Severity:   HIGH
+Location:   Database — on_like_change trigger function
+Problem:    The reactions system supports multiple types (like, fire, heart,
+            etc.) but the on_like_change trigger increments post.like_count
+            for EVERY reaction type. If a user adds a 'fire' reaction and
+            then a 'heart' reaction to the same post, like_count goes up
+            by 2 even though it's the same user.
+Impact:     Post like counts are inflated, misleading creators and users
+            about actual engagement.
+Fix:        Either:
+            A) Count unique users instead of total reactions:
+               UPDATE posts SET like_count = (
+                 SELECT COUNT(DISTINCT user_id) FROM likes WHERE post_id = NEW.post_id
+               )
+            B) Only count the 'like' reaction type:
+               IF NEW.reaction_type = 'like' THEN ...
+            C) Rename to reaction_count and count all
+Files:      - New migration to update trigger function
+
+H9. 20 INDIVIDUAL view_count RPCs PER PAGE LOAD
+-------------------------------------------------
+Severity:   HIGH — performance
+Location:   src/stores/postStore.js (fetchPosts)
+Problem:    After fetching a page of posts, the code calls
+            increment_view_count RPC individually for each post.
+            A page of 20 posts = 20 separate RPC calls firing immediately.
+Impact:     - 20 extra network requests per page load
+            - Supabase function invocation overhead
+            - Slows down initial page render
+            - Will hit rate limits at scale
+Fix:        Either:
+            A) Create a batch RPC: increment_view_counts(post_ids uuid[])
+            B) Use a single INSERT into a views table, batch process later
+            C) Track views client-side and send in batches (every 30s)
+Files:      - New migration for batch function
+            - src/stores/postStore.js
+
+H10. NO TRANSACTION RECORDS CREATED
+-------------------------------------
+Severity:   HIGH — financial tracking is broken
+Location:   All subscription/purchase flows
+Problem:    When a subscription or purchase is created, no corresponding
+            row is written to the transactions table. The transactions
+            table exists with proper schema (type, amount, net_amount,
+            platform_fee, status) but nothing writes to it.
+Impact:     - Creator earnings dashboard shows $0
+            - No financial audit trail
+            - Platform revenue tracking is impossible
+            - Required for payment reconciliation with Stripe
+Fix:        After every subscription/purchase INSERT, also INSERT into
+            transactions:
+            {
+              user_id: buyer,
+              to_user_id: creator,
+              type: 'subscription' | 'ppv_purchase' | 'tip',
+              amount: gross_amount,
+              platform_fee: amount * 0.30,
+              net_amount: amount * 0.70,
+              reference_id: subscription_id or purchase_id,
+              reference_type: 'subscriptions' or 'purchases',
+              status: 'completed'
+            }
+Files:      - src/pages/profile/ProfilePage.jsx (subscribe handler)
+            - src/components/feed/PostCard.jsx (PPV purchase handler)
+            - Future: tip handler, paid message handler
+
+H11. BECOMECREATOR VERIFICATION COLUMNS DON'T EXIST
+-----------------------------------------------------
+Severity:   HIGH
+Location:   src/pages/BecomeCreatorPage.jsx
+Problem:    The form sets verification_status = 'pending' and legal_name
+            on the profiles table, but these columns were never created
+            in any migration. The update will silently fail or throw.
+Impact:     Creator verification status is never tracked. Legal name for
+            2257 compliance is never stored.
+Fix:        Either:
+            A) Add these columns to profiles via migration:
+               ALTER TABLE profiles ADD COLUMN verification_status TEXT DEFAULT 'unverified';
+               ALTER TABLE profiles ADD COLUMN legal_name TEXT;
+            B) Create a separate creator_applications table for the full
+               verification workflow
+Files:      - New migration
+            - src/pages/BecomeCreatorPage.jsx
+
+H12. POST TEXT VISIBLE ON SUBSCRIBER-ONLY POSTS
+-------------------------------------------------
+Severity:   HIGH — content leak
+Location:   src/components/feed/PostCard.jsx
+Problem:    For subscriber-only posts, only the media (images/videos) is
+            gated behind the paywall. The post's text content (caption,
+            description) is always fully visible to everyone, including
+            non-subscribers.
+Impact:     Creators who write exclusive text content (stories, captions,
+            descriptions) have it freely visible. Only visual media is
+            protected.
+Fix:        When post.visibility === 'subscribers' and user is not subscribed:
+            - Truncate text to first ~50 characters + "..."
+            - Or hide text entirely behind the paywall gate
+            - Show "Subscribe to see full post" message
+Files:      - src/components/feed/PostCard.jsx

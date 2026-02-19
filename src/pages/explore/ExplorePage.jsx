@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Search, TrendingUp, Filter, ShieldCheck } from 'lucide-react'
+import { Search, TrendingUp, Filter, ShieldCheck, FileText } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { resolvePostMediaUrls } from '../../lib/storage'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
 import PostCard from '../../components/feed/PostCard'
@@ -80,21 +81,31 @@ export default function ExplorePage() {
 
       setCreators(creatorData || [])
 
-      // Fetch trending posts
-      const { data: postData } = await supabase
+      // Fetch posts — trending (by engagement) or latest (by date)
+      let postQuery = supabase
         .from('posts')
         .select(`
           *,
           author:profiles!author_id(*),
           media(*),
-          likes(user_id),
+          likes(user_id, reaction_type),
           bookmarks(user_id)
         `)
         .eq('visibility', 'public')
-        .order('like_count', { ascending: false })
         .limit(20)
 
+      if (tab === 'latest') {
+        postQuery = postQuery.order('created_at', { ascending: false })
+      } else {
+        postQuery = postQuery.order('like_count', { ascending: false })
+      }
+
+      const { data: postData } = await postQuery
+
       setPosts(postData || [])
+
+      // Resolve protected media to signed URLs
+      if (postData?.length) await resolvePostMediaUrls(postData)
     } catch (err) {
       console.error('Explore fetch error:', err)
     } finally {
@@ -109,13 +120,35 @@ export default function ExplorePage() {
     }
 
     setLoading(true)
-    const { data } = await supabase
+
+    // Search profiles
+    const { data: profileData } = await supabase
       .from('profiles')
       .select('*')
       .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
       .limit(20)
 
-    setCreators(data || [])
+    setCreators(profileData || [])
+
+    // Search posts using full-text search (tsvector)
+    const tsQuery = query.trim().split(/\s+/).join(' & ')
+    const { data: postData } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        author:profiles!author_id(*),
+        media(*),
+        likes(user_id, reaction_type),
+        bookmarks(user_id)
+      `)
+      .textSearch('search_vector', tsQuery, { type: 'plain' })
+      .eq('visibility', 'public')
+      .order('created_at', { ascending: false })
+      .limit(20)
+
+    if (postData?.length) await resolvePostMediaUrls(postData)
+    setPosts(postData || [])
+
     setLoading(false)
   }, 300)
 
@@ -137,7 +170,7 @@ export default function ExplorePage() {
 
       {/* Tabs */}
       <div className="flex border-b border-zinc-800/50">
-        {['trending', 'creators', 'latest'].map(t => (
+        {['trending', 'creators', 'latest', ...(search.trim() ? ['posts'] : [])].map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -145,7 +178,11 @@ export default function ExplorePage() {
               tab === t ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            {t}
+            {t === 'posts' ? (
+              <span className="flex items-center justify-center gap-1">
+                <FileText size={14} /> Posts
+              </span>
+            ) : t}
             {tab === t && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />}
           </button>
         ))}
@@ -175,6 +212,26 @@ export default function ExplorePage() {
                 <TrendingUp size={48} className="text-zinc-700 mx-auto mb-4" />
                 <h3 className="text-lg font-bold text-zinc-400">Nothing trending yet</h3>
                 <p className="text-sm text-zinc-600 mt-1">Be the first to post!</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Post search results */}
+        {tab === 'posts' && (
+          <div>
+            {loading ? (
+              <>
+                <SkeletonPost />
+                <SkeletonPost />
+              </>
+            ) : posts.length > 0 ? (
+              posts.map(post => <PostCard key={post.id} post={post} />)
+            ) : (
+              <div className="text-center py-16">
+                <FileText size={48} className="text-zinc-700 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-zinc-400">No posts found</h3>
+                <p className="text-sm text-zinc-600 mt-1">Try a different search term</p>
               </div>
             )}
           </div>

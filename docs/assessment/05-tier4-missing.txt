@@ -1,0 +1,264 @@
+================================================================================
+TIER 4: COMPLETELY MISSING FEATURES
+Features required for a competitive adult content platform.
+Organized by priority for reaching feature parity with top platforms.
+================================================================================
+
+MUST-HAVE FOR LAUNCH (Table stakes — users expect these)
+=========================================================
+
+F1. PAYMENT PROCESSING (Stripe Connect)
+-----------------------------------------
+Status:     Not started — no payment code exists anywhere
+What:       Full Stripe integration for subscriptions, PPV, tips
+Requires:   - Stripe Connect for creator onboarding
+            - Stripe Checkout / Payment Intents for purchases
+            - Webhook handler (Supabase Edge Function)
+            - Billing cycle management (recurring subscriptions)
+            - Failed payment retry and grace period
+            - Refund handling
+            - Invoice/receipt generation
+            - SCA/3D Secure support for EU users
+Complexity: HIGH (2-3 weeks)
+Note:       Adult content has limited payment processor options.
+            Stripe allows it with restrictions. CCBill and Segpay
+            are industry-standard alternatives if Stripe declines.
+
+F2. SUBSCRIPTION CANCELLATION / MANAGEMENT
+--------------------------------------------
+Status:     Not started — no unsubscribe UI or logic
+What:       Allow subscribers to cancel, and handle expiry gracefully
+Requires:   - Cancel button on subscribed creator's profile
+            - Confirmation modal
+            - Cancel at end of billing period (not immediate)
+            - Resubscribe flow
+            - Subscription history page for users
+Complexity: MEDIUM (3-5 days)
+
+F3. TIPPING
+-------------
+Status:     Schema exists (tip_amount on messages), no UI
+What:       Allow fans to send tips to creators
+Requires:   - Tip button on creator profile and posts
+            - Amount selection (preset + custom)
+            - Payment processing
+            - Tip notification to creator
+            - Tip history/leaderboard
+Complexity: MEDIUM (3-5 days, assumes payment integration exists)
+
+F4. CONTENT REPORTING + MODERATION
+------------------------------------
+Status:     "Report" button exists in dropdown, no handler
+What:       Allow users to report content and creators to moderate
+Requires:   - Report flow (select reason, optional description)
+            - reports table in DB
+            - Admin moderation queue (or use Supabase dashboard)
+            - Auto-hide after N reports threshold
+            - Email notification to admins
+            - DMCA takedown request handling
+Complexity: MEDIUM (1 week)
+
+F5. USER BLOCKING / MUTING
+-----------------------------
+Status:     "Mute" button exists, no handler
+What:       Allow users to block or mute other users
+Requires:   - blocks table (blocker_id, blocked_id)
+            - Block button on profile and post dropdown
+            - Filter blocked users from feeds, search, DMs
+            - RLS policies to enforce blocks
+            - Mute = hide from feed without blocking
+Complexity: MEDIUM (3-5 days)
+
+F6. ACCOUNT DELETION (GDPR REQUIREMENT)
+-----------------------------------------
+Status:     Not started
+What:       Allow users to delete their account and all associated data
+Requires:   - Delete account button in settings
+            - Confirmation flow (password re-entry)
+            - Cascade delete all user data (posts, media, messages, etc.)
+            - Delete storage files
+            - Cancel active subscriptions
+            - Hard delete or anonymize per GDPR requirements
+            - 30-day grace period before permanent deletion (optional)
+Complexity: MEDIUM (3-5 days)
+
+F7. EMAIL / PASSWORD CHANGE
+-----------------------------
+Status:     Not started
+What:       Allow users to change email and password from settings
+Requires:   - Change email flow (verify new email)
+            - Change password form (current + new password)
+            - Supabase auth.updateUser() integration
+Complexity: LOW (1-2 days)
+
+F8. COMMENT REPLIES / THREADING
+---------------------------------
+Status:     DB has parent_id column, no UI
+What:       Allow users to reply to comments, creating threaded discussions
+Requires:   - Reply button on each comment
+            - Nested comment display (1-2 levels)
+            - Reply notification to parent commenter
+            - Collapse/expand thread UI
+Complexity: MEDIUM (3-5 days)
+
+
+SHOULD-HAVE FOR GROWTH (Differentiators and engagement boosters)
+=================================================================
+
+F9. LIVESTREAMING
+------------------
+Status:     DB table exists, no UI whatsoever
+What:       Creator live video broadcasts with chat and tipping
+Requires:   - WebRTC or third-party service (Mux, Agora, LiveKit)
+            - Go live UI for creators
+            - Viewer player with chat overlay
+            - Live tip/gift animations
+            - Stream recording option
+            - Thumbnail generation
+            - Viewer count tracking
+Complexity: VERY HIGH (3-4 weeks)
+
+F10. STORIES (24-HOUR EPHEMERAL CONTENT)
+------------------------------------------
+Status:     post_type enum has 'story' value, no UI
+What:       Snapchat/Instagram-style disappearing content
+Requires:   - Story creation UI (camera/upload + text overlay)
+            - Story viewer (tap to advance, swipe between creators)
+            - Auto-delete after 24 hours (DB cron or trigger)
+            - Story ring on profile avatars
+            - View tracking
+Complexity: HIGH (1-2 weeks)
+
+F11. REPOSTS / SHARES
+-----------------------
+Status:     repost_count column exists, no functionality
+What:       Allow users to repost/share content to their feed
+Requires:   - Repost button on posts
+            - Repost UI (quote repost vs plain repost)
+            - Repost appears in reposter's profile
+            - Repost notification to original creator
+            - Repost count tracking
+Complexity: MEDIUM (3-5 days)
+
+F12. PAID MESSAGES
+-------------------
+Status:     Schema has price/tip_amount on messages table
+What:       Allow creators to charge for DM replies or fans to pay for attention
+Requires:   - Creator setting for message price
+            - Payment modal before sending (for non-subscribers)
+            - Free threshold option (first N messages free)
+            - Paid message indicator in chat
+Complexity: MEDIUM (1 week, assumes payment integration)
+
+F13. MASS MESSAGING
+---------------------
+Status:     Mentioned in creator benefits, not built
+What:       Allow creators to broadcast messages to all subscribers
+Requires:   - Mass message compose UI
+            - Target audience selection (all, specific tier, new subscribers)
+            - Queue system for sending (don't block API)
+            - Delivery tracking
+            - Rate limiting
+Complexity: HIGH (1 week)
+
+F14. SEARCH WITHIN POSTS
+--------------------------
+Status:     Search only finds profiles
+What:       Full-text search across post content
+Requires:   - Search bar with toggle (users/posts)
+            - Postgres full-text search (tsvector) or Supabase pg_trgm
+            - Search results page with filtering
+            - Tag/hashtag parsing and search
+Complexity: MEDIUM (3-5 days)
+
+F15. POST PINNING
+------------------
+Status:     "Pin" button exists, no handler
+What:       Allow creators to pin posts to top of their profile
+Requires:   - is_pinned column on posts (or pinned_at timestamp)
+            - Pin/unpin toggle
+            - Show pinned posts first on profile page
+            - Limit to N pinned posts
+Complexity: LOW (1-2 days)
+
+F16. REFERRAL SYSTEM
+----------------------
+Status:     Mentioned in marketing copy, not implemented at all
+What:       Track referrals and reward creators/users for bringing new members
+Requires:   - Referral codes/links
+            - referred_by column on profiles
+            - Referral tracking (clicks, signups, conversions)
+            - Referral earnings calculation (REFERRAL_EARNING_PERCENT = 80%)
+            - Referral dashboard
+Complexity: MEDIUM (1 week)
+
+F17. TRANSACTION RECORDING
+----------------------------
+Status:     Table exists but nothing writes to it
+What:       Record every financial event for creator earnings and platform revenue
+Requires:   - Insert transaction on every subscription
+            - Insert transaction on every purchase
+            - Insert transaction on every tip
+            - Insert transaction on every payout
+            - Transaction types: subscription, ppv, tip, payout, refund
+            - Platform fee calculation and recording
+Complexity: MEDIUM (2-3 days)
+
+
+NICE-TO-HAVE FOR DOMINANCE (Premium features for market leadership)
+====================================================================
+
+F18. CONTENT WATERMARKING
+---------------------------
+Status:     Setting exists in creator settings, no implementation
+What:       Invisible watermark on images/videos to trace leaks
+Requires:   Server-side image processing (sharp, ffmpeg)
+            Unique watermark per viewer (steganography)
+            Detection service for leaked content
+
+F19. GEO-BLOCKING ENFORCEMENT
+-------------------------------
+Status:     Settings saved to profile, no enforcement
+What:       Creators block their content from specific countries
+Requires:   Server-side IP geolocation (Vercel edge, Cloudflare)
+            Country detection on request
+            RLS or middleware enforcement
+
+F20. CUSTOM CONTENT REQUESTS
+------------------------------
+Status:     Setting exists, no request/fulfill UI
+What:       Fans request custom content from creators with payment
+Requires:   Request form, pricing, creator accept/decline, delivery
+
+F21. CREATOR ANALYTICS DASHBOARD
+----------------------------------
+Status:     Basic dashboard with mostly broken/hardcoded data
+What:       Full analytics: views over time, earnings charts, subscriber growth,
+            top performing content, audience demographics, retention metrics
+
+F22. PROMOTIONAL / FEATURED PLACEMENT
+---------------------------------------
+Status:     Mentioned in marketing, not implemented
+What:       Paid or algorithmic featured placement for creators
+
+F23. MULTI-TIER SUBSCRIPTIONS
+-------------------------------
+Status:     Not started
+What:       Multiple subscription levels per creator (basic, premium, VIP)
+Requires:   subscription_tiers table, tier-based content gating, tier UI
+
+F24. BUNDLES AND DISCOUNTS
+----------------------------
+Status:     Not started
+What:       Discounted multi-month subscriptions, creator bundles
+
+F25. CONTENT SCHEDULING
+-------------------------
+Status:     Not started
+What:       Allow creators to schedule posts for future publication
+Requires:   scheduled_at column, cron job to publish, scheduling UI
+
+F26. COLLABORATIVE CONTENT
+----------------------------
+Status:     Not started
+What:       Tag/credit other creators in posts, split revenue

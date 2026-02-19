@@ -5,6 +5,8 @@ import { useAuthStore } from './stores/authStore'
 import Layout from './components/layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import { PageLoader } from './components/ui/Spinner'
+import AgeGate from './components/AgeGate'
+import CookieConsent from './components/CookieConsent'
 
 // Lazy-loaded pages for code splitting
 const AuthPage = lazy(() => import('./pages/AuthPage'))
@@ -20,6 +22,12 @@ const BecomeCreatorPage = lazy(() => import('./pages/BecomeCreatorPage'))
 const ReelsPage = lazy(() => import('./pages/reels/ReelsPage'))
 const PostDetailPage = lazy(() => import('./pages/post/PostDetailPage'))
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+
+// Legal pages
+const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage'))
+const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
+const CompliancePage = lazy(() => import('./pages/legal/CompliancePage'))
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuthStore()
@@ -48,21 +56,27 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <BrowserRouter>
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            {/* Guest routes */}
-            <Route
-              path="/auth"
-              element={
-                <GuestRoute>
-                  <AuthPage />
-                </GuestRoute>
-              }
-            />
+      <AgeGate>
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Guest routes */}
+              <Route
+                path="/auth"
+                element={
+                  <GuestRoute>
+                    <AuthPage />
+                  </GuestRoute>
+                }
+              />
 
 {/* Reset password - standalone route (from email link) */}
           <Route path="/reset-password" element={<ResetPasswordPage />} />
+
+          {/* Legal pages — accessible without auth */}
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/2257" element={<CompliancePage />} />
 
           {/* Public routes within Layout (viewable without login) */}
           <Route element={<Layout />}>
@@ -92,10 +106,12 @@ export default function App() {
           {/* Reels - public full-screen layout */}
           <Route path="/reels" element={<ReelsPage />} />
 
-            {/* Catch-all */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Catch-all — show 404 */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Suspense>
+
+        <CookieConsent />
 
         <Toaster
           theme="dark"
@@ -110,6 +126,7 @@ export default function App() {
           }}
         />
       </BrowserRouter>
+    </AgeGate>
     </ErrorBoundary>
   )
 }

@@ -1,0 +1,175 @@
+================================================================================
+TIER 1: CRITICAL BUGS
+Core flows that crash, fail on insert, or produce completely wrong results.
+These must be fixed for the platform to function at all.
+================================================================================
+
+C1. PROFILEPAGE SUBSCRIBE USES WRONG COLUMN NAMES
+---------------------------------------------------
+Severity:   CRITICAL — subscribe from profile page always fails
+Location:   src/pages/profile/ProfilePage.jsx (handleSubscribe function)
+Problem:    The INSERT into subscriptions table uses:
+              - amount            (should be: price_paid)
+              - current_period_start  (should be: starts_at)
+              - current_period_end    (should be: expires_at)
+            These columns don't exist in the schema. The insert will fail
+            with a Postgres error every time.
+Impact:     Users cannot subscribe to creators from their profile page.
+            Subscribing only works from the PostCard paywall component,
+            which uses the correct column names.
+Fix:        Update handleSubscribe to use correct column names:
+            {
+              subscriber_id: currentUser.id,
+              creator_id: profile.id,
+              price_paid: profile.subscription_price,
+              starts_at: new Date().toISOString(),
+              expires_at: new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+              status: 'active'
+            }
+Files:      - src/pages/profile/ProfilePage.jsx
+
+C2. NOTIFICATIONS ARE ALWAYS EMPTY
+------------------------------------
+Severity:   CRITICAL — entire notification system is a no-op
+Location:   All action paths (follow, like, comment, subscribe, purchase, message)
+Problem:    The notifications table exists. The NotificationsPage reads from it.
+            Real-time subscriptions listen for new rows. Notification preferences
+            UI exists. But NOTHING in the entire codebase ever INSERTs a row
+            into the notifications table. No triggers, no functions, no store
+            code — notifications are structurally impossible to receive.
+Impact:     Users never know when someone follows them, likes their post,
+            comments, subscribes, purchases PPV, or sends a message.
+            This is fundamental to engagement and retention.
+Fix:        Create database triggers that insert notifications on:
+            - New follower (follows table INSERT)
+            - New like/reaction (likes table INSERT)
+            - New comment (comments table INSERT)
+            - New subscriber (subscriptions table INSERT)
+            - New purchase (purchases table INSERT)
+            - New message (messages table INSERT)
+            Each trigger should insert into notifications with:
+            {
+              user_id: <recipient>,
+              actor_id: <who did the action>,
+              type: 'follow' | 'like' | 'comment' | 'subscribe' | 'purchase' | 'message',
+              reference_id: <the related row's ID>,
+              reference_type: <table name>
+            }
+Files:      - New migration: create notification trigger functions
+            - Optionally: src/stores/notificationStore.js (to also push
+              in-app toast via real-time)
+
+C3. CREATOR DASHBOARD LIKES QUERY IS MALFORMED
+------------------------------------------------
+Severity:   CRITICAL — dashboard crashes on load
+Location:   src/pages/dashboard/CreatorDashboardPage.jsx (~line 113-115)
+Problem:    The code does something like:
+              const postIds = supabase.from('posts').select('id').eq(...)
+              // Then:
+              .in('post_id', postIds)
+            But postIds is a Supabase query builder object, not an array.
+            The .in() method expects an array of values. This will throw a
+            runtime error or produce invalid SQL.
+Impact:     Creator dashboard fails to load likes count. The entire stats
+            section is broken.
+Fix:        Execute the first query, await it, extract the array of IDs:
+              const { data: postData } = await supabase
+                .from('posts').select('id').eq('user_id', user.id)
+              const postIds = postData?.map(p => p.id) || []
+              if (postIds.length > 0) {
+                const { count } = await supabase
+                  .from('likes').select('*', { count: 'exact', head: true })
+                  .in('post_id', postIds)
+              }
+Files:      - src/pages/dashboard/CreatorDashboardPage.jsx
+
+C4. MESSAGESTORE N+1 QUERY PROBLEM
+------------------------------------
+Severity:   CRITICAL — performance, will timeout at scale
+Location:   src/stores/messageStore.js (fetchConversations function)
+Problem:    fetchConversations does:
+            1. Fetch all conversations for the user
+            2. For EACH conversation, make a separate query to fetch
+               participant profiles
+            3. For EACH conversation, make another query for last message
+            This means 30 conversations = 60+ individual Supabase queries.
+Impact:     - Slow load times (multiple seconds even with few conversations)
+            - Will hit Supabase connection pool limits at scale
+            - Poor user experience on the messages page
+            - Could trigger rate limiting
+Fix:        Rewrite to use a single query with joins:
+              const { data } = await supabase
+                .from('conversation_participants')
+                .select(`
+                  conversation_id,
+                  conversations (
+                    id, created_at, updated_at,
+                    messages (content, created_at, sender_id)
+                  ),
+                  profiles:user_id (id, username, display_name, avatar_url)
+                `)
+                .eq('user_id', currentUserId)
+                .order('updated_at', { foreignTable: 'conversations', ascending: false })
+            Then process the flat result into the conversation list structure.
+Files:      - src/stores/messageStore.js
+
+C5. SUBSCRIPTIONCACHE NEVER CHECKS expires_at
+-----------------------------------------------
+Severity:   CRITICAL — expired subscriptions appear active
+Location:   src/stores/subscriptionCache.js
+Problem:    The cache stores whether a user has a subscription row for a
+            given creator, but never checks if expires_at < now(). An expired
+            subscription still returns isSubscribed = true.
+Impact:     - Users see content as "unlocked" in the UI
+            - But RLS policies DO check expires_at, so the actual data fetch
+              fails silently
+            - Result: blank/broken media states, confused users
+            - Creators lose revenue because users think they still have access
+Fix:        Add expires_at check in the cache lookup:
+              isSubscribed(creatorId) {
+                const sub = this.cache[creatorId]
+                if (!sub) return false
+                return new Date(sub.expires_at) > new Date()
+              }
+            Also: when fetching subscriptions, filter by expires_at > now():
+              .gt('expires_at', new Date().toISOString())
+Files:      - src/stores/subscriptionCache.js
+
+C6. MISSING UPDATE/DELETE POLICIES ON MESSAGES
+-----------------------------------------------
+Severity:   CRITICAL — messages can never be deleted or marked read
+Location:   Database — messages table RLS policies
+Problem:    The messages table has INSERT and SELECT policies but no UPDATE
+            or DELETE policies. This means:
+            - Users cannot delete their own messages
+            - Messages cannot be marked as read (if using a read_at column)
+            - No message editing is possible
+Impact:     Messages are permanent and immutable once sent. No "delete for me"
+            or "unsend" functionality can work.
+Fix:        Add migration with:
+            CREATE POLICY "Users can update own messages"
+              ON messages FOR UPDATE
+              USING (sender_id = auth.uid())
+              WITH CHECK (sender_id = auth.uid());
+
+            CREATE POLICY "Users can delete own messages"
+              ON messages FOR DELETE
+              USING (sender_id = auth.uid());
+Files:      - New migration file
+
+C7. MISSING UPDATE POLICY ON CONVERSATION_PARTICIPANTS
+-------------------------------------------------------
+Severity:   CRITICAL — unread counts never clear
+Location:   Database — conversation_participants table RLS policies
+Problem:    conversation_participants has a last_read_at column used to
+            calculate unread message counts. But there's no UPDATE policy,
+            so this column can never be modified via the client.
+Impact:     - Unread message badges never clear
+            - Users always see "new messages" even after reading them
+            - Core messaging UX is broken
+Fix:        Add migration:
+            CREATE POLICY "Users can update own participation"
+              ON conversation_participants FOR UPDATE
+              USING (user_id = auth.uid())
+              WITH CHECK (user_id = auth.uid());
+Files:      - New migration file (can combine with C6)

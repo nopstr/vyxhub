@@ -8,10 +8,13 @@ const publicItems = [
   { to: '/explore', icon: Search, label: 'Explore' },
 ]
 
-const authItems = [
-  { to: '/messages', icon: Mail, label: 'Messages' },
-  { to: '/profile', icon: User, label: 'Profile' },
-]
+// Profile link must use the current user's username since route is /profile/:username
+function getAuthItems(username) {
+  return [
+    { to: '/messages', icon: Mail, label: 'Messages' },
+    { to: username ? `/@${username}` : '/auth', icon: User, label: 'Profile' },
+  ]
+}
 
 export default function MobileNav() {
   const { user, profile } = useAuthStore()
@@ -53,7 +56,7 @@ export default function MobileNav() {
                 <span className="text-[10px] font-medium">Create</span>
               </NavLink>
             )}
-            {authItems.map(item => (
+            {getAuthItems(profile?.username).map(item => (
               <NavLink
                 key={item.to}
                 to={item.to}

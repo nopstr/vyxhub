@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
-  Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image
+  Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
+  Repeat2, VolumeX
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
@@ -11,9 +12,11 @@ import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
+import ReportModal from '../ReportModal'
 import { cn, formatRelativeTime, formatNumber, formatCurrency } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
+import { PLATFORM_FEE_PERCENT } from '../../lib/constants'
 
 const REACTION_TYPES = [
   { type: 'heart', icon: Heart, label: 'Love', color: 'text-rose-500', bg: 'bg-rose-500/10', fill: true },
@@ -48,14 +51,14 @@ function MediaGrid({ media, isUnlocked = true }) {
         >
           {item.media_type === 'video' ? (
             <video
-              src={item.url}
+              src={item.signedUrl || item.url}
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
               controls
               preload="metadata"
             />
           ) : (
             <img
-              src={item.url}
+              src={item.signedUrl || item.url}
               alt=""
               className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
               loading="lazy"
@@ -78,8 +81,8 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
 
   // Only show preview media (is_preview=true) when locked
   // RLS will strip non-preview URLs, but double-check client-side
-  const previewMedia = media.filter(m => m.is_preview && m.url)
-  const displayMedia = isUnlocked ? media.filter(m => m.url) : previewMedia
+  const previewMedia = media.filter(m => m.is_preview && (m.signedUrl || m.url))
+  const displayMedia = isUnlocked ? media.filter(m => m.signedUrl || m.url) : previewMedia
   const lockedCount = isUnlocked ? 0 : (totalMediaCount || media.length) - previewMedia.length
 
   return (
@@ -95,7 +98,7 @@ function SetPreview({ media, isUnlocked, totalMediaCount }) {
           {displayMedia.slice(0, isUnlocked ? undefined : 3).map((item, i) => (
             <div key={item.id} className="relative aspect-square overflow-hidden bg-zinc-950 group">
               <img
-                src={item.url}
+                src={item.signedUrl || item.url}
                 alt=""
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                 loading="lazy"
@@ -132,11 +135,11 @@ function VideoPreview({ media, isUnlocked, post }) {
   const videoMedia = media?.find(m => m.media_type === 'video')
   if (!videoMedia) return null
 
-  if (isUnlocked && videoMedia.url) {
+  if (isUnlocked && (videoMedia.signedUrl || videoMedia.url)) {
     return (
       <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800/50">
         <video
-          src={videoMedia.url}
+          src={videoMedia.signedUrl || videoMedia.url}
           className="w-full aspect-video object-contain bg-black"
           controls
           preload="metadata"
@@ -195,6 +198,20 @@ function PaywallGate({ creator, post }) {
         })
       if (error) throw error
       addSubscription(creator.id)
+      // Record transaction for financial tracking
+      const amount = parseFloat(creator.subscription_price) || 0
+      if (amount > 0) {
+        const fee = +(amount * PLATFORM_FEE_PERCENT / 100).toFixed(2)
+        await supabase.from('transactions').insert({
+          from_user_id: user.id,
+          to_user_id: creator.id,
+          transaction_type: 'subscription',
+          amount,
+          platform_fee: fee,
+          net_amount: +(amount - fee).toFixed(2),
+          status: 'completed',
+        }).catch(() => {}) // non-blocking
+      }
       // Auto-follow
       await supabase.from('follows').insert({ follower_id: user.id, following_id: creator.id }).catch(() => {})
       toast.success(`Subscribed to @${creator.username}!`)
@@ -218,6 +235,22 @@ function PaywallGate({ creator, post }) {
         })
       if (error) throw error
       addPurchase(post.id)
+      // Record transaction for financial tracking
+      const amount = parseFloat(post.price) || 0
+      if (amount > 0) {
+        // Look up post author for the to_user_id
+        const fee = +(amount * PLATFORM_FEE_PERCENT / 100).toFixed(2)
+        await supabase.from('transactions').insert({
+          from_user_id: user.id,
+          to_user_id: creator.id,
+          transaction_type: 'ppv_post',
+          amount,
+          platform_fee: fee,
+          net_amount: +(amount - fee).toFixed(2),
+          reference_id: post.id,
+          status: 'completed',
+        }).catch(() => {}) // non-blocking
+      }
       toast.success('Content unlocked!')
     } catch (err) {
       toast.error(err.message || 'Failed to purchase')
@@ -285,11 +318,12 @@ function PaywallGate({ creator, post }) {
 
 export default function PostCard({ post }) {
   const { user, profile } = useAuthStore()
-  const { toggleReaction, toggleBookmark, deletePost } = usePostStore()
+  const { toggleReaction, toggleBookmark, deletePost, togglePin, repost } = usePostStore()
   const { isSubscribedTo, hasPurchasedPost } = useSubscriptionCache()
   const navigate = useNavigate()
   const author = post.author
   const [showReactions, setShowReactions] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
   const reactionsRef = useRef(null)
   const reactionsTimeout = useRef(null)
 
@@ -372,8 +406,66 @@ export default function PostCard({ post }) {
     toast.success('Link copied!')
   }
 
+  const handlePin = async () => {
+    if (!user) return
+    try {
+      await togglePin(post.id, !post.is_pinned)
+      toast.success(post.is_pinned ? 'Post unpinned' : 'Post pinned to profile')
+    } catch (err) {
+      toast.error(err.message || 'Failed to pin post')
+    }
+  }
+
+  const handleBlock = async (isMute = false) => {
+    if (!user) return toast.error('Sign in first')
+    try {
+      const { error } = await supabase.from('blocks').upsert({
+        blocker_id: user.id,
+        blocked_id: author.id,
+        is_mute: isMute,
+      }, { onConflict: 'blocker_id,blocked_id' })
+      if (error) throw error
+      toast.success(isMute ? `Muted @${author.username}` : `Blocked @${author.username}`)
+    } catch (err) {
+      toast.error(err.message || 'Failed')
+    }
+  }
+
+  const handleRepost = async (e) => {
+    e?.stopPropagation()
+    if (!user) return toast.error('Sign in to repost')
+    // Can't repost own posts or already-reposted
+    if (isOwn) return toast.error("Can't repost your own post")
+    try {
+      await repost(post.id, user.id)
+      toast.success('Reposted!')
+    } catch (err) {
+      toast.error(err.message || 'Failed to repost')
+    }
+  }
+
+  const isRepost = !!post.repost_of
+
   return (
     <article className="px-5 py-4 border-b border-zinc-800/50 hover:bg-zinc-900/20 transition-colors">
+      {/* Repost indicator */}
+      {isRepost && post.reposted_by_profile && (
+        <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2 ml-12">
+          <Repeat2 size={14} />
+          <Link to={`/@${post.reposted_by_profile?.username}`} className="hover:underline">
+            {post.reposted_by_profile?.display_name} reposted
+          </Link>
+        </div>
+      )}
+
+      {/* Pinned indicator */}
+      {post.is_pinned && (
+        <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2 ml-12">
+          <Pin size={14} className="text-indigo-400" />
+          <span className="text-indigo-400 font-medium">Pinned</span>
+        </div>
+      )}
+
       <div className="flex gap-3.5">
         <Link to={`/@${author.username}`} className="flex-shrink-0">
           <Avatar src={author.avatar_url} alt={author.display_name} size="lg" ring />
@@ -406,23 +498,35 @@ export default function PostCard({ post }) {
             >
               {isOwn ? (
                 <>
-                  <DropdownItem icon={Pin}>Pin to profile</DropdownItem>
+                  <DropdownItem icon={Pin} onClick={handlePin}>
+                    {post.is_pinned ? 'Unpin from profile' : 'Pin to profile'}
+                  </DropdownItem>
                   <DropdownDivider />
                   <DropdownItem icon={Trash2} danger onClick={handleDelete}>Delete post</DropdownItem>
                 </>
               ) : (
                 <>
-                  <DropdownItem icon={UserX}>Mute @{author.username}</DropdownItem>
-                  <DropdownItem icon={Flag} danger>Report post</DropdownItem>
+                  <DropdownItem icon={VolumeX} onClick={() => handleBlock(true)}>Mute @{author.username}</DropdownItem>
+                  <DropdownItem icon={UserX} onClick={() => handleBlock(false)}>Block @{author.username}</DropdownItem>
+                  <DropdownDivider />
+                  <DropdownItem icon={Flag} danger onClick={() => setShowReportModal(true)}>Report post</DropdownItem>
                 </>
               )}
             </Dropdown>
           </div>
 
-          {/* Content */}
+          {/* Content — gate text for subscriber-only posts */}
           {post.content && (
             <p className="text-[15px] text-zinc-200 leading-relaxed mb-1 whitespace-pre-wrap break-words">
-              {post.content}
+              {isContentUnlocked || post.visibility === 'public'
+                ? post.content
+                : post.content.length > 60
+                  ? post.content.slice(0, 60) + '…'
+                  : post.content
+              }
+              {!isContentUnlocked && post.visibility !== 'public' && post.content.length > 60 && (
+                <span className="text-indigo-400 text-sm ml-1">Subscribe to see full post</span>
+              )}
             </p>
           )}
 
@@ -555,6 +659,23 @@ export default function PostCard({ post }) {
               <Share size={18} className="group-hover:scale-110 transition-transform" />
             </button>
 
+            {/* Repost Button */}
+            {!isOwn && (
+              <button
+                onClick={handleRepost}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors group cursor-pointer',
+                  'text-zinc-500 hover:text-emerald-400'
+                )}
+                title="Repost"
+              >
+                <Repeat2 size={18} className="group-hover:scale-110 transition-transform" />
+                {post.repost_count > 0 && (
+                  <span className="text-xs font-semibold">{formatNumber(post.repost_count)}</span>
+                )}
+              </button>
+            )}
+
             <button
               onClick={handleBookmark}
               className={cn(
@@ -567,6 +688,17 @@ export default function PostCard({ post }) {
           </div>
         </div>
       </div>
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <ReportModal
+          open={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          postId={post.id}
+          userId={author.id}
+          username={author.username}
+        />
+      )}
     </article>
   )
 }

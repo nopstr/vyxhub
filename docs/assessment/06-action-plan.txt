@@ -1,0 +1,374 @@
+================================================================================
+PHASED ACTION PLAN — ROAD TO PRODUCTION
+From current state (~25%) to launch-ready and beyond.
+================================================================================
+
+
+PHASE 1: SECURITY & DATA INTEGRITY (Week 1-2)
+===============================================
+Priority: MUST DO FIRST — platform is vulnerable without these.
+
+Tasks:
+------
+1.1  Make "posts" storage bucket PRIVATE
+     → Supabase Dashboard > Storage > posts > Settings > public = false
+
+1.2  Refactor media URL generation to use signed URLs
+     → Rewrite src/lib/storage.js
+     → Add getProtectedUrl(bucket, path, expirySeconds) using createSignedUrl()
+     → Keep getPublicUrl() only for avatars/banners
+     → Update postStore.js, PostCard.jsx, MediaGrid, ReelsPage
+
+1.3  Create PRIVATE "verification-docs" storage bucket
+     → Supabase Dashboard > Storage > Create bucket
+     → Add RLS: only user + service_role can read
+     → Update BecomeCreatorPage.jsx to use correct bucket
+
+1.4  Add vercel.json with security headers
+     → CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+
+1.5  Fix missing RLS policies
+     → Migration: messages UPDATE/DELETE for sender
+     → Migration: conversation_participants UPDATE for user
+     → Migration: conversations UPDATE/DELETE
+     → Migration: media UPDATE for user
+     → Migration: livestreams DELETE for creator
+
+1.6  Fix subscriptionCache to check expires_at
+     → Add .gt('expires_at', new Date().toISOString()) to fetch
+     → Add expiry check in isSubscribed()
+
+1.7  Remove duplicate indexes
+     → Identify duplicates from migration 10 vs earlier migrations
+     → DROP INDEX IF EXISTS for each duplicate
+
+1.8  Add age verification gate
+     → Simple DOB + "I am 18+" confirmation on first visit
+     → Store in localStorage + profile
+
+1.9  Add legal pages (shell)
+     → 2257 compliance statement page
+     → Privacy policy page
+     → Terms of service page
+     → Cookie consent banner
+
+Deliverables: Content is actually protected. Legal basics covered. RLS is airtight.
+
+
+PHASE 2: FIX ALL BROKEN FLOWS (Week 2-3)
+==========================================
+Priority: Make everything that exists actually work.
+
+Tasks:
+------
+2.1  Fix ProfilePage subscribe (correct column names)
+     → price_paid, starts_at, expires_at instead of wrong names
+     → Also add transaction record on subscribe
+
+2.2  Create notification triggers
+     → New migration with trigger functions for:
+       - on_follow_insert → notify followed user
+       - on_like_insert → notify post author
+       - on_comment_insert → notify post author
+       - on_subscription_insert → notify creator
+       - on_purchase_insert → notify creator
+       - on_message_insert → notify recipient
+
+2.3  Fix CreatorDashboard likes query
+     → Await first query, extract array, then pass to .in()
+
+2.4  Fix messageStore N+1
+     → Single query with joins instead of per-conversation queries
+
+2.5  Fix MobileNav profile link
+     → /profile → /profile/${user.username}
+
+2.6  Fix ReelsPage
+     → Initialize like state from existing likes
+     → Fix media filter syntax
+     → Wire up share/comment handlers
+
+2.7  Fix BecomeCreator
+     → Use verification-docs bucket (from 1.3)
+     → Add verification_status + legal_name columns to profiles
+     → Or create creator_applications table
+
+2.8  Add subscriber_count trigger
+     → Similar to on_follow_change but for subscriptions
+
+2.9  Fix like_count trigger
+     → Count distinct users or only count 'like' type
+
+2.10 Batch view count RPCs
+     → Create batch function or queue client-side
+
+2.11 Gate post text for subscriber-only posts
+     → Truncate or hide text content for non-subscribers
+
+2.12 Wire up or remove no-op dropdown items
+     → Pin, Mute, Report — implement or remove from menu
+
+2.13 Fix Explore "latest" tab
+     → Use created_at ordering instead of same-as-trending
+
+2.14 Fix BookmarksPage likes join
+     → Add reaction_type to select
+
+2.15 Fix dashboard views
+     → Sum view_count from creator's posts
+
+Deliverables: All 20+ existing flows work correctly. No dead buttons.
+
+
+PHASE 3: PAYMENTS — THE CRITICAL PATH (Week 3-5)
+==================================================
+Priority: Without this, the platform is a free demo. This enables revenue.
+
+Tasks:
+------
+3.1  Stripe Connect setup
+     → Create Stripe account with adult content approval
+     → Set up Stripe Connect for marketplace/platform model
+     → Create Supabase Edge Function for Stripe interactions
+
+3.2  Creator onboarding (Stripe Connect Express)
+     → "Set up payouts" flow in creator settings
+     → Stripe Express account creation + onboarding link
+     → Store stripe_account_id on profiles
+     → Verification status tracking
+
+3.3  Subscription checkout
+     → Replace direct DB INSERT with Stripe Checkout Session
+     → Create subscription via Stripe
+     → Webhook: payment_intent.succeeded → insert subscription row
+     → Webhook: customer.subscription.deleted → expire subscription
+
+3.4  PPV purchase checkout
+     → Stripe Payment Intent for one-time purchases
+     → Webhook: charge.succeeded → insert purchase row
+
+3.5  Tipping flow
+     → Tip button on posts and profile
+     → Amount selection modal
+     → Stripe Payment Intent
+     → Webhook: insert tip transaction
+
+3.6  Subscription management
+     → Cancel subscription button (cancels at period end)
+     → Renewal handling via Stripe webhooks
+     → Failed payment handling (dunning)
+     → Grace period for failed payments
+
+3.7  Transaction recording
+     → On every webhook event, write to transactions table
+     → Track: amount, platform_fee (30%), net_amount (70%), status
+
+3.8  Creator payout dashboard
+     → Available balance calculation
+     → Payout history
+     → Upcoming payout schedule
+     → Stripe Express dashboard link
+
+3.9  Payout processing
+     → Automatic payouts via Stripe Connect transfers
+     → Configurable schedule (weekly/biweekly/monthly)
+     → Minimum threshold enforcement
+
+Deliverables: Real money flows. Creators earn. Platform takes 30%.
+
+
+PHASE 4: MISSING CORE FEATURES (Week 5-7)
+===========================================
+Priority: Features users expect on day one.
+
+Tasks:
+------
+4.1  Comment store with threading
+     → commentStore.js with CRUD operations
+     → Nested replies UI (1-2 levels deep)
+     → Reply notifications
+
+4.2  Subscription management store
+     → subscriptionStore.js
+     → Cancel, renew, view history
+     → Active subscriptions list
+
+4.3  Content reporting + moderation
+     → reportStore.js
+     → Report flow (reason, description, screenshot)
+     → reports table + migration
+     → Admin notification
+
+4.4  User blocking / muting
+     → blockStore.js
+     → blocks table + migration
+     → RLS policies to enforce blocks
+     → Filter blocked users from feeds
+
+4.5  Start new DM from profile
+     → "Message" button on ProfilePage
+     → User search modal on MessagesPage
+     → New conversation creation
+
+4.6  Account deletion
+     → Delete account button in settings
+     → Cascade delete all user data
+     → Clean up storage files
+     → GDPR-compliant data removal
+
+4.7  Email / password change
+     → Settings form for email change
+     → Settings form for password change  
+     → supabase.auth.updateUser() integration
+
+4.8  Post pinning
+     → is_pinned / pinned_at column on posts
+     → Pin/unpin toggle in dropdown
+     → Show pinned first on profile
+
+4.9  Search within posts
+     → Full-text search setup (pg_trgm or tsvector)
+     → Search UI with users/posts toggle
+     → Tag/hashtag support
+
+Deliverables: Feature-complete for initial launch.
+
+
+PHASE 5: GROWTH & ENGAGEMENT (Week 7-10)
+==========================================
+Priority: Features to drive growth, retention, and differentiation.
+
+Tasks:
+------
+5.1  Referral system
+     → Referral codes/links
+     → referred_by tracking
+     → Referral earnings (80% share)
+     → Referral dashboard
+
+5.2  Paid messages
+     → Creator message pricing
+     → Payment gate before sending
+     → Free threshold for subscribers
+
+5.3  Mass messaging
+     → Broadcast compose UI
+     → Target audience selection
+     → Queue-based sending
+
+5.4  Content scheduling
+     → scheduled_at column on posts
+     → Scheduling UI in create post
+     → Cron/trigger to publish at scheduled time
+
+5.5  Multi-tier subscriptions
+     → subscription_tiers table
+     → Tier creation UI for creators
+     → Tier-based content gating
+
+5.6  Comment replies threading (v2)
+     → Deep threading
+     → Mentioned users tagging
+     → Best/top comments
+
+5.7  Push notifications (PWA)
+     → Service worker for push
+     → Notification permission request
+     → Push on new DM, like, follow, sub
+
+5.8  SEO optimization
+     → Sitemap generation for public profiles
+     → Meta tags per page (react-helmet)
+     → Server-side rendering consideration (Next.js migration?)
+
+Deliverables: Growth engines and engagement loops running.
+
+
+PHASE 6: PREMIUM FEATURES & SCALE (Week 10+)
+===============================================
+Priority: Market leadership and handling scale.
+
+Tasks:
+------
+6.1  Livestreaming
+     → Third-party integration (Mux, LiveKit, Agora)
+     → Go live UI, viewer player, live chat, tipping
+     → Stream recording option
+
+6.2  Stories (ephemeral content)
+     → Story creation + viewer UI
+     → 24-hour auto-deletion
+     → Story ring UX on avatars
+
+6.3  Content watermarking
+     → Server-side image processing
+     → Per-viewer invisible watermark
+     → Leak detection
+
+6.4  Geo-blocking enforcement
+     → Edge middleware for IP geolocation
+     → Country-level content blocking
+
+6.5  CDN & media optimization
+     → Move to Cloudflare R2 or S3 + CloudFront
+     → Image optimization pipeline (sharp/thumbor)
+     → Video transcoding (HLS adaptive bitrate)
+     → Thumbnail generation
+
+6.6  Creator analytics v2
+     → Views over time charts
+     → Subscriber growth trends
+     → Top content analytics
+     → Revenue breakdown
+     → Audience demographics
+
+6.7  Infrastructure hardening
+     → Error monitoring (Sentry)
+     → Performance monitoring (Vercel Analytics)
+     → E2E testing (Playwright)
+     → Load testing
+     → Database connection pooling optimization
+
+6.8  GDPR data export
+     → "Download my data" button
+     → Generate ZIP of all user data
+     → Automated within required timeframe
+
+Deliverables: Platform at scale with premium differentiators.
+
+
+================================================================================
+SUMMARY TIMELINE
+================================================================================
+
+Phase 1 (Security):        Week 1-2     | No features, just fixing holes
+Phase 2 (Bug fixes):       Week 2-3     | Everything works
+Phase 3 (Payments):        Week 3-5     | Money flows = real business
+Phase 4 (Core features):   Week 5-7     | Launch-ready
+Phase 5 (Growth):          Week 7-10    | Growth engines
+Phase 6 (Premium):         Week 10+     | Market leadership
+
+MVP launch target: End of Week 5 (after Phase 3)
+Full launch target: End of Week 7 (after Phase 4)
+Feature parity with OnlyFans: Week 10+
+
+================================================================================
+KEY DECISION POINTS
+================================================================================
+
+1. Payment processor: Stripe Connect vs CCBill vs Segpay
+   → Stripe is easiest but may restrict adult content
+   → CCBill/Segpay are industry-standard for adult
+
+2. Livestreaming provider: Mux vs LiveKit vs Agora
+   → Mux is simplest (managed), LiveKit is cheapest (self-host option)
+
+3. Video hosting: Supabase Storage vs Mux vs Cloudflare Stream
+   → Supabase for now, migrate when scale demands it
+
+4. SSR/SEO: Stay with Vite SPA vs migrate to Next.js
+   → SPA is fine for now (content is behind auth)
+   → Consider Next.js for public profile SEO later
+
+5. Moderation: Manual vs AI-assisted (Hive, AWS Rekognition)
+   → Start manual, add AI screening when volume demands it

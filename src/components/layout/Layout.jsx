@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, Link } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import MobileNav from './MobileNav'
 import RightPanel from './RightPanel'
@@ -15,6 +15,16 @@ export default function Layout() {
 
         <main className="flex-1 min-w-0 border-r border-zinc-800/50">
           <Outlet />
+
+          {/* Legal footer */}
+          <footer className="border-t border-zinc-800/50 px-5 py-6 mt-8">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-600">
+              <Link to="/terms" className="hover:text-zinc-400 transition-colors">Terms</Link>
+              <Link to="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</Link>
+              <Link to="/2257" className="hover:text-zinc-400 transition-colors">2257 Compliance</Link>
+              <span className="ml-auto">&copy; {new Date().getFullYear()} VyxHub</span>
+            </div>
+          </footer>
         </main>
 
         <RightPanel />

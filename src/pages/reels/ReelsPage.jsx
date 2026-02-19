@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { resolvePostMediaUrls } from '../../lib/storage'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../../components/ui/Avatar'
 import { PageLoader } from '../../components/ui/Spinner'
 import { cn, formatNumber } from '../../lib/utils'
 
-function ReelCard({ reel, isActive }) {
+function ReelCard({ reel, isActive, userLikes }) {
   const videoRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(true)
-  const [liked, setLiked] = useState(false)
+  // Initialize liked state from existing user likes
+  const [liked, setLiked] = useState(userLikes?.has(reel.id) || false)
   const [likeCount, setLikeCount] = useState(reel.like_count || 0)
   const { user } = useAuthStore()
 
@@ -49,7 +51,7 @@ function ReelCard({ reel, isActive }) {
     } catch { /* revert silently */ }
   }
 
-  const mediaUrl = reel.media?.[0]?.url || ''
+  const mediaUrl = reel.media?.[0]?.signedUrl || reel.media?.[0]?.url || ''
 
   return (
     <div className="relative w-full h-full bg-black snap-start snap-always flex items-center justify-center">
@@ -114,7 +116,16 @@ function ReelCard({ reel, isActive }) {
           <span className="text-xs text-white font-medium">{formatNumber(reel.comment_count || 0)}</span>
         </button>
 
-        <button className="flex flex-col items-center gap-1 cursor-pointer">
+        <button
+          onClick={() => {
+            if (navigator.share) {
+              navigator.share({ title: reel.content || 'Check this out', url: `/post/${reel.id}` }).catch(() => {})
+            } else {
+              navigator.clipboard?.writeText(`${window.location.origin}/post/${reel.id}`)
+            }
+          }}
+          className="flex flex-col items-center gap-1 cursor-pointer"
+        >
           <div className="p-2 rounded-full bg-black/30 backdrop-blur-sm">
             <Share2 size={22} className="text-white" />
           </div>
@@ -129,7 +140,9 @@ export default function ReelsPage() {
   const [reels, setReels] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeIndex, setActiveIndex] = useState(0)
+  const [userLikes, setUserLikes] = useState(new Set())
   const containerRef = useRef(null)
+  const { user } = useAuthStore()
 
   useEffect(() => {
     fetchReels()
@@ -139,15 +152,29 @@ export default function ReelsPage() {
     try {
       const { data } = await supabase
         .from('posts')
-        .select('*, author:profiles!author_id(id, username, display_name, avatar_url, is_verified), media(*)')
-        .not('media', 'is', null)
+        .select('*, author:profiles!author_id(id, username, display_name, avatar_url, is_verified), media(*), likes(user_id, reaction_type)')
         .order('created_at', { ascending: false })
-        .limit(20)
+        .limit(50)
 
-      // Filter to video posts
+      // Filter to posts that actually have video media
       const videoReels = (data || []).filter(p =>
         p.media?.some(m => m.media_type === 'video')
       )
+
+      // Resolve storage paths to signed URLs
+      await resolvePostMediaUrls(videoReels)
+
+      // Initialize user's like state from fetched data
+      if (user) {
+        const likedSet = new Set()
+        videoReels.forEach(reel => {
+          if (reel.likes?.some(l => l.user_id === user.id)) {
+            likedSet.add(reel.id)
+          }
+        })
+        setUserLikes(likedSet)
+      }
+
       setReels(videoReels)
     } catch (err) {
       console.error('Failed to fetch reels:', err)
@@ -204,7 +231,7 @@ export default function ReelsPage() {
       >
         {reels.map((reel, i) => (
           <div key={reel.id} className="h-[100dvh] w-full">
-            <ReelCard reel={reel} isActive={i === activeIndex} />
+            <ReelCard reel={reel} isActive={i === activeIndex} userLikes={userLikes} />
           </div>
         ))}
       </div>

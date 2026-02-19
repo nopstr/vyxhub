@@ -1,7 +1,12 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { FEED_PAGE_SIZE } from '../lib/constants'
-import { validateFile } from '../lib/storage'
+import { validateFile, resolvePostMediaUrls } from '../lib/storage'
+
+// Throttle guards for mutations — prevents spam clicks / bot abuse
+const _reactionThrottle = new Map() // postId:reactionType → timestamp
+const _bookmarkThrottle = new Map() // postId → timestamp
+const THROTTLE_MS = 500
 
 const POST_SELECT = `
   *,
@@ -17,13 +22,45 @@ export const usePostStore = create((set, get) => ({
   hasMore: true,
   page: 0,
   feedType: 'foryou', // 'foryou' | 'following'
+  _feedCache: {}, // { foryou: {posts,page,hasMore}, following: {posts,page,hasMore} }
 
-  setFeedType: (type) => set({ feedType: type }),
+  setFeedType: (type) => {
+    const s = get()
+    if (type === s.feedType) return
+    // Save current feed state to cache
+    const cache = { ...s._feedCache }
+    cache[s.feedType] = { posts: s.posts, page: s.page, hasMore: s.hasMore }
+    // Restore target feed from cache or start fresh
+    const restored = cache[type]
+    set({
+      _feedCache: cache,
+      feedType: type,
+      posts: restored?.posts || [],
+      page: restored?.page || 0,
+      hasMore: restored?.hasMore ?? true,
+    })
+  },
 
   // "For You" algorithm: mix of recent, popular, and followed creators
   fetchFeed: async (reset = false) => {
-    const currentPage = reset ? 0 : get().page
     if (get().loading) return
+
+    if (reset) {
+      const s = get()
+      // Switching from another feed — save it, try to restore foryou from cache
+      if (s.feedType !== 'foryou') {
+        const cache = { ...s._feedCache }
+        cache[s.feedType] = { posts: s.posts, page: s.page, hasMore: s.hasMore }
+        const restored = cache.foryou
+        if (restored?.posts.length > 0) {
+          set({ _feedCache: cache, feedType: 'foryou', posts: restored.posts, page: restored.page, hasMore: restored.hasMore })
+          return restored.posts
+        }
+        set({ _feedCache: cache, feedType: 'foryou' })
+      }
+    }
+
+    const currentPage = reset ? 0 : get().page
     set({ loading: true })
 
     const from = currentPage * FEED_PAGE_SIZE
@@ -55,11 +92,13 @@ export const usePostStore = create((set, get) => ({
 
       if (error) throw error
 
-      // Track views (fire and forget)
+      // Resolve protected media to short-lived signed URLs
+      await resolvePostMediaUrls(data)
+
+      // Track views (single batch RPC instead of N individual calls)
       if (data?.length > 0) {
-        data.forEach(post => {
-          supabase.rpc('increment_view_count', { p_post_id: post.id }).catch(() => {})
-        })
+        const postIds = data.map(p => p.id)
+        supabase.rpc('increment_view_counts', { p_post_ids: postIds }).catch(() => {})
       }
 
       const newPosts = reset ? data : [...get().posts, ...data]
@@ -78,8 +117,24 @@ export const usePostStore = create((set, get) => ({
 
   // "Following" feed: only posts from people the user follows
   fetchFollowingFeed: async (userId, reset = false) => {
-    const currentPage = reset ? 0 : get().page
     if (get().loading) return
+
+    if (reset) {
+      const s = get()
+      // Switching from another feed — save it, try to restore following from cache
+      if (s.feedType !== 'following') {
+        const cache = { ...s._feedCache }
+        cache[s.feedType] = { posts: s.posts, page: s.page, hasMore: s.hasMore }
+        const restored = cache.following
+        if (restored?.posts.length > 0) {
+          set({ _feedCache: cache, feedType: 'following', posts: restored.posts, page: restored.page, hasMore: restored.hasMore })
+          return restored.posts
+        }
+        set({ _feedCache: cache, feedType: 'following' })
+      }
+    }
+
+    const currentPage = reset ? 0 : get().page
     set({ loading: true })
 
     try {
@@ -110,6 +165,9 @@ export const usePostStore = create((set, get) => ({
 
       if (error) throw error
 
+      // Resolve protected media to short-lived signed URLs
+      await resolvePostMediaUrls(data)
+
       const newPosts = reset ? data : [...get().posts, ...data]
       set({
         posts: newPosts,
@@ -135,6 +193,10 @@ export const usePostStore = create((set, get) => ({
         .order('created_at', { ascending: false })
 
       if (error) throw error
+
+      // Resolve protected media to short-lived signed URLs
+      await resolvePostMediaUrls(data)
+
       set({ posts: data, loading: false })
       return data
     } catch (error) {
@@ -171,34 +233,31 @@ export const usePostStore = create((set, get) => ({
         validateFile(file)
       }
 
-      const mediaInserts = []
-      for (let i = 0; i < mediaFiles.length; i++) {
-        const file = mediaFiles[i]
-        const ext = file.name.split('.').pop()
-        const filePath = `${userId}/${post.id}/${i}.${ext}`
+      // Upload all files in parallel for faster post creation
+      const uploadResults = await Promise.all(
+        mediaFiles.map(async (file, i) => {
+          const ext = file.name.split('.').pop()
+          const filePath = `${userId}/${post.id}/${i}.${ext}`
+          const { error: uploadError } = await supabase.storage
+            .from('posts')
+            .upload(filePath, file)
+          if (uploadError) throw uploadError
+          return { file, filePath, index: i }
+        })
+      )
 
-        const { error: uploadError } = await supabase.storage
-          .from('posts')
-          .upload(filePath, file)
-
-        if (uploadError) throw uploadError
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('posts')
-          .getPublicUrl(filePath)
-
-        const isPreview = previewIndices ? previewIndices.includes(i) : false
-
-        mediaInserts.push({
+      const mediaInserts = uploadResults.map(({ file, filePath, index }) => {
+        const isPreview = previewIndices ? previewIndices.includes(index) : false
+        return {
           post_id: post.id,
           uploader_id: userId,
           media_type: file.type.startsWith('video') ? 'video' : 'image',
-          url: publicUrl,
-          sort_order: i,
+          url: filePath, // Store storage path — resolved to signed URL at display time
+          sort_order: index,
           file_size_bytes: file.size,
           is_preview: isPreview,
-        })
-      }
+        }
+      })
 
       const { error: mediaError } = await supabase
         .from('media')
@@ -216,6 +275,9 @@ export const usePostStore = create((set, get) => ({
       post.media = []
     }
 
+    // Resolve media to signed URLs for the newly created post
+    await resolvePostMediaUrls(post)
+
     post.likes = [] // reactions stored in likes table with reaction_type
     post.bookmarks = []
     set({ posts: [post, ...get().posts] })
@@ -223,12 +285,35 @@ export const usePostStore = create((set, get) => ({
   },
 
   deletePost: async (postId) => {
+    // M8: Clean up storage files before deleting the post row
+    try {
+      const { data: mediaRows } = await supabase
+        .from('media')
+        .select('url')
+        .eq('post_id', postId)
+
+      if (mediaRows?.length > 0) {
+        const paths = mediaRows.map(m => m.url).filter(Boolean)
+        if (paths.length > 0) {
+          await supabase.storage.from('posts').remove(paths)
+        }
+      }
+    } catch (cleanupErr) {
+      console.warn('Storage cleanup failed (non-blocking):', cleanupErr)
+    }
+
     const { error } = await supabase.from('posts').delete().eq('id', postId)
     if (error) throw error
     set({ posts: get().posts.filter(p => p.id !== postId) })
   },
 
   toggleReaction: async (postId, userId, reactionType = 'heart') => {
+    // Throttle: ignore rapid-fire clicks (500ms cooldown)
+    const throttleKey = `${postId}:${reactionType}`
+    const now = Date.now()
+    if (_reactionThrottle.get(throttleKey) > now - THROTTLE_MS) return
+    _reactionThrottle.set(throttleKey, now)
+
     const posts = get().posts
     const post = posts.find(p => p.id === postId)
     if (!post) return
@@ -264,6 +349,11 @@ export const usePostStore = create((set, get) => ({
   },
 
   toggleBookmark: async (postId, userId) => {
+    // Throttle: ignore rapid-fire clicks (500ms cooldown)
+    const now = Date.now()
+    if (_bookmarkThrottle.get(postId) > now - THROTTLE_MS) return
+    _bookmarkThrottle.set(postId, now)
+
     const posts = get().posts
     const post = posts.find(p => p.id === postId)
     if (!post) return
@@ -287,5 +377,44 @@ export const usePostStore = create((set, get) => ({
         }
       }),
     })
+  },
+
+  togglePin: async (postId, pin) => {
+    const { error } = await supabase
+      .from('posts')
+      .update({ is_pinned: pin })
+      .eq('id', postId)
+    if (error) throw error
+    set({
+      posts: get().posts.map(p =>
+        p.id === postId ? { ...p, is_pinned: pin, pinned_at: pin ? new Date().toISOString() : null } : p
+      ),
+    })
+  },
+
+  repost: async (originalPostId, userId) => {
+    // Create a new post that references the original
+    const { data, error } = await supabase
+      .from('posts')
+      .insert({
+        author_id: userId,
+        repost_of: originalPostId,
+        reposted_by: userId,
+        visibility: 'public',
+        post_type: 'post',
+      })
+      .select(`
+        *,
+        author:profiles!author_id(*)
+      `)
+      .single()
+
+    if (error) throw error
+
+    data.likes = []
+    data.bookmarks = []
+    data.media = []
+    set({ posts: [data, ...get().posts] })
+    return data
   },
 }))

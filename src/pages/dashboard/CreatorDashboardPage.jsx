@@ -109,14 +109,25 @@ export default function CreatorDashboardPage() {
 
   const fetchDashboard = async () => {
     try {
-      const [subsRes, postsRes, likesRes, txRes] = await Promise.all([
+      // Fetch subs, posts count, and transactions in parallel
+      const [subsRes, postsRes, txRes] = await Promise.all([
         supabase.from('subscriptions').select('*, subscriber:subscriber_id(display_name, username, avatar_url)').eq('creator_id', user.id).eq('status', 'active').order('created_at', { ascending: false }).limit(10),
         supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', user.id),
-        supabase.from('likes').select('id', { count: 'exact', head: true }).in('post_id',
-          supabase.from('posts').select('id').eq('author_id', user.id)
-        ),
         supabase.from('transactions').select('net_amount, created_at').eq('to_user_id', user.id).order('created_at', { ascending: false }),
       ])
+
+      // Fetch likes count: first get post IDs, then count likes against them
+      const { data: postIdRows } = await supabase
+        .from('posts').select('id').eq('author_id', user.id)
+      const postIds = postIdRows?.map(p => p.id) || []
+      let likesCount = 0
+      if (postIds.length > 0) {
+        const { count } = await supabase
+          .from('likes')
+          .select('*', { count: 'exact', head: true })
+          .in('post_id', postIds)
+        likesCount = count || 0
+      }
 
       const totalEarnings = txRes.data?.reduce((sum, t) => sum + (t.net_amount || 0), 0) || 0
 
@@ -137,12 +148,22 @@ export default function CreatorDashboardPage() {
         if (match) match.amount += tx.net_amount || 0
       })
 
+      // Sum view_count from all posts for total views
+      let totalViews = 0
+      if (postIds.length > 0) {
+        const { data: viewData } = await supabase
+          .from('posts')
+          .select('view_count')
+          .eq('author_id', user.id)
+        totalViews = viewData?.reduce((sum, p) => sum + (p.view_count || 0), 0) || 0
+      }
+
       setStats({
         totalEarnings,
         subscribers: subsRes.data?.length || 0,
         posts: postsRes.count || 0,
-        views: 0,
-        likes: likesRes.count || 0,
+        views: totalViews,
+        likes: likesCount,
       })
       setRecentSubs(subsRes.data || [])
       setEarningsData(days)

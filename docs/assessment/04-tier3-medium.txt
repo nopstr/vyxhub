@@ -1,0 +1,180 @@
+================================================================================
+TIER 3: MEDIUM ISSUES
+Polish, UX, performance, and correctness issues. Not blocking core flows
+but degrading the overall quality and user experience.
+================================================================================
+
+M1. DASHBOARD VIEWS HARDCODED TO ZERO
+---------------------------------------
+Location:   src/pages/dashboard/CreatorDashboardPage.jsx
+Problem:    The "Total Views" stat on the creator dashboard is hardcoded
+            to 0. No query fetches actual view data.
+Impact:     Creators have no visibility into how many people viewed their
+            content. Key engagement metric is missing.
+Fix:        Sum view_count from all creator's posts:
+              const { data } = await supabase
+                .from('posts')
+                .select('view_count')
+                .eq('user_id', user.id)
+              const totalViews = data.reduce((sum, p) => sum + p.view_count, 0)
+
+M2. EXPLORE "LATEST" TAB SHOWS SAME AS "TRENDING"
+---------------------------------------------------
+Location:   src/pages/explore/ExplorePage.jsx (~line 80-95)
+Problem:    The "Latest" tab on the Explore page runs the same query as
+            the "Trending" tab. Both show the same results.
+Impact:     Users expecting chronological content see popularity-ranked
+            content instead. Two tabs, one result set.
+Fix:        "Latest" should query with:
+              .order('created_at', { ascending: false })
+            Without any hot_score or popularity ranking.
+
+M3. BOOKMARKSPAGE MISSING reaction_type IN LIKES JOIN
+------------------------------------------------------
+Location:   src/pages/bookmarks/BookmarksPage.jsx (~line 20)
+Problem:    The likes join in the bookmarks query doesn't include
+            reaction_type, so the multi-reaction picker can't show which
+            reaction the user has applied to bookmarked posts.
+Impact:     Bookmarked posts always show the default like icon instead
+            of the actual reaction type (fire, heart, etc.)
+Fix:        Add reaction_type to the likes select:
+              likes!left(id, reaction_type, user_id)
+
+M4. DUPLICATE DATABASE INDEXES
+-------------------------------
+Location:   Migration 20260219000000_content_protection.sql
+Problem:    Two indexes are created that duplicate existing indexes from
+            earlier migrations. This wastes storage and slows writes.
+Impact:     Minor performance degradation on writes, wasted disk space.
+Fix:        Drop the duplicate indexes:
+              DROP INDEX IF EXISTS idx_duplicate_name;
+            Identify which are duplicates by comparing with earlier
+            migration index definitions.
+
+M5. NO-OP DROPDOWN ITEMS
+--------------------------
+Location:   src/components/feed/PostCard.jsx (dropdown menu)
+Problem:    Three dropdown items exist with no click handlers:
+            - "Pin to profile" — onClick does nothing
+            - "Mute user" — onClick does nothing  
+            - "Report post" — no onClick handler at all
+Impact:     Users click these expecting functionality, nothing happens.
+            Damages trust and perceived quality.
+Fix:        Either:
+            A) Implement the features (requires new stores/DB work)
+            B) Remove the menu items until implemented
+            C) Show "Coming soon" toast when clicked
+
+M6. POSTSTORE SHARED STATE BETWEEN FEED TYPES
+-----------------------------------------------
+Location:   src/stores/postStore.js
+Problem:    The "For You" and "Following" feeds share the same posts
+            array, page counter, and hasMore flag in the store. Switching
+            between tabs overwrites the previous tab's data.
+Impact:     - Switching from "Following" to "For You" and back loses
+              scroll position and loaded posts
+            - Can show stale data from wrong feed type momentarily
+            - Page counter gets confused between feeds
+Fix:        Separate state per feed type:
+              forYou: { posts: [], page: 0, hasMore: true },
+              following: { posts: [], page: 0, hasMore: true }
+
+M7. SEQUENTIAL MEDIA UPLOADS
+------------------------------
+Location:   src/stores/postStore.js (createPost function)
+Problem:    When creating a post with multiple images, each file is
+            uploaded sequentially (await in a loop). 5 images at 2MB
+            each takes 5x longer than necessary.
+Impact:     Slow post creation UX, especially on mobile connections.
+Fix:        Use Promise.all for parallel uploads:
+              const uploadPromises = files.map(file => uploadFile(...))
+              const results = await Promise.all(uploadPromises)
+
+M8. deletePost DOESN'T CLEAN UP STORAGE
+-----------------------------------------
+Location:   src/stores/postStore.js (deletePost function)
+Problem:    When a post is deleted, only the database row is removed.
+            The associated media files remain in the storage bucket
+            indefinitely, consuming storage quota.
+Impact:     Storage costs grow unbounded as posts are deleted.
+            Orphaned files may still be accessible via direct URL.
+Fix:        Before deleting the post row:
+            1. Query the media table for files associated with the post
+            2. Delete each file from storage bucket
+            3. Then delete the post (which cascades to media rows)
+
+M9. MODAL HAS NO FOCUS TRAP OR ESCAPE HANDLER
+------------------------------------------------
+Location:   src/components/ui/Modal.jsx
+Problem:    The modal component doesn't trap keyboard focus inside itself
+            and doesn't close on Escape key press. Users can Tab to
+            elements behind the modal overlay.
+Impact:     Accessibility issue (WCAG 2.1 AA violation). Keyboard users
+            get lost behind the modal. Screen readers may read content
+            that shouldn't be accessible.
+Fix:        1. Add Escape key listener: onKeyDown → close modal
+            2. Add focus trap: when Tab reaches last element, loop to first
+            3. Set focus to first focusable element on open
+            4. Restore focus to trigger element on close
+
+M10. INPUT COMPONENTS MISSING htmlFor/id PAIRING
+--------------------------------------------------
+Location:   src/components/ui/Input.jsx
+Problem:    Labels are not associated with their input elements via
+            htmlFor/id attributes. Clicking the label doesn't focus
+            the input.
+Impact:     Accessibility issue. Screen readers can't associate labels
+            with inputs. Touch targets are smaller (can't tap label).
+Fix:        Generate unique IDs or accept an id prop:
+              const inputId = id || `input-${useId()}`
+              <label htmlFor={inputId}>...</label>
+              <input id={inputId} ... />
+
+M11. NO 404 PAGE
+-----------------
+Location:   src/App.jsx (routes)
+Problem:    There's no catch-all route for invalid URLs. Navigating to
+            a non-existent path either shows a blank page or redirects
+            to home with no feedback.
+Impact:     Users who follow broken links or mistype URLs get no
+            indication that the page doesn't exist.
+Fix:        Add a catch-all route:
+              <Route path="*" element={<NotFoundPage />} />
+            Create a simple 404 page with navigation back to home.
+
+M12. NOTIFICATION PREFERENCES DON'T PERSIST
+---------------------------------------------
+Location:   src/pages/notifications/NotificationsPage.jsx
+Problem:    The notification preferences toggles (likes, comments,
+            follows, etc.) exist in the UI and maintain local state,
+            but changes are never saved to the database.
+Impact:     Users toggle preferences, leave the page, come back — all
+            preferences are reset to defaults.
+Fix:        Save preference state to profiles table or a new
+            notification_preferences table. Load on mount, save on change.
+
+M13. authStore PASSWORD_RECOVERY DOESN'T FETCH PROFILE
+--------------------------------------------------------
+Location:   src/stores/authStore.js
+Problem:    When handling the PASSWORD_RECOVERY auth event, the store
+            navigates to the reset password page but doesn't fetch the
+            user's profile data. If the user was logged out, their
+            profile object is null.
+Impact:     Reset password page may not have access to user profile data
+            if needed for display or validation.
+Fix:        Add profile fetch in the PASSWORD_RECOVERY event handler,
+            similar to SIGNED_IN handler.
+
+M14. NO KEYBOARD NAVIGATION IN DROPDOWN
+-----------------------------------------
+Location:   src/components/ui/Dropdown.jsx
+Problem:    Dropdown closes on outside click (good), but has no
+            keyboard navigation — no arrow key support, no Escape
+            to close, no Enter to select.
+Impact:     Keyboard and screen reader users can't navigate dropdown menus.
+Fix:        Add keyboard event handlers:
+            - Escape: close dropdown
+            - ArrowDown: focus next item
+            - ArrowUp: focus previous item
+            - Enter/Space: select focused item
+            - Tab: close dropdown and move focus

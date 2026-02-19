@@ -5,9 +5,10 @@ import {
   Camera, Save, Trash2, Eye, EyeOff, Lock,
   DollarSign, Globe, MessageCircle, Droplets, MapPin,
   Link as LinkIcon, Star, Package, Percent, ShieldCheck, Zap,
-  Heart, AlertTriangle
+  Heart, AlertTriangle, KeyRound
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
+import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
 import Input, { Textarea } from '../../components/ui/Input'
@@ -224,6 +225,14 @@ function ProfileSettings() {
 function AccountSettings() {
   const { user, signOut } = useAuthStore()
   const navigate = useNavigate()
+  const [newEmail, setNewEmail] = useState('')
+  const [emailSaving, setEmailSaving] = useState(false)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const handleSignOut = async () => {
     await signOut()
@@ -231,18 +240,142 @@ function AccountSettings() {
     toast.success('Signed out')
   }
 
+  const handleChangeEmail = async () => {
+    if (!newEmail.trim()) return toast.error('Enter a new email')
+    if (newEmail === user?.email) return toast.error('That is your current email')
+    setEmailSaving(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail.trim() })
+      if (error) throw error
+      toast.success('Verification email sent to your new address. Please confirm to complete the change.')
+      setNewEmail('')
+    } catch (err) {
+      toast.error(err.message || 'Failed to update email')
+    } finally {
+      setEmailSaving(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (!newPassword || !confirmPassword) return toast.error('Fill in all password fields')
+    if (newPassword.length < 8) return toast.error('Password must be at least 8 characters')
+    if (newPassword !== confirmPassword) return toast.error('Passwords do not match')
+    setPasswordSaving(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      toast.success('Password updated successfully')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      toast.error(err.message || 'Failed to update password')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== 'DELETE') return toast.error('Type DELETE to confirm')
+    if (!confirm('This will permanently delete your account and all data. This action cannot be undone.')) return
+    setDeleting(true)
+    try {
+      const { error } = await supabase.rpc('delete_user_account', { p_user_id: user.id })
+      if (error) throw error
+      await signOut()
+      navigate('/auth')
+      toast.success('Account deleted')
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete account')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Current Email */}
       <div>
         <label className="block text-sm font-medium text-zinc-400 mb-1">Email</label>
         <p className="text-sm text-zinc-300">{user?.email}</p>
       </div>
 
+      {/* Change Email */}
+      <div className="pt-4 border-t border-zinc-800">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+          <Mail size={16} className="text-indigo-400" /> Change Email
+        </h3>
+        <div className="space-y-3">
+          <Input
+            label="New Email Address"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="newemail@example.com"
+          />
+          <Button size="sm" onClick={handleChangeEmail} loading={emailSaving}>
+            Update Email
+          </Button>
+          <p className="text-xs text-zinc-500">A confirmation link will be sent to both your old and new email.</p>
+        </div>
+      </div>
+
+      {/* Change Password */}
+      <div className="pt-4 border-t border-zinc-800">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+          <KeyRound size={16} className="text-indigo-400" /> Change Password
+        </h3>
+        <div className="space-y-3">
+          <Input
+            label="New Password"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Minimum 8 characters"
+          />
+          <Input
+            label="Confirm New Password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Re-enter new password"
+          />
+          <Button size="sm" onClick={handleChangePassword} loading={passwordSaving}>
+            Update Password
+          </Button>
+        </div>
+      </div>
+
+      {/* Sign Out */}
       <div className="pt-4 border-t border-zinc-800">
         <Button variant="danger" onClick={handleSignOut}>
           <LogOut size={16} />
           Sign Out
         </Button>
+      </div>
+
+      {/* Delete Account */}
+      <div className="pt-4 border-t border-zinc-800">
+        <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-5">
+          <h4 className="flex items-center gap-2 text-sm font-bold text-red-400 mb-2">
+            <Trash2 size={16} /> Delete Account
+          </h4>
+          <p className="text-xs text-zinc-500 mb-4">
+            This will permanently delete your account, all posts, messages, subscriptions, and associated data. This action is irreversible and complies with GDPR data deletion requirements.
+          </p>
+          <div className="space-y-3">
+            <Input
+              label="Type DELETE to confirm"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+              placeholder="DELETE"
+            />
+            <Button variant="danger" size="sm" onClick={handleDeleteAccount} loading={deleting} disabled={deleteConfirm !== 'DELETE'}>
+              <Trash2 size={14} />
+              Permanently Delete Account
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   )
@@ -688,7 +821,9 @@ function CreatorSettings() {
 }
 
 function NotificationSettings() {
-  const [prefs, setPrefs] = useState({
+  const { profile, updateProfile } = useAuthStore()
+
+  const defaults = {
     likes: true,
     comments: true,
     follows: true,
@@ -697,7 +832,25 @@ function NotificationSettings() {
     tips: true,
     mentions: true,
     promotions: false,
-  })
+  }
+
+  const [prefs, setPrefs] = useState({ ...defaults, ...(profile?.notification_preferences || {}) })
+  const [saving, setSaving] = useState(false)
+
+  const handleToggle = async (key, value) => {
+    const updated = { ...prefs, [key]: value }
+    setPrefs(updated)
+    try {
+      setSaving(true)
+      await updateProfile({ notification_preferences: updated })
+    } catch (err) {
+      // Revert on failure
+      setPrefs(prefs)
+      toast.error('Failed to save notification preferences')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="space-y-2">
@@ -705,7 +858,7 @@ function NotificationSettings() {
         <Toggle
           key={key}
           checked={value}
-          onChange={(v) => setPrefs(p => ({ ...p, [key]: v }))}
+          onChange={(v) => handleToggle(key, v)}
           label={key.charAt(0).toUpperCase() + key.slice(1)}
         />
       ))}
