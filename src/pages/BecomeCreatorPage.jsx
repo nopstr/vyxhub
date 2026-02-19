@@ -14,6 +14,7 @@ import Input from '../components/ui/Input'
 import { toast } from 'sonner'
 import { cn } from '../lib/utils'
 import { supabase } from '../lib/supabase'
+import { optimizeImage } from '../lib/storage'
 import {
   PLATFORM_FEE_PERCENT,
   REFERRAL_EARNING_PERCENT,
@@ -368,21 +369,24 @@ function ApplicationForm({ onBack }) {
       const docPath = `${userId}`
 
       if (idFront) {
-        const ext = idFront.name.split('.').pop()
+        const optimized = await optimizeImage(idFront)
+        const ext = optimized.name.split('.').pop()
         uploads.push(
-          supabase.storage.from('verification-docs').upload(`${docPath}/id_front.${ext}`, idFront, { upsert: true })
+          supabase.storage.from('verification-docs').upload(`${docPath}/id_front.${ext}`, optimized, { upsert: true })
         )
       }
       if (idBack) {
-        const ext = idBack.name.split('.').pop()
+        const optimized = await optimizeImage(idBack)
+        const ext = optimized.name.split('.').pop()
         uploads.push(
-          supabase.storage.from('verification-docs').upload(`${docPath}/id_back.${ext}`, idBack, { upsert: true })
+          supabase.storage.from('verification-docs').upload(`${docPath}/id_back.${ext}`, optimized, { upsert: true })
         )
       }
       if (selfie) {
-        const ext = selfie.name.split('.').pop()
+        const optimized = await optimizeImage(selfie)
+        const ext = optimized.name.split('.').pop()
         uploads.push(
-          supabase.storage.from('verification-docs').upload(`${docPath}/selfie.${ext}`, selfie, { upsert: true })
+          supabase.storage.from('verification-docs').upload(`${docPath}/selfie.${ext}`, optimized, { upsert: true })
         )
       }
 

@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { MAX_FILE_SIZE_MB, ALLOWED_IMAGE_TYPES, ALLOWED_VIDEO_TYPES } from './constants'
+import imageCompression from 'browser-image-compression'
 
 // ─── Bucket Configuration ──────────────────────────────────────────────────
 export const BUCKET = {
@@ -37,13 +38,38 @@ export function validateFile(file) {
   return true
 }
 
+// ─── Optimization ──────────────────────────────────────────────────────────
+export async function optimizeImage(file) {
+  if (!file.type.startsWith('image/')) return file;
+  
+  const options = {
+    maxSizeMB: 1, // Max 1MB
+    maxWidthOrHeight: 1920, // Max 1080p
+    useWebWorker: true,
+    fileType: 'image/webp', // Convert to WebP
+  };
+  
+  try {
+    const compressedFile = await imageCompression(file, options);
+    // Return a new File object with the correct name and type
+    return new File([compressedFile], file.name.replace(/\.[^/.]+$/, ".webp"), {
+      type: 'image/webp',
+    });
+  } catch (error) {
+    console.error('Image compression failed:', error);
+    return file; // Fallback to original file
+  }
+}
+
 // ─── Upload Functions ──────────────────────────────────────────────────────
 export async function uploadFile(bucket, filePath, file) {
   validateFile(file)
+  
+  const optimizedFile = await optimizeImage(file)
 
   const { data, error } = await supabase.storage
     .from(bucket)
-    .upload(filePath, file, {
+    .upload(filePath, optimizedFile, {
       cacheControl: '3600',
       upsert: true,
     })

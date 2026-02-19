@@ -7,6 +7,7 @@ import Input, { Textarea } from '../../components/ui/Input'
 import { PageLoader } from '../../components/ui/Spinner'
 import { toast } from 'sonner'
 import { cn, formatRelativeTime } from '../../lib/utils'
+import { optimizeImage } from '../../lib/storage'
 import {
   Users, Upload, Image, Film, FileText, CheckCircle, XCircle,
   Clock, Calendar, Send, Eye, Filter, ChevronDown, ChevronUp,
@@ -231,18 +232,18 @@ function PostAsCreator({ creator }) {
         if (files.length > 0) {
           const mediaInserts = []
           for (let i = 0; i < files.length; i++) {
-            const file = files[i]
-            const ext = file.name.split('.').pop()
+            const optimized = await optimizeImage(files[i])
+            const ext = optimized.name.split('.').pop()
             const filePath = `${creator.id}/${post.id}/${i}.${ext}`
-            const { error: uploadError } = await supabase.storage.from('posts').upload(filePath, file)
+            const { error: uploadError } = await supabase.storage.from('posts').upload(filePath, optimized)
             if (uploadError) throw uploadError
             mediaInserts.push({
               post_id: post.id,
               uploader_id: user.id,
-              media_type: file.type.startsWith('video') ? 'video' : 'image',
+              media_type: optimized.type.startsWith('video') ? 'video' : 'image',
               url: filePath,
               sort_order: i,
-              file_size_bytes: file.size,
+              file_size_bytes: optimized.size,
             })
           }
           if (mediaInserts.length > 0) {

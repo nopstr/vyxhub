@@ -1,0 +1,12 @@
+VyxHub Scalability Assessment (Target: 100k DAU)
+Date: February 19, 2026
+
+STRENGTHS:
+* Database Indexing: Crucial indexes are in place, such as idx_subscriptions_active for expiry-aware lookups and indexes for messaging payments. Unique constraints on follows and subscriptions implicitly create indexes that optimize RLS policy subqueries.
+* Algorithmic Feed: The personalized_feed RPC and user_affinities table offload complex feed generation logic to the database, significantly improving client performance.
+* State Management: Zustand is effectively used for state management. postStore.js implements feed caching and pagination, reducing unnecessary API calls.
+
+BOTTLENECKS & RISKS:
+* RLS Performance at Scale: The RLS policies on posts and media use complex EXISTS subqueries to check subscriptions and follows. At 100k DAU, evaluating these on every row read will become a severe database bottleneck.
+* Trigger Overhead: The numerous database triggers updating user_affinities on every like, comment, and bookmark will slow down write operations during peak traffic and cause database lock contention.
+* Real-time Subscriptions: If 100k users are connected to Supabase Realtime simultaneously (e.g., for messages or notifications), it will exhaust connection limits unless properly multiplexed and filtered.

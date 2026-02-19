@@ -1,0 +1,18 @@
+VyxHub Action Plan to Reach Production & 100k DAU
+Date: February 19, 2026
+
+PHASE 1: CRITICAL PRE-LAUNCH (Do This Now)
+1. Implement Error Tracking: Integrate Sentry (or similar) into main.jsx and the ErrorBoundary to catch and report production bugs.
+2. Server-Side Rate Limiting: Implement rate limiting via Supabase Edge Functions or a middleware layer for Auth, Messaging, and Post Creation to prevent spam and abuse.
+3. Verify Backups: Ensure Point-in-Time Recovery (PITR) is enabled in your Supabase project dashboard.
+4. Image Optimization Pipeline: Implement a Supabase Storage webhook or Edge Function to automatically compress uploaded images and convert them to WebP.
+
+PHASE 2: SCALING TO 100k DAU (Performance)
+1. Optimize RLS Policies: Refactor the complex EXISTS subqueries in the posts and media RLS policies. Consider materializing visibility states (e.g., a viewer_ids array on the post) or using Redis to cache access rights.
+2. Decouple Affinity Triggers: Remove the synchronous database triggers that update user_affinities on every interaction. Move this logic to an asynchronous background worker queue (e.g., using Supabase Edge Functions triggered by webhooks or pg_cron).
+3. Optimize Realtime: Audit messageStore.js and notificationStore.js to ensure Realtime channels are properly cleaned up on unmount and that you aren't over-subscribing to events.
+
+PHASE 3: FEATURE POLISH & UX
+1. Accessibility Audit: Run Lighthouse and axe-core to fix missing ARIA labels, keyboard focus traps, and contrast issues.
+2. Implement Empty States: Design and build friendly "Nothing here yet" components for the Feed, Messages, Notifications, and Bookmarks pages.
+3. Audit Logging: Create an audit_logs table and implement triggers/RPCs to record all admin actions, financial transactions, and profile verifications.

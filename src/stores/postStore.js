@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { FEED_PAGE_SIZE } from '../lib/constants'
-import { validateFile, resolvePostMediaUrls } from '../lib/storage'
+import { validateFile, resolvePostMediaUrls, optimizeImage } from '../lib/storage'
 
 // Throttle guards for mutations — prevents spam clicks / bot abuse
 const _reactionThrottle = new Map() // postId:reactionType → timestamp
@@ -305,13 +305,14 @@ export const usePostStore = create((set, get) => ({
       // Upload all files in parallel for faster post creation
       const uploadResults = await Promise.all(
         mediaFiles.map(async (file, i) => {
-          const ext = file.name.split('.').pop()
+          const optimizedFile = await optimizeImage(file)
+          const ext = optimizedFile.name.split('.').pop()
           const filePath = `${userId}/${post.id}/${i}.${ext}`
           const { error: uploadError } = await supabase.storage
             .from('posts')
-            .upload(filePath, file)
+            .upload(filePath, optimizedFile)
           if (uploadError) throw uploadError
-          return { file, filePath, index: i }
+          return { file: optimizedFile, filePath, index: i }
         })
       )
 

@@ -15,7 +15,7 @@ import Button from '../../components/ui/Button'
 import Input, { Textarea } from '../../components/ui/Input'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
-import { uploadAvatar, uploadBanner } from '../../lib/storage'
+import { uploadAvatar, uploadBanner, optimizeImage } from '../../lib/storage'
 import { PLATFORM_FEE_PERCENT, MIN_SUBSCRIPTION_PRICE, MAX_SUBSCRIPTION_PRICE } from '../../lib/constants'
 
 const MODEL_CATEGORIES = [
@@ -895,9 +895,10 @@ function ManagementUploadSettings() {
     setUploading(true)
     try {
       for (const file of files) {
-        const ext = file.name.split('.').pop()
+        const optimized = await optimizeImage(file)
+        const ext = optimized.name.split('.').pop()
         const filePath = `${profile.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
-        const { error: storageErr } = await supabase.storage.from('content-uploads').upload(filePath, file)
+        const { error: storageErr } = await supabase.storage.from('content-uploads').upload(filePath, optimized)
         if (storageErr) throw storageErr
 
         const { data: { publicUrl } } = supabase.storage.from('content-uploads').getPublicUrl(filePath)
@@ -905,7 +906,7 @@ function ManagementUploadSettings() {
         const { error: insertErr } = await supabase.from('content_uploads').insert({
           creator_id: profile.id,
           file_url: publicUrl,
-          file_type: file.type.startsWith('video') ? 'video' : 'image',
+          file_type: optimized.type.startsWith('video') ? 'video' : 'image',
           instructions: instructions.trim() || null,
         })
         if (insertErr) throw insertErr

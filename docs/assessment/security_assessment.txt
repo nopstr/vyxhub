@@ -1,0 +1,12 @@
+VyxHub Security Assessment
+Date: February 19, 2026
+
+STRENGTHS:
+* Storage Security: Recent migrations (e.g., 20260219100000_security_hardening.sql) have properly secured storage. The `posts` bucket is private, media is served via short-lived signed URLs, and a dedicated, private `verification-docs` bucket exists for sensitive ID documents.
+* Row Level Security (RLS): Comprehensive RLS policies are enforced across all major tables (profiles, posts, media, subscriptions). Visibility checks correctly account for public, followers-only, and subscribers-only content.
+* Security Headers: The vercel.json configuration includes a robust set of security headers, including a strict Content-Security-Policy (CSP), HSTS, X-Frame-Options, and Permissions-Policy.
+* Client-Side Routing: App.jsx implements proper route guards (ProtectedRoute, GuestRoute, StaffRoute) to prevent unauthorized access to specific pages.
+
+VULNERABILITIES & RISKS:
+* Rate Limiting: While client-side throttling exists in Zustand stores (e.g., _reactionThrottle), there is a lack of server-side rate limiting. This leaves the application vulnerable to abuse, spam, and DDoS attacks on endpoints like authentication, messaging, and post creation.
+* Audit Logging: There is no comprehensive audit logging for sensitive actions (e.g., admin actions, payment processing, profile verification) to track potential security incidents or internal abuse.
