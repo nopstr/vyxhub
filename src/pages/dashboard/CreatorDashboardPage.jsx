@@ -81,7 +81,7 @@ function RecentSubscribers({ subscribers }) {
             </div>
           </div>
           <span className="text-xs text-zinc-500">
-            {formatCurrency(sub.amount || 0)}/mo
+            {formatCurrency(sub.price_paid || 0)}/mo
           </span>
         </div>
       ))}
@@ -112,11 +112,13 @@ export default function CreatorDashboardPage() {
       const [subsRes, postsRes, likesRes, txRes] = await Promise.all([
         supabase.from('subscriptions').select('*, subscriber:subscriber_id(display_name, username, avatar_url)').eq('creator_id', user.id).eq('status', 'active').order('created_at', { ascending: false }).limit(10),
         supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', user.id),
-        supabase.from('likes').select('id', { count: 'exact', head: true }).eq('post_id', user.id), // approximate
-        supabase.from('transactions').select('amount, created_at').eq('creator_id', user.id).eq('type', 'subscription').order('created_at', { ascending: false }),
+        supabase.from('likes').select('id', { count: 'exact', head: true }).in('post_id',
+          supabase.from('posts').select('id').eq('author_id', user.id)
+        ),
+        supabase.from('transactions').select('net_amount, created_at').eq('to_user_id', user.id).order('created_at', { ascending: false }),
       ])
 
-      const totalEarnings = txRes.data?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0
+      const totalEarnings = txRes.data?.reduce((sum, t) => sum + (t.net_amount || 0), 0) || 0
 
       // Build last 7 days chart
       const days = Array.from({ length: 7 }, (_, i) => {
@@ -132,7 +134,7 @@ export default function CreatorDashboardPage() {
       txRes.data?.forEach(tx => {
         const day = tx.created_at?.split('T')[0]
         const match = days.find(d => d.date === day)
-        if (match) match.amount += tx.amount || 0
+        if (match) match.amount += tx.net_amount || 0
       })
 
       setStats({
