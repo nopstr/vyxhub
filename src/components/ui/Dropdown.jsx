@@ -63,8 +63,16 @@ export default function Dropdown({ trigger, children, align = 'right', className
     <div ref={ref} className="relative" onKeyDown={handleKeyDown}>
       <div
         onClick={() => setOpen(!open)}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-expanded={open}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            setOpen(!open)
+          }
+        }}
       >
         {trigger}
       </div>

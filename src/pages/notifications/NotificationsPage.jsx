@@ -9,6 +9,7 @@ import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
 import { PageLoader } from '../../components/ui/Spinner'
+import EmptyState from '../../components/ui/EmptyState'
 import { formatRelativeTime, cn } from '../../lib/utils'
 
 const notifIcons = {
@@ -172,13 +173,11 @@ export default function NotificationsPage() {
           ))}
         </div>
       ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 bg-zinc-800/50 rounded-3xl flex items-center justify-center mb-4">
-            <Bell size={28} className="text-zinc-600" />
-          </div>
-          <h3 className="text-lg font-bold text-zinc-300 mb-1">No notifications</h3>
-          <p className="text-sm text-zinc-500">When someone interacts with you, it'll show up here</p>
-        </div>
+        <EmptyState
+          icon={Bell}
+          title="No notifications"
+          description="When someone interacts with you, it'll show up here."
+        />
       )}
     </div>
   )

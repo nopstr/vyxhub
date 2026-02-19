@@ -7,6 +7,10 @@ import CreatePost from '../../components/feed/CreatePost'
 import PostCard from '../../components/feed/PostCard'
 import { SkeletonPost } from '../../components/ui/Spinner'
 import { useInView } from 'react-intersection-observer'
+import EmptyState from '../../components/ui/EmptyState'
+import { Compass, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import Button from '../../components/ui/Button'
 
 export default function HomePage() {
   const { user, profile } = useAuthStore()
@@ -83,9 +87,24 @@ export default function HomePage() {
 
       {/* Posts Feed */}
       <div>
-        {posts.map(post => (
-          <PostCard key={post.id} post={post} />
-        ))}
+        {!loading && posts.length === 0 ? (
+          <EmptyState
+            icon={tab === 'foryou' ? Compass : Users}
+            title={tab === 'foryou' ? "No posts yet" : "Your feed is empty"}
+            description={tab === 'foryou' ? "Check back later for new content." : "Follow some creators to see their posts here."}
+            action={
+              tab === 'following' && (
+                <Link to="/explore">
+                  <Button variant="primary">Explore Creators</Button>
+                </Link>
+              )
+            }
+          />
+        ) : (
+          posts.map(post => (
+            <PostCard key={post.id} post={post} />
+          ))
+        )}
 
         {/* Loading */}
         {loading && (

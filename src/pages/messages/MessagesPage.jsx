@@ -96,16 +96,18 @@ function NewMessageModal({ onClose, onSelect }) {
       )}
     </div>
   )
-}function ConversationList({ conversations, activeId, onSelect }) {
+}import EmptyState from '../../components/ui/EmptyState'
+import { MessageSquare } from 'lucide-react'
+
+function ConversationList({ conversations, activeId, onSelect }) {
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-        <div className="w-16 h-16 bg-zinc-800/50 rounded-3xl flex items-center justify-center mb-4">
-          <Send size={28} className="text-zinc-600" />
-        </div>
-        <h3 className="text-lg font-bold text-zinc-300 mb-1">No messages yet</h3>
-        <p className="text-sm text-zinc-500">Start a conversation from a creator's profile</p>
-      </div>
+      <EmptyState
+        icon={MessageSquare}
+        title="No messages yet"
+        description="Start a conversation with a creator or friend."
+        className="h-full"
+      />
     )
   }
 

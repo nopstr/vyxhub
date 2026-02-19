@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
 import PostCard from '../../components/feed/PostCard'
 import { PageLoader } from '../../components/ui/Spinner'
+import EmptyState from '../../components/ui/EmptyState'
 import { Bookmark } from 'lucide-react'
 
 export default function BookmarksPage() {
@@ -48,13 +49,11 @@ export default function BookmarksPage() {
       {posts.length > 0 ? (
         posts.map(post => <PostCard key={post.id} post={post} />)
       ) : (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 bg-zinc-800/50 rounded-3xl flex items-center justify-center mb-4">
-            <Bookmark size={28} className="text-zinc-600" />
-          </div>
-          <h3 className="text-lg font-bold text-zinc-300 mb-1">No bookmarks yet</h3>
-          <p className="text-sm text-zinc-500">Save posts to view them later</p>
-        </div>
+        <EmptyState
+          icon={Bookmark}
+          title="No bookmarks yet"
+          description="Save posts to view them later."
+        />
       )}
     </div>
   )
