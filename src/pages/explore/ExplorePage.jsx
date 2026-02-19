@@ -1,13 +1,34 @@
 import { useState, useEffect } from 'react'
-import { Search, TrendingUp, Filter, ShieldCheck, FileText } from 'lucide-react'
+import { Search, TrendingUp, Filter, ShieldCheck, FileText, Hash, Grid3x3 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
+import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
 import PostCard from '../../components/feed/PostCard'
 import { SkeletonPost } from '../../components/ui/Spinner'
-import { Link } from 'react-router-dom'
-import { debounce, formatNumber } from '../../lib/utils'
+import { Link, useSearchParams } from 'react-router-dom'
+import { debounce, formatNumber, cn } from '../../lib/utils'
+
+const CATEGORIES = [
+  { key: null, label: 'All' },
+  { key: 'photos', label: 'Photos' },
+  { key: 'videos', label: 'Videos' },
+  { key: 'fitness', label: 'Fitness' },
+  { key: 'cosplay', label: 'Cosplay' },
+  { key: 'lifestyle', label: 'Lifestyle' },
+  { key: 'artistic', label: 'Artistic' },
+  { key: 'gaming', label: 'Gaming' },
+  { key: 'fashion', label: 'Fashion' },
+]
+
+const POST_SELECT = `
+  *,
+  author:profiles!author_id(*),
+  media(*),
+  likes(user_id, reaction_type),
+  bookmarks(user_id)
+`
 
 function CreatorCard({ profile }) {
   return (
@@ -62,11 +83,69 @@ export default function ExplorePage() {
   const [search, setSearch] = useState('')
   const [creators, setCreators] = useState([])
   const [posts, setPosts] = useState([])
+  const [trendingHashtags, setTrendingHashtags] = useState([])
+  const [selectedCategory, setSelectedCategory] = useState(null)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuthStore()
+  const [searchParams] = useSearchParams()
+
+  // Check URL for ?tag= parameter
+  useEffect(() => {
+    const tagParam = searchParams.get('tag')
+    if (tagParam) {
+      setSearch(`#${tagParam}`)
+      setTab('posts')
+      handleHashtagSearch(tagParam)
+    }
+  }, [searchParams])
 
   useEffect(() => {
-    fetchContent()
-  }, [tab])
+    if (!searchParams.get('tag')) {
+      fetchContent()
+    }
+  }, [tab, selectedCategory])
+
+  // Fetch trending hashtags on mount
+  useEffect(() => {
+    fetchTrendingHashtags()
+  }, [])
+
+  const fetchTrendingHashtags = async () => {
+    const { data } = await supabase.rpc('trending_hashtags', { p_limit: 8 })
+    setTrendingHashtags(data || [])
+  }
+
+  const handleHashtagSearch = async (tag) => {
+    setLoading(true)
+    try {
+      // A2: Use explore_posts RPC with hashtag filter
+      const { data: exploreData } = await supabase.rpc('explore_posts', {
+        p_user_id: user?.id || null,
+        p_hashtag: tag.toLowerCase(),
+        p_sort: 'trending',
+        p_limit: 20,
+        p_offset: 0,
+      })
+
+      if (exploreData?.length > 0) {
+        const postIds = exploreData.map(p => p.post_id)
+        const { data: fullPosts } = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .in('id', postIds)
+
+        if (fullPosts?.length) await resolvePostMediaUrls(fullPosts)
+        const idOrder = new Map(postIds.map((id, i) => [id, i]))
+        setPosts((fullPosts || []).sort((a, b) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99)))
+      } else {
+        setPosts([])
+      }
+    } catch (err) {
+      console.error('Hashtag search error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const fetchContent = async () => {
     setLoading(true)
@@ -81,31 +160,46 @@ export default function ExplorePage() {
 
       setCreators(creatorData || [])
 
-      // Fetch posts — trending (by engagement) or latest (by date)
-      let postQuery = supabase
-        .from('posts')
-        .select(`
-          *,
-          author:profiles!author_id(*),
-          media(*),
-          likes(user_id, reaction_type),
-          bookmarks(user_id)
-        `)
-        .eq('visibility', 'public')
-        .limit(20)
+      // A2: Use explore_posts RPC for trending/latest/top with category filter
+      if (tab === 'trending' || tab === 'latest') {
+        const { data: exploreData } = await supabase.rpc('explore_posts', {
+          p_user_id: user?.id || null,
+          p_category: selectedCategory,
+          p_sort: tab === 'latest' ? 'latest' : 'trending',
+          p_limit: 20,
+          p_offset: 0,
+        })
 
-      if (tab === 'latest') {
-        postQuery = postQuery.order('created_at', { ascending: false })
-      } else {
-        postQuery = postQuery.order('like_count', { ascending: false })
+        if (exploreData?.length > 0) {
+          const postIds = exploreData.map(p => p.post_id)
+          const { data: fullPosts } = await supabase
+            .from('posts')
+            .select(POST_SELECT)
+            .in('id', postIds)
+
+          if (fullPosts?.length) await resolvePostMediaUrls(fullPosts)
+          const idOrder = new Map(postIds.map((id, i) => [id, i]))
+          setPosts((fullPosts || []).sort((a, b) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99)))
+        } else {
+          // Fallback to direct query
+          let postQuery = supabase
+            .from('posts')
+            .select(POST_SELECT)
+            .eq('visibility', 'public')
+            .limit(20)
+
+          if (selectedCategory) postQuery = postQuery.eq('category', selectedCategory)
+          if (tab === 'latest') {
+            postQuery = postQuery.order('created_at', { ascending: false })
+          } else {
+            postQuery = postQuery.order('like_count', { ascending: false })
+          }
+
+          const { data: postData } = await postQuery
+          if (postData?.length) await resolvePostMediaUrls(postData)
+          setPosts(postData || [])
+        }
       }
-
-      const { data: postData } = await postQuery
-
-      setPosts(postData || [])
-
-      // Resolve protected media to signed URLs
-      if (postData?.length) await resolvePostMediaUrls(postData)
     } catch (err) {
       console.error('Explore fetch error:', err)
     } finally {
@@ -116,6 +210,13 @@ export default function ExplorePage() {
   const handleSearch = debounce(async (query) => {
     if (!query.trim()) {
       fetchContent()
+      return
+    }
+
+    // Check if searching for a hashtag
+    if (query.startsWith('#') && query.length > 1) {
+      setTab('posts')
+      handleHashtagSearch(query.slice(1))
       return
     }
 
@@ -134,13 +235,7 @@ export default function ExplorePage() {
     const tsQuery = query.trim().split(/\s+/).join(' & ')
     const { data: postData } = await supabase
       .from('posts')
-      .select(`
-        *,
-        author:profiles!author_id(*),
-        media(*),
-        likes(user_id, reaction_type),
-        bookmarks(user_id)
-      `)
+      .select(POST_SELECT)
       .textSearch('search_vector', tsQuery, { type: 'plain' })
       .eq('visibility', 'public')
       .order('created_at', { ascending: false })
@@ -162,7 +257,7 @@ export default function ExplorePage() {
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); handleSearch(e.target.value) }}
-            placeholder="Search creators, posts..."
+            placeholder="Search creators, posts, #hashtags..."
             className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors"
           />
         </div>
@@ -187,6 +282,43 @@ export default function ExplorePage() {
           </button>
         ))}
       </div>
+
+      {/* A2: Category filter bar (for trending/latest tabs) */}
+      {(tab === 'trending' || tab === 'latest') && (
+        <div className="flex gap-2 px-5 py-3 overflow-x-auto no-scrollbar border-b border-zinc-800/30">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.key || 'all'}
+              onClick={() => setSelectedCategory(cat.key)}
+              className={cn(
+                'px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
+                selectedCategory === cat.key
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-700/50'
+              )}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* A2: Trending hashtags bar (on trending tab) */}
+      {tab === 'trending' && trendingHashtags.length > 0 && (
+        <div className="flex gap-2 px-5 py-3 overflow-x-auto no-scrollbar">
+          {trendingHashtags.map(tag => (
+            <Link
+              key={tag.hashtag_name}
+              to={`/explore?tag=${tag.hashtag_name}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold whitespace-nowrap hover:bg-indigo-500/20 transition-colors"
+            >
+              <Hash size={12} />
+              {tag.hashtag_name}
+              <span className="text-indigo-500/60">{formatNumber(tag.recent_posts)}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       {/* Content */}
       <div className="p-5">

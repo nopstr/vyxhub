@@ -7,8 +7,10 @@ import Avatar from '../../components/ui/Avatar'
 import { PageLoader } from '../../components/ui/Spinner'
 import { cn, formatNumber } from '../../lib/utils'
 
-function ReelCard({ reel, isActive, userLikes }) {
+function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
   const videoRef = useRef(null)
+  const watchTimeRef = useRef(0)
+  const watchIntervalRef = useRef(null)
   const [playing, setPlaying] = useState(false)
   const [muted, setMuted] = useState(true)
   // Initialize liked state from existing user likes
@@ -21,10 +23,25 @@ function ReelCard({ reel, isActive, userLikes }) {
     if (isActive) {
       videoRef.current.play().catch(() => {})
       setPlaying(true)
+      // A8: Start tracking watch time
+      watchTimeRef.current = 0
+      watchIntervalRef.current = setInterval(() => {
+        watchTimeRef.current += 1
+      }, 1000)
     } else {
       videoRef.current.pause()
       videoRef.current.currentTime = 0
       setPlaying(false)
+      // Report watch time when leaving this reel
+      if (watchIntervalRef.current) {
+        clearInterval(watchIntervalRef.current)
+        if (watchTimeRef.current > 0) {
+          onWatchTime?.(reel.id, watchTimeRef.current)
+        }
+      }
+    }
+    return () => {
+      if (watchIntervalRef.current) clearInterval(watchIntervalRef.current)
     }
   }, [isActive])
 
@@ -40,15 +57,22 @@ function ReelCard({ reel, isActive, userLikes }) {
 
   const handleLike = async () => {
     if (!user) return
-    setLiked(!liked)
-    setLikeCount(c => liked ? c - 1 : c + 1)
+    const wasLiked = liked
+    setLiked(!wasLiked)
+    setLikeCount(c => wasLiked ? c - 1 : c + 1)
     try {
-      if (liked) {
-        await supabase.from('likes').delete().match({ post_id: reel.id, user_id: user.id })
+      if (wasLiked) {
+        const { error } = await supabase.from('likes').delete().match({ post_id: reel.id, user_id: user.id, reaction_type: 'heart' })
+        if (error) throw error
       } else {
-        await supabase.from('likes').insert({ post_id: reel.id, user_id: user.id })
+        const { error } = await supabase.from('likes').insert({ post_id: reel.id, user_id: user.id, reaction_type: 'heart' })
+        if (error) throw error
       }
-    } catch { /* revert silently */ }
+    } catch {
+      // Revert on failure
+      setLiked(wasLiked)
+      setLikeCount(c => wasLiked ? c + 1 : c - 1)
+    }
   }
 
   const mediaUrl = reel.media?.[0]?.signedUrl || reel.media?.[0]?.url || ''
@@ -141,32 +165,64 @@ export default function ReelsPage() {
   const [loading, setLoading] = useState(true)
   const [activeIndex, setActiveIndex] = useState(0)
   const [userLikes, setUserLikes] = useState(new Set())
+  const [page, setPage] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const containerRef = useRef(null)
   const { user } = useAuthStore()
+  const PAGE_SIZE = 20
 
   useEffect(() => {
-    fetchReels()
+    fetchReels(true)
   }, [])
 
-  const fetchReels = async () => {
-    try {
-      const { data } = await supabase
-        .from('posts')
-        .select('*, author:profiles!author_id(id, username, display_name, avatar_url, is_verified), media(*), likes(user_id, reaction_type)')
-        .order('created_at', { ascending: false })
-        .limit(50)
+  const fetchReels = async (reset = false) => {
+    if (!reset && loadingMore) return
+    if (reset) setLoading(true)
+    else setLoadingMore(true)
 
-      // Filter to posts that actually have video media
-      const videoReels = (data || []).filter(p =>
-        p.media?.some(m => m.media_type === 'video')
-      )
+    try {
+      const currentPage = reset ? 0 : page
+      const offset = currentPage * PAGE_SIZE
+      let videoReels = []
+
+      // A8: Use personalized_reels RPC for engagement-weighted feed
+      const { data: reelData, error: reelError } = await supabase.rpc('personalized_reels', {
+        p_user_id: user?.id || null,
+        p_limit: PAGE_SIZE,
+        p_offset: offset,
+      })
+
+      if (!reelError && reelData?.length > 0) {
+        const postIds = reelData.map(r => r.post_id)
+        const { data: fullPosts } = await supabase
+          .from('posts')
+          .select('*, author:profiles!author_id(id, username, display_name, avatar_url, is_verified), media(*), likes(user_id, reaction_type)')
+          .in('id', postIds)
+
+        // Sort by personalized order
+        const idOrder = new Map(postIds.map((id, i) => [id, i]))
+        videoReels = (fullPosts || [])
+          .filter(p => p.media?.some(m => m.media_type === 'video'))
+          .sort((a, b) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99))
+      } else {
+        // Fallback to direct query
+        const { data } = await supabase
+          .from('posts')
+          .select('*, author:profiles!author_id(id, username, display_name, avatar_url, is_verified), media(*), likes(user_id, reaction_type)')
+          .eq('post_type', 'video')
+          .order('created_at', { ascending: false })
+          .range(offset, offset + PAGE_SIZE - 1)
+
+        videoReels = (data || []).filter(p => p.media?.some(m => m.media_type === 'video'))
+      }
 
       // Resolve storage paths to signed URLs
       await resolvePostMediaUrls(videoReels)
 
       // Initialize user's like state from fetched data
       if (user) {
-        const likedSet = new Set()
+        const likedSet = reset ? new Set() : new Set(userLikes)
         videoReels.forEach(reel => {
           if (reel.likes?.some(l => l.user_id === user.id)) {
             likedSet.add(reel.id)
@@ -175,13 +231,32 @@ export default function ReelsPage() {
         setUserLikes(likedSet)
       }
 
-      setReels(videoReels)
+      if (reset) {
+        setReels(videoReels)
+        setPage(1)
+      } else {
+        setReels(prev => [...prev, ...videoReels])
+        setPage(currentPage + 1)
+      }
+      setHasMore(videoReels.length === PAGE_SIZE)
     } catch (err) {
       console.error('Failed to fetch reels:', err)
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
+
+  // A8: Track watch time
+  const handleWatchTime = useCallback((postId, seconds) => {
+    if (!user || seconds < 2) return
+    supabase.rpc('track_reel_view', {
+      p_user_id: user.id,
+      p_post_id: postId,
+      p_watch_time: seconds,
+      p_completed: seconds >= 10,
+    }).catch(() => {})
+  }, [user])
 
   const handleScroll = useCallback(() => {
     if (!containerRef.current) return
@@ -192,7 +267,11 @@ export default function ReelsPage() {
     if (newIndex !== activeIndex) {
       setActiveIndex(newIndex)
     }
-  }, [activeIndex])
+    // A8: Infinite scroll — load more when near end
+    if (newIndex >= reels.length - 3 && hasMore && !loadingMore) {
+      fetchReels(false)
+    }
+  }, [activeIndex, reels.length, hasMore, loadingMore])
 
   const scrollTo = (direction) => {
     if (!containerRef.current) return
@@ -231,7 +310,7 @@ export default function ReelsPage() {
       >
         {reels.map((reel, i) => (
           <div key={reel.id} className="h-[100dvh] w-full">
-            <ReelCard reel={reel} isActive={i === activeIndex} userLikes={userLikes} />
+            <ReelCard reel={reel} isActive={i === activeIndex} userLikes={userLikes} onWatchTime={handleWatchTime} />
           </div>
         ))}
       </div>

@@ -1,24 +1,32 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
-import { Search, Flame, ShieldCheck } from 'lucide-react'
+import { Search, Flame, ShieldCheck, Hash, TrendingUp } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
-import { debounce } from '../../lib/utils'
+import { debounce, formatNumber } from '../../lib/utils'
 
 function TrendingSection() {
   const [trending, setTrending] = useState([])
 
-  useEffect(() => {
-    fetchTrending()
-  }, [])
-
   const fetchTrending = async () => {
-    // Get creators with most followers as "trending"
+    // A3: Try materialized view first (velocity-based trending)
+    const { data: matData, error: matError } = await supabase
+      .from('trending_creators')
+      .select('*')
+      .order('trending_score', { ascending: false })
+      .limit(4)
+
+    if (!matError && matData?.length > 0) {
+      setTrending(matData)
+      return
+    }
+
+    // Fallback: popularity sort
     const { data } = await supabase
       .from('profiles')
-      .select('username, display_name, avatar_url, is_verified, follower_count')
+      .select('id, username, display_name, avatar_url, is_verified, follower_count')
       .eq('is_creator', true)
       .order('follower_count', { ascending: false })
       .limit(4)
@@ -26,15 +34,22 @@ function TrendingSection() {
     setTrending(data || [])
   }
 
+  useEffect(() => {
+    fetchTrending()
+  }, [])
+
   if (trending.length === 0) return null
 
   return (
     <section>
-      <h3 className="font-bold text-sm text-zinc-400 uppercase tracking-wider mb-4 px-1">Trending Creators</h3>
+      <h3 className="font-bold text-sm text-zinc-400 uppercase tracking-wider mb-4 px-1 flex items-center gap-1.5">
+        <TrendingUp size={14} className="text-orange-400" />
+        Trending Creators
+      </h3>
       <div className="space-y-1">
         {trending.map(creator => (
           <Link
-            key={creator.username}
+            key={creator.username || creator.id}
             to={`/@${creator.username}`}
             className="block p-3 rounded-2xl hover:bg-zinc-800/30 cursor-pointer transition-colors"
           >
@@ -47,7 +62,48 @@ function TrendingSection() {
                 </div>
                 <p className="text-xs text-zinc-500">@{creator.username}</p>
               </div>
+              {creator.new_followers_24h > 0 && (
+                <span className="text-[10px] text-orange-400 font-bold bg-orange-500/10 px-1.5 py-0.5 rounded-md">
+                  +{formatNumber(creator.new_followers_24h)}
+                </span>
+              )}
             </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function TrendingHashtags() {
+  const [hashtags, setHashtags] = useState([])
+
+  const fetchHashtags = async () => {
+    const { data } = await supabase.rpc('trending_hashtags', { p_limit: 5 })
+    setHashtags(data || [])
+  }
+
+  useEffect(() => {
+    fetchHashtags()
+  }, [])
+
+  if (hashtags.length === 0) return null
+
+  return (
+    <section>
+      <h3 className="font-bold text-sm text-zinc-400 uppercase tracking-wider mb-4 px-1 flex items-center gap-1.5">
+        <Hash size={14} className="text-indigo-400" />
+        Trending Tags
+      </h3>
+      <div className="space-y-1">
+        {hashtags.map(tag => (
+          <Link
+            key={tag.hashtag_name}
+            to={`/explore?tag=${tag.hashtag_name}`}
+            className="block p-2.5 rounded-2xl hover:bg-zinc-800/30 cursor-pointer transition-colors"
+          >
+            <p className="text-sm font-bold text-white">#{tag.hashtag_name}</p>
+            <p className="text-xs text-zinc-500">{formatNumber(tag.hashtag_post_count)} posts · {formatNumber(tag.recent_posts)} today</p>
           </Link>
         ))}
       </div>
@@ -59,12 +115,31 @@ function SuggestedCreators() {
   const { user } = useAuthStore()
   const [suggestions, setSuggestions] = useState([])
 
-  useEffect(() => {
-    fetchSuggestions()
-  }, [user])
-
   const fetchSuggestions = async () => {
-    // Get creators the user doesn't follow yet
+    // A4: Try collaborative filtering RPC first
+    if (user) {
+      const { data: cfData, error: cfError } = await supabase
+        .rpc('suggest_creators', { p_user_id: user.id, p_limit: 5 })
+
+      if (!cfError && cfData?.length > 0) {
+        setSuggestions(cfData)
+        return
+      }
+    }
+
+    // Fallback: popularity with exclusion
+    let excludeIds = []
+    if (user) {
+      excludeIds.push(user.id)
+      const { data: followed } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id)
+      if (followed?.length) {
+        excludeIds.push(...followed.map(f => f.following_id))
+      }
+    }
+
     let query = supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, is_verified, follower_count')
@@ -72,13 +147,17 @@ function SuggestedCreators() {
       .order('follower_count', { ascending: false })
       .limit(5)
 
-    if (user) {
-      query = query.neq('id', user.id)
+    if (excludeIds.length > 0) {
+      query = query.not('id', 'in', `(${excludeIds.join(',')})`)
     }
 
     const { data } = await query
     setSuggestions(data || [])
   }
+
+  useEffect(() => {
+    fetchSuggestions()
+  }, [user])
 
   if (suggestions.length === 0) return null
 
@@ -88,7 +167,7 @@ function SuggestedCreators() {
       <div className="space-y-2">
         {suggestions.map(creator => (
           <Link
-            key={creator.id}
+            key={creator.creator_id || creator.id}
             to={`/@${creator.username}`}
             className="flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors"
           >
@@ -108,18 +187,13 @@ function SuggestedCreators() {
 }
 
 export default function RightPanel() {
-  const { profile } = useAuthStore()
   const location = useLocation()
   const navigate = useNavigate()
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [showResults, setShowResults] = useState(false)
 
-  // Hide on certain pages
-  if (['/messages', '/settings'].some(p => location.pathname.startsWith(p))) {
-    return null
-  }
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const performSearch = useCallback(
     debounce(async (query) => {
       if (!query || query.length < 2) {
@@ -138,6 +212,11 @@ export default function RightPanel() {
     }, 300),
     []
   )
+
+  // Hide on certain pages
+  if (['/messages', '/settings'].some(p => location.pathname.startsWith(p))) {
+    return null
+  }
 
   const handleSearch = (e) => {
     const q = e.target.value
@@ -185,6 +264,7 @@ export default function RightPanel() {
 
       <div className="space-y-8">
         <TrendingSection />
+        <TrendingHashtags />
         <SuggestedCreators />
 
         {/* Footer Links */}

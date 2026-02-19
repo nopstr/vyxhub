@@ -1,0 +1,499 @@
+================================================================================
+TIER 5: ALGORITHM DEVELOPMENT
+Date: February 19, 2026
+Current Maturity: ~15%
+================================================================================
+
+OVERVIEW
+--------
+VyxHub has the skeleton of a feed algorithm but zero personalization. Every user
+sees the same globally-ranked "For You" feed. The trending section is fake
+(popularity leaderboard), suggested creators don't use collaborative filtering,
+and the explore page has no content category or hashtag system. This tier covers
+all algorithmic improvements needed to reach feature parity with modern social
+media platforms.
+
+CURRENT ALGORITHM STATE
+-----------------------
+1. calculate_hot_score(likes, comments, views, created_at):
+   Score = (likes×2 + comments×3 + views×0.1) / (age_hours + 2)^1.5
+   
+   Issues:
+   - Was mislabeled IMMUTABLE (uses NOW()) → FIXED to STABLE
+   - No personalization component
+   - No negative signals (hide, scroll-past)
+   - No content diversity enforcement
+
+2. ranked_posts view:
+   SELECT *, calculate_hot_score(...) AS hot_score
+   FROM posts WHERE visibility = 'public'
+   ORDER BY hot_score DESC
+   
+   Issues:
+   - No blocked/muted user filtering (view bypasses RLS)
+   - Only public posts (subscribers-only posts never appear in For You)
+   - No SECURITY INVOKER (PG 15+ feature)
+
+3. Trending:
+   Fake — just profiles ORDER BY follower_count DESC
+   No time dimension, no engagement velocity
+
+4. Suggestions:
+   Top creators by follower_count, now excluding followed users (fixed)
+   No collaborative filtering, no interest matching
+
+================================================================================
+A1. FEED PERSONALIZATION ENGINE
+================================================================================
+Priority: CRITICAL
+Status: NOT STARTED
+Effort: 2-3 days
+
+PROBLEM:
+Every user sees the same "For You" feed. A user who only watches video reels
+gets the same text-heavy feed as everyone else. A user who follows specific
+creators sees no boost for content from similar creators.
+
+SOLUTION — USER AFFINITY SCORING:
+
+Database Schema:
+  CREATE TABLE user_affinities (
+    user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    creator_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+    affinity_score FLOAT DEFAULT 0.0,
+    interaction_count INT DEFAULT 0,
+    last_interaction TIMESTAMPTZ DEFAULT NOW(),
+    content_type_weights JSONB DEFAULT '{"post":1,"set":1,"video":1,"reel":1}',
+    PRIMARY KEY (user_id, creator_id)
+  );
+  CREATE INDEX idx_user_affinities_score ON user_affinities(user_id, affinity_score DESC);
+
+Affinity Update Triggers (on user actions):
+  - Like a post: affinity += 1.0
+  - Comment on a post: affinity += 2.0
+  - Bookmark a post: affinity += 1.5
+  - View a post >3 seconds: affinity += 0.1
+  - Purchase PPV content: affinity += 5.0
+  - Subscribe to creator: affinity += 10.0
+  - Unsubscribe: affinity -= 5.0
+  - Block/mute: affinity = -100 (permanent exclusion)
+  
+  Each affinity update also increments interaction_count and updates
+  last_interaction timestamp.
+
+Affinity Decay (daily cron):
+  UPDATE user_affinities
+  SET affinity_score = affinity_score * 0.95
+  WHERE last_interaction < NOW() - INTERVAL '7 days';
+  
+  This 5% daily decay ensures stale affinities don't dominate.
+
+Personalized Feed Query:
+  CREATE OR REPLACE FUNCTION personalized_feed(
+    p_user_id UUID,
+    p_limit INT DEFAULT 20,
+    p_offset INT DEFAULT 0
+  ) RETURNS TABLE (id UUID, hot_score FLOAT, personal_score FLOAT) AS $$
+  BEGIN
+    RETURN QUERY
+    SELECT
+      p.id,
+      calculate_hot_score(p.like_count, p.comment_count, p.view_count, p.created_at) AS hot_score,
+      (calculate_hot_score(p.like_count, p.comment_count, p.view_count, p.created_at)
+       * COALESCE(ua.affinity_score, 1.0)
+       * CASE WHEN p.author_id IN (SELECT following_id FROM follows WHERE follower_id = p_user_id) THEN 1.5 ELSE 1.0 END
+      ) AS personal_score
+    FROM posts p
+    LEFT JOIN user_affinities ua ON ua.user_id = p_user_id AND ua.creator_id = p.author_id
+    WHERE p.visibility = 'public'
+      AND p.author_id NOT IN (SELECT blocked_id FROM blocks WHERE blocker_id = p_user_id)
+      AND p.author_id NOT IN (SELECT blocker_id FROM blocks WHERE blocked_id = p_user_id)
+    ORDER BY personal_score DESC
+    LIMIT p_limit OFFSET p_offset;
+  END;
+  $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+Frontend Integration:
+  - postStore.fetchFeed() calls supabase.rpc('personalized_feed', { p_user_id, p_limit, p_offset })
+  - Falls back to ranked_posts if user not logged in (anonymous feed)
+
+================================================================================
+A2. CONTENT DISCOVERY / EXPLORE ALGORITHM
+================================================================================
+Priority: HIGH
+Status: NOT STARTED
+Effort: 3-4 days
+
+PROBLEM:
+Explore page has no content categories, no hashtags, and no "because you liked X"
+recommendations. Users can't browse by topic or find creators in their niche.
+
+SOLUTION — HASHTAG + CATEGORY SYSTEM:
+
+Database Schema:
+  CREATE TABLE hashtags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT UNIQUE NOT NULL,
+    post_count INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  );
+  CREATE INDEX idx_hashtags_name ON hashtags(name);
+  CREATE INDEX idx_hashtags_count ON hashtags(post_count DESC);
+  
+  CREATE TABLE post_hashtags (
+    post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
+    hashtag_id UUID REFERENCES hashtags(id) ON DELETE CASCADE,
+    PRIMARY KEY (post_id, hashtag_id)
+  );
+  
+  ALTER TABLE posts ADD COLUMN category TEXT CHECK (
+    category IN ('photos', 'videos', 'fitness', 'cosplay', 'lifestyle',
+                 'artistic', 'gaming', 'music', 'cooking', 'fashion', 'other')
+  );
+
+Auto-Extract Hashtags Trigger:
+  CREATE OR REPLACE FUNCTION extract_hashtags() RETURNS TRIGGER AS $$
+  DECLARE
+    tag TEXT;
+    tag_id UUID;
+  BEGIN
+    -- Extract #hashtags from post content
+    FOR tag IN
+      SELECT DISTINCT lower(regexp_matches[1])
+      FROM regexp_matches(NEW.content, '#([a-zA-Z0-9_]+)', 'g')
+    LOOP
+      -- Upsert hashtag
+      INSERT INTO hashtags (name) VALUES (tag)
+      ON CONFLICT (name) DO UPDATE SET post_count = hashtags.post_count + 1
+      RETURNING id INTO tag_id;
+      
+      -- Link post to hashtag
+      INSERT INTO post_hashtags (post_id, hashtag_id) VALUES (NEW.id, tag_id)
+      ON CONFLICT DO NOTHING;
+    END LOOP;
+    RETURN NEW;
+  END;
+  $$ LANGUAGE plpgsql;
+
+Explore Algorithm RPC:
+  CREATE OR REPLACE FUNCTION explore_posts(
+    p_user_id UUID DEFAULT NULL,
+    p_category TEXT DEFAULT NULL,
+    p_hashtag TEXT DEFAULT NULL,
+    p_sort TEXT DEFAULT 'trending',  -- 'trending', 'latest', 'top'
+    p_limit INT DEFAULT 20,
+    p_offset INT DEFAULT 0
+  ) RETURNS TABLE (post_id UUID, score FLOAT) AS $$
+  BEGIN
+    RETURN QUERY
+    SELECT p.id,
+      CASE p_sort
+        WHEN 'trending' THEN
+          -- Engagement velocity: recent engagement weighted heavily
+          (SELECT COUNT(*) FROM likes WHERE post_id = p.id AND created_at > NOW() - INTERVAL '4 hours')::FLOAT * 10.0
+          + (SELECT COUNT(*) FROM comments WHERE post_id = p.id AND created_at > NOW() - INTERVAL '4 hours')::FLOAT * 15.0
+          + p.view_count::FLOAT * 0.01
+        WHEN 'latest' THEN EXTRACT(EPOCH FROM p.created_at)
+        WHEN 'top' THEN p.like_count::FLOAT * 2 + p.comment_count::FLOAT * 3
+        ELSE 0
+      END AS score
+    FROM posts p
+    LEFT JOIN post_hashtags ph ON ph.post_id = p.id
+    LEFT JOIN hashtags h ON h.id = ph.hashtag_id
+    WHERE p.visibility = 'public'
+      AND (p_category IS NULL OR p.category = p_category)
+      AND (p_hashtag IS NULL OR h.name = lower(p_hashtag))
+    ORDER BY score DESC
+    LIMIT p_limit OFFSET p_offset;
+  END;
+  $$ LANGUAGE plpgsql STABLE;
+
+Frontend Integration:
+  - ExplorePage: add category tabs, hashtag cloud, search-by-hashtag
+  - PostCard: render #hashtags as clickable links → /explore?tag=name
+  - CreatePost: add category dropdown
+
+================================================================================
+A3. TRENDING DETECTION (TIME-WINDOWED)
+================================================================================
+Priority: HIGH
+Status: NOT STARTED
+Effort: 2 days
+
+PROBLEM:
+"Trending" section shows top creators by all-time follower_count. A creator who
+gained 10,000 followers a year ago but has been inactive ranks above a creator
+who gained 500 followers today. No engagement velocity detection.
+
+SOLUTION — VELOCITY-BASED TRENDING:
+
+Materialized View (refreshed by cron every 15 min):
+  CREATE MATERIALIZED VIEW trending_creators AS
+  SELECT
+    p.id,
+    p.username,
+    p.display_name,
+    p.avatar_url,
+    p.is_verified,
+    p.follower_count,
+    -- New followers in last 24h
+    (SELECT COUNT(*) FROM follows WHERE following_id = p.id
+     AND created_at > NOW() - INTERVAL '24 hours') AS new_followers_24h,
+    -- Post engagement in last 24h
+    (SELECT COALESCE(SUM(like_count + comment_count), 0) FROM posts
+     WHERE author_id = p.id AND created_at > NOW() - INTERVAL '24 hours') AS engagement_24h,
+    -- Trending score
+    (
+      (SELECT COUNT(*) FROM follows WHERE following_id = p.id
+       AND created_at > NOW() - INTERVAL '24 hours')::FLOAT * 5.0
+      + (SELECT COALESCE(SUM(like_count), 0) FROM posts
+         WHERE author_id = p.id AND created_at > NOW() - INTERVAL '24 hours')::FLOAT * 2.0
+      + (SELECT COALESCE(SUM(comment_count), 0) FROM posts
+         WHERE author_id = p.id AND created_at > NOW() - INTERVAL '24 hours')::FLOAT * 3.0
+    ) AS trending_score
+  FROM profiles p
+  WHERE p.is_creator = TRUE
+  ORDER BY trending_score DESC
+  LIMIT 50;
+  
+  CREATE UNIQUE INDEX idx_trending_creators_id ON trending_creators(id);
+
+  CREATE MATERIALIZED VIEW trending_posts AS
+  SELECT
+    p.id,
+    p.like_count,
+    p.comment_count,
+    p.view_count,
+    p.created_at,
+    -- Engagement velocity: likes+comments in last 4h
+    (SELECT COUNT(*) FROM likes WHERE post_id = p.id
+     AND created_at > NOW() - INTERVAL '4 hours') AS recent_likes,
+    (SELECT COUNT(*) FROM comments WHERE post_id = p.id
+     AND created_at > NOW() - INTERVAL '4 hours') AS recent_comments,
+    -- Velocity score
+    (
+      (SELECT COUNT(*) FROM likes WHERE post_id = p.id
+       AND created_at > NOW() - INTERVAL '4 hours')::FLOAT * 3.0
+      + (SELECT COUNT(*) FROM comments WHERE post_id = p.id
+         AND created_at > NOW() - INTERVAL '4 hours')::FLOAT * 5.0
+    ) / GREATEST(EXTRACT(EPOCH FROM (NOW() - p.created_at)) / 3600.0, 1.0) AS velocity_score
+  FROM posts p
+  WHERE p.visibility = 'public'
+    AND p.created_at > NOW() - INTERVAL '7 days'
+  ORDER BY velocity_score DESC
+  LIMIT 100;
+
+Refresh Function:
+  CREATE OR REPLACE FUNCTION refresh_trending() RETURNS VOID AS $$
+  BEGIN
+    REFRESH MATERIALIZED VIEW CONCURRENTLY trending_creators;
+    REFRESH MATERIALIZED VIEW CONCURRENTLY trending_posts;
+  END;
+  $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+Frontend Integration:
+  - RightPanel TrendingSection: query trending_creators view instead of profiles
+  - ExplorePage: trending tab queries trending_posts view
+  - Schedule refresh_trending() via pg_cron or Supabase Edge Function
+
+================================================================================
+A4. COLLABORATIVE FILTERING (SUGGESTED CREATORS)
+================================================================================
+Priority: MEDIUM
+Status: NOT STARTED
+Effort: 1-2 days
+
+PROBLEM:
+Suggestions show top-N creators by follower count. They're the same for every
+user (after excluding already-followed). A new user gets reasonable suggestions,
+but long-term users see the same creators indefinitely.
+
+SOLUTION — CO-FOLLOW RECOMMENDATIONS:
+
+  CREATE OR REPLACE FUNCTION suggest_creators(p_user_id UUID, p_limit INT DEFAULT 5)
+  RETURNS TABLE (creator_id UUID, overlap_score INT) AS $$
+  BEGIN
+    -- Find creators followed by people who follow the same creators as you
+    RETURN QUERY
+    WITH my_follows AS (
+      SELECT following_id FROM follows WHERE follower_id = p_user_id
+    ),
+    similar_users AS (
+      -- Users who follow at least 2 of the same creators
+      SELECT f.follower_id, COUNT(*) AS overlap
+      FROM follows f
+      INNER JOIN my_follows mf ON f.following_id = mf.following_id
+      WHERE f.follower_id != p_user_id
+      GROUP BY f.follower_id
+      HAVING COUNT(*) >= 2
+      ORDER BY overlap DESC
+      LIMIT 100
+    ),
+    candidates AS (
+      SELECT f.following_id, SUM(su.overlap)::INT AS score
+      FROM follows f
+      INNER JOIN similar_users su ON f.follower_id = su.follower_id
+      WHERE f.following_id NOT IN (SELECT following_id FROM my_follows)
+        AND f.following_id != p_user_id
+        AND f.following_id NOT IN (SELECT blocked_id FROM blocks WHERE blocker_id = p_user_id)
+        AND EXISTS (SELECT 1 FROM profiles WHERE id = f.following_id AND is_creator = TRUE)
+      GROUP BY f.following_id
+    )
+    SELECT c.following_id AS creator_id, c.score AS overlap_score
+    FROM candidates c
+    ORDER BY c.score DESC
+    LIMIT p_limit;
+    
+    -- Cold start fallback: if not enough results, fill with popular creators
+    IF NOT FOUND THEN
+      RETURN QUERY
+      SELECT p.id, p.follower_count
+      FROM profiles p
+      WHERE p.is_creator = TRUE
+        AND p.id != p_user_id
+        AND p.id NOT IN (SELECT following_id FROM follows WHERE follower_id = p_user_id)
+      ORDER BY p.follower_count DESC
+      LIMIT p_limit;
+    END IF;
+  END;
+  $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+Frontend Integration:
+  - RightPanel SuggestedCreators: call supabase.rpc('suggest_creators', { p_user_id })
+  - Fall back to current query if RPC not available or user not logged in
+
+================================================================================
+A5. FEED DIVERSITY & DEDUPLICATION
+================================================================================
+Priority: MEDIUM
+Status: NOT STARTED
+Effort: 1 day
+
+PROBLEM:
+If one creator goes viral, their posts can dominate the entire "For You" feed.
+No content type mixing — users might see 20 text posts in a row.
+
+SOLUTION — CLIENT-SIDE DIVERSITY ENFORCEMENT:
+
+Algorithm (in postStore.fetchFeed post-processing):
+  function diversifyFeed(posts, maxPerCreator = 3) {
+    const creatorCounts = new Map()
+    const result = []
+    const deferred = []
+    
+    for (const post of posts) {
+      const count = creatorCounts.get(post.author_id) || 0
+      if (count < maxPerCreator) {
+        result.push(post)
+        creatorCounts.set(post.author_id, count + 1)
+      } else {
+        deferred.push(post)
+      }
+    }
+    
+    // Interleave deferred posts at the end
+    return [...result, ...deferred]
+  }
+  
+  function mixContentTypes(posts) {
+    // Group by post_type, then round-robin interleave
+    const groups = { post: [], set: [], video: [], reel: [] }
+    posts.forEach(p => (groups[p.post_type] || groups.post).push(p))
+    
+    const result = []
+    const types = Object.keys(groups).filter(k => groups[k].length > 0)
+    let idx = 0
+    while (result.length < posts.length) {
+      const type = types[idx % types.length]
+      if (groups[type].length > 0) {
+        result.push(groups[type].shift())
+      }
+      idx++
+    }
+    return result
+  }
+
+================================================================================
+A6. BLOCKED/MUTED USER FEED FILTERING
+================================================================================
+Priority: HIGH
+Status: PARTIALLY DONE (RLS on posts table, not on ranked_posts view)
+Effort: 0.5 days
+
+PROBLEM:
+The posts table has block-aware RLS, but ranked_posts view doesn't inherit it.
+Blocked users' posts appear in the "For You" feed.
+
+SOLUTION — INLINE HOT SCORE CALCULATION:
+Switch the feed query to use the posts table directly with inline calculation:
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`
+      *,
+      author:profiles!author_id(*),
+      media(*),
+      likes(user_id, reaction_type),
+      bookmarks(user_id),
+      hot_score:calculate_hot_score(like_count, comment_count, view_count, created_at)
+    `)
+    .eq('visibility', 'public')
+    .order('hot_score', { ascending: false })
+    .range(from, to)
+
+This inherits all RLS policies on the posts table, including block filtering.
+
+NOTE: Supabase may not support computed columns in .select(). Alternative:
+  - Create a personalized_feed() RPC that queries posts directly (inherits RLS)
+  - Client-side calculate hot_score from returned fields
+
+================================================================================
+A7. ENGAGEMENT-WEIGHTED NOTIFICATIONS
+================================================================================
+Priority: LOW
+Status: NOT STARTED
+Effort: 2 days
+
+SOLUTION:
+  - Add priority column to notifications (high/medium/low)
+  - Notifications from high-affinity users = high priority
+  - Group similar notifications: "X and 5 others liked your post"
+  - Client-side grouping: aggregate by (type + reference_id) within time window
+
+================================================================================
+A8. REEL AUTOPLAY ALGORITHM
+================================================================================
+Priority: MEDIUM
+Status: NOT STARTED
+Effort: 2 days
+
+SOLUTION:
+  - Query reels with engagement scoring (not just chronological)
+  - Track watch_time_seconds per view (new column on a reel_views table)
+  - Prefetch next 2 reels while current plays
+  - Infinite scroll with cursor-based pagination
+  - Apply personalization from user_affinities table
+
+================================================================================
+IMPLEMENTATION PRIORITY ORDER
+================================================================================
+
+Phase 1 — Quick Wins (1-2 days):
+  A6. Blocked user feed filtering (0.5 days)
+  A5. Feed diversity enforcement (1 day)
+
+Phase 2 — Core Algorithm (4-5 days):
+  A1. Feed personalization engine (2-3 days)
+  A3. Trending detection (2 days)
+
+Phase 3 — Discovery (3-4 days):
+  A2. Explore algorithm + hashtags (3-4 days)
+
+Phase 4 — Recommendations (2-3 days):
+  A4. Collaborative filtering (1-2 days)
+  A8. Reel autoplay algorithm (2 days)
+
+Phase 5 — Polish (2 days):
+  A7. Engagement-weighted notifications (2 days)
+
+TOTAL ESTIMATED: 12-16 days for full algorithm tier

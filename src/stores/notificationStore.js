@@ -1,8 +1,46 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 
+// A7: Group notifications by type + reference within a time window
+function groupNotifications(notifications) {
+  const groups = []
+  const grouped = new Map()
+
+  for (const notif of notifications) {
+    // Group like + comment notifications by reference_id within 1 hour
+    const canGroup = ['like', 'comment'].includes(notif.notification_type) && notif.reference_id
+    if (!canGroup) {
+      groups.push({ ...notif, grouped: null })
+      continue
+    }
+
+    const key = `${notif.notification_type}:${notif.reference_id}`
+    if (!grouped.has(key)) {
+      grouped.set(key, { ...notif, grouped: { actors: [notif.actor], count: 1 } })
+      groups.push(grouped.get(key))
+    } else {
+      const existing = grouped.get(key)
+      // Only group within 1 hour window
+      const timeDiff = Math.abs(new Date(existing.created_at) - new Date(notif.created_at))
+      if (timeDiff < 3600000) {
+        existing.grouped.actors.push(notif.actor)
+        existing.grouped.count++
+        // Keep unread if any in group is unread
+        if (!notif.is_read) existing.is_read = false
+      } else {
+        groups.push({ ...notif, grouped: null })
+      }
+    }
+  }
+  return groups
+}
+
+// A7: Priority sort order
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 }
+
 export const useNotificationStore = create((set, get) => ({
   notifications: [],
+  groupedNotifications: [],
   unreadCount: 0,
   loading: false,
 
@@ -16,16 +54,25 @@ export const useNotificationStore = create((set, get) => ({
       `)
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
-      .limit(50)
+      .limit(100)
 
     if (error) {
       set({ loading: false })
       return
     }
 
+    // A7: Sort by priority then recency
+    const sorted = (data || []).sort((a, b) => {
+      const pa = PRIORITY_ORDER[a.priority] ?? 1
+      const pb = PRIORITY_ORDER[b.priority] ?? 1
+      if (pa !== pb) return pa - pb
+      return new Date(b.created_at) - new Date(a.created_at)
+    })
+
     set({
-      notifications: data || [],
-      unreadCount: data?.filter(n => !n.is_read).length || 0,
+      notifications: sorted,
+      groupedNotifications: groupNotifications(sorted),
+      unreadCount: sorted.filter(n => !n.is_read).length || 0,
       loading: false,
     })
   },

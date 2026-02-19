@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import {
   Image, Video, Lock, Globe, Users, X, DollarSign,
-  Grid3x3, Film, FileText, Eye, EyeOff, Calendar, Clock
+  Grid3x3, Film, FileText, Eye, EyeOff, Calendar, Clock, Tag
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
@@ -20,6 +20,11 @@ const POST_TYPES = [
   { key: 'video', label: 'Video', icon: Film, description: 'Video content' },
 ]
 
+// A2: Content categories
+const CATEGORIES = [
+  'Photos', 'Videos', 'Fitness', 'Cosplay', 'Lifestyle', 'Artistic', 'Gaming', 'Fashion', 'Other'
+]
+
 export default function CreatePost({ onSuccess }) {
   const { profile, user } = useAuthStore()
   const { createPost } = usePostStore()
@@ -35,6 +40,7 @@ export default function CreatePost({ onSuccess }) {
   const [scheduling, setScheduling] = useState(false)
   const [scheduleDate, setScheduleDate] = useState('')
   const [scheduleTime, setScheduleTime] = useState('')
+  const [category, setCategory] = useState('')
   const fileRef = useRef(null)
   const textRef = useRef(null)
 
@@ -194,6 +200,7 @@ export default function CreatePost({ onSuccess }) {
           userId: user.id,
           price: parsedPrice && parsedPrice > 0 ? parsedPrice : null,
           previewIndices: postType === 'set' ? Array.from(previewIndices) : null,
+          category: category || null,
         })
         toast.success(
           postType === 'set' ? 'Set published!' :
@@ -449,6 +456,19 @@ export default function CreatePost({ onSuccess }) {
                   </div>
                 )}
               </div>
+
+              {/* A2: Category selector */}
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="px-2.5 py-1.5 rounded-xl text-xs font-medium text-zinc-400 bg-transparent hover:bg-zinc-800/50 transition-colors cursor-pointer border-none outline-none appearance-none"
+                style={{ backgroundImage: 'none' }}
+              >
+                <option value="" className="bg-zinc-900">Category</option>
+                {CATEGORIES.map(cat => (
+                  <option key={cat} value={cat.toLowerCase()} className="bg-zinc-900">{cat}</option>
+                ))}
+              </select>
             </div>
 
             <div className="flex items-center gap-3">

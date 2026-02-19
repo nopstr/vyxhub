@@ -23,16 +23,56 @@ const notifIcons = {
   message: { icon: MessageCircle, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
 }
 
+// A7: Priority-based border styling
+const priorityStyles = {
+  high: 'border-l-2 border-l-amber-500/60',
+  medium: '',
+  low: 'opacity-75',
+}
+
 function NotificationItem({ notification, onRead }) {
   const config = notifIcons[notification.notification_type] || notifIcons.follow
   const Icon = config.icon
+  const grouped = notification.grouped
+
+  // A7: Build grouped display text
+  const getGroupedText = () => {
+    if (!grouped || grouped.count <= 1) {
+      return (
+        <>
+          {notification.actor && (
+            <Link to={`/@${notification.actor.username}`} className="font-bold hover:underline">
+              {notification.actor.display_name}
+            </Link>
+          )}{' '}
+          <span className="text-zinc-400">{notification.message || getNotifMessage(notification.notification_type)}</span>
+        </>
+      )
+    }
+
+    const firstActor = grouped.actors[0]
+    const othersCount = grouped.count - 1
+    return (
+      <>
+        {firstActor && (
+          <Link to={`/@${firstActor.username}`} className="font-bold hover:underline">
+            {firstActor.display_name}
+          </Link>
+        )}
+        <span className="text-zinc-400">
+          {' '}and {othersCount} other{othersCount > 1 ? 's' : ''} {getNotifMessage(notification.notification_type)}
+        </span>
+      </>
+    )
+  }
 
   return (
     <div
       onClick={() => !notification.is_read && onRead(notification.id)}
       className={cn(
         'flex items-start gap-4 px-5 py-4 border-b border-zinc-800/50 hover:bg-zinc-900/20 transition-colors cursor-pointer',
-        !notification.is_read && 'bg-indigo-500/[0.03]'
+        !notification.is_read && 'bg-indigo-500/[0.03]',
+        priorityStyles[notification.priority] || ''
       )}
     >
       <div className={cn('p-2.5 rounded-xl flex-shrink-0', config.bg)}>
@@ -41,19 +81,28 @@ function NotificationItem({ notification, onRead }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-2">
-          {notification.actor && (
+          {/* Show stacked avatars for grouped notifications */}
+          {grouped && grouped.count > 1 ? (
+            <div className="flex -space-x-2">
+              {grouped.actors.slice(0, 3).map((actor, i) => (
+                actor && <Link key={actor.id || i} to={`/@${actor.username}`}>
+                  <Avatar src={actor.avatar_url} alt={actor.display_name} size="sm" className="ring-2 ring-[#050505]" />
+                </Link>
+              ))}
+              {grouped.count > 3 && (
+                <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-xs text-zinc-400 ring-2 ring-[#050505]">
+                  +{grouped.count - 3}
+                </div>
+              )}
+            </div>
+          ) : notification.actor ? (
             <Link to={`/@${notification.actor.username}`}>
               <Avatar src={notification.actor.avatar_url} alt={notification.actor.display_name} size="sm" />
             </Link>
-          )}
+          ) : null}
           <div className="min-w-0">
             <p className="text-sm text-zinc-200">
-              {notification.actor && (
-                <Link to={`/@${notification.actor.username}`} className="font-bold hover:underline">
-                  {notification.actor.display_name}
-                </Link>
-              )}{' '}
-              <span className="text-zinc-400">{notification.message || getNotifMessage(notification.notification_type)}</span>
+              {getGroupedText()}
             </p>
             <span className="text-xs text-zinc-600 mt-1 block">
               {formatRelativeTime(notification.created_at)}
@@ -63,7 +112,10 @@ function NotificationItem({ notification, onRead }) {
       </div>
 
       {!notification.is_read && (
-        <div className="w-2 h-2 bg-indigo-500 rounded-full mt-2 flex-shrink-0" />
+        <div className={cn(
+          'w-2 h-2 rounded-full mt-2 flex-shrink-0',
+          notification.priority === 'high' ? 'bg-amber-500' : 'bg-indigo-500'
+        )} />
       )}
     </div>
   )
@@ -86,7 +138,7 @@ function getNotifMessage(type) {
 
 export default function NotificationsPage() {
   const { user } = useAuthStore()
-  const { notifications, loading, unreadCount, fetchNotifications, markAsRead, markAllAsRead, subscribeToNotifications } = useNotificationStore()
+  const { groupedNotifications, loading, unreadCount, fetchNotifications, markAsRead, markAllAsRead, subscribeToNotifications } = useNotificationStore()
 
   useEffect(() => {
     if (user) {
@@ -109,9 +161,9 @@ export default function NotificationsPage() {
         )}
       </header>
 
-      {notifications.length > 0 ? (
+      {groupedNotifications.length > 0 ? (
         <div>
-          {notifications.map(notif => (
+          {groupedNotifications.map(notif => (
             <NotificationItem
               key={notif.id}
               notification={notif}

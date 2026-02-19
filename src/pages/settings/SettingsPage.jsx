@@ -888,7 +888,7 @@ function ManagementUploadSettings() {
     setLoadingUploads(false)
   }
 
-  useState(() => { fetchUploads() })
+  useEffect(() => { fetchUploads() }, [])
 
   const handleUpload = async () => {
     if (files.length === 0) return toast.error('Select files to upload')

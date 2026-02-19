@@ -16,6 +16,48 @@ const POST_SELECT = `
   bookmarks(user_id)
 `
 
+// A5: Feed diversity — cap posts per creator and interleave content types
+function diversifyFeed(posts, maxPerCreator = 3) {
+  const creatorCounts = new Map()
+  const result = []
+  const deferred = []
+
+  for (const post of posts) {
+    const count = creatorCounts.get(post.author_id) || 0
+    if (count < maxPerCreator) {
+      result.push(post)
+      creatorCounts.set(post.author_id, count + 1)
+    } else {
+      deferred.push(post)
+    }
+  }
+  return [...result, ...deferred]
+}
+
+function mixContentTypes(posts) {
+  if (posts.length < 6) return posts // too few to bother mixing
+  const groups = {}
+  posts.forEach(p => {
+    const type = p.post_type || 'post'
+    if (!groups[type]) groups[type] = []
+    groups[type].push(p)
+  })
+  const types = Object.keys(groups).filter(k => groups[k].length > 0)
+  if (types.length <= 1) return posts // only one type, nothing to mix
+  const result = []
+  let idx = 0
+  while (result.length < posts.length) {
+    const type = types[idx % types.length]
+    if (groups[type].length > 0) {
+      result.push(groups[type].shift())
+    }
+    idx++
+    // Safety: prevent infinite loop if groups are empty
+    if (types.every(t => groups[t].length === 0)) break
+  }
+  return result
+}
+
 export const usePostStore = create((set, get) => ({
   posts: [],
   loading: false,
@@ -41,8 +83,8 @@ export const usePostStore = create((set, get) => ({
     })
   },
 
-  // "For You" algorithm: mix of recent, popular, and followed creators
-  fetchFeed: async (reset = false) => {
+  // "For You" algorithm: personalized feed with diversity enforcement (A1 + A5 + A6)
+  fetchFeed: async (reset = false, userId = null) => {
     if (get().loading) return
 
     if (reset) {
@@ -64,33 +106,59 @@ export const usePostStore = create((set, get) => ({
     set({ loading: true })
 
     const from = currentPage * FEED_PAGE_SIZE
-    const to = from + FEED_PAGE_SIZE - 1
 
     try {
-      // Use ranked_posts view for algorithmic feed when available,
-      // fallback to chronological if view doesn't exist yet
       let data, error
 
-      const ranked = await supabase
-        .from('ranked_posts')
-        .select(POST_SELECT)
-        .range(from, to)
+      // A1: Use personalized_feed RPC for algorithm + block filtering (A6)
+      const personalized = await supabase.rpc('personalized_feed', {
+        p_user_id: userId || null,
+        p_limit: FEED_PAGE_SIZE,
+        p_offset: from,
+      })
 
-      if (ranked.error) {
-        // Fallback to chronological
-        const fallback = await supabase
+      if (!personalized.error && personalized.data?.length > 0) {
+        // RPC returns post IDs with scores — fetch full post data
+        const postIds = personalized.data.map(p => p.id)
+        const { data: fullPosts, error: fullError } = await supabase
           .from('posts')
           .select(POST_SELECT)
-          .order('created_at', { ascending: false })
-          .range(from, to)
-        data = fallback.data
-        error = fallback.error
+          .in('id', postIds)
+
+        if (fullError) throw fullError
+
+        // Sort by the personalized order
+        const idOrder = new Map(postIds.map((id, i) => [id, i]))
+        data = (fullPosts || []).sort((a, b) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99))
+        error = null
       } else {
-        data = ranked.data
-        error = ranked.error
+        // Fallback: ranked_posts view or chronological
+        const ranked = await supabase
+          .from('ranked_posts')
+          .select(POST_SELECT)
+          .range(from, from + FEED_PAGE_SIZE - 1)
+
+        if (ranked.error) {
+          const fallback = await supabase
+            .from('posts')
+            .select(POST_SELECT)
+            .order('created_at', { ascending: false })
+            .range(from, from + FEED_PAGE_SIZE - 1)
+          data = fallback.data
+          error = fallback.error
+        } else {
+          data = ranked.data
+          error = ranked.error
+        }
       }
 
       if (error) throw error
+
+      // A5: Feed diversity — cap per creator, mix content types
+      data = diversifyFeed(data || [], 3)
+      if (reset && currentPage === 0) {
+        data = mixContentTypes(data)
+      }
 
       // Resolve protected media to short-lived signed URLs
       await resolvePostMediaUrls(data)
@@ -205,7 +273,7 @@ export const usePostStore = create((set, get) => ({
     }
   },
 
-  createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl }) => {
+  createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl, category }) => {
     const postInsert = {
       author_id: userId,
       content,
@@ -215,6 +283,7 @@ export const usePostStore = create((set, get) => ({
 
     if (price && price > 0) postInsert.price = price
     if (coverImageUrl) postInsert.cover_image_url = coverImageUrl
+    if (category) postInsert.category = category
 
     const { data: post, error: postError } = await supabase
       .from('posts')
@@ -322,30 +391,37 @@ export const usePostStore = create((set, get) => ({
       l => l.user_id === userId && l.reaction_type === reactionType
     )
 
-    if (existingReaction) {
-      await supabase.from('likes')
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', userId)
-        .eq('reaction_type', reactionType)
-    } else {
-      await supabase.from('likes')
-        .insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
-    }
-
-    set({
-      posts: posts.map(p => {
-        if (p.id !== postId) return p
-        const newLikes = existingReaction
-          ? p.likes.filter(l => !(l.user_id === userId && l.reaction_type === reactionType))
-          : [...(p.likes || []), { user_id: userId, reaction_type: reactionType }]
-        return {
-          ...p,
-          like_count: existingReaction ? p.like_count - 1 : p.like_count + 1,
-          likes: newLikes,
-        }
-      }),
+    // Optimistic update first for instant UI feedback
+    const optimisticPosts = posts.map(p => {
+      if (p.id !== postId) return p
+      const newLikes = existingReaction
+        ? p.likes.filter(l => !(l.user_id === userId && l.reaction_type === reactionType))
+        : [...(p.likes || []), { user_id: userId, reaction_type: reactionType }]
+      return {
+        ...p,
+        like_count: existingReaction ? Math.max(0, p.like_count - 1) : p.like_count + 1,
+        likes: newLikes,
+      }
     })
+    set({ posts: optimisticPosts })
+
+    try {
+      if (existingReaction) {
+        const { error } = await supabase.from('likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
+          .eq('reaction_type', reactionType)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('likes')
+          .insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
+        if (error) throw error
+      }
+    } catch {
+      // Revert optimistic update on failure
+      set({ posts })
+    }
   },
 
   toggleBookmark: async (postId, userId) => {
@@ -360,23 +436,30 @@ export const usePostStore = create((set, get) => ({
 
     const isBookmarked = post.bookmarks?.some(b => b.user_id === userId)
 
-    if (isBookmarked) {
-      await supabase.from('bookmarks').delete().eq('post_id', postId).eq('user_id', userId)
-    } else {
-      await supabase.from('bookmarks').insert({ post_id: postId, user_id: userId })
-    }
-
-    set({
-      posts: posts.map(p => {
-        if (p.id !== postId) return p
-        return {
-          ...p,
-          bookmarks: isBookmarked
-            ? p.bookmarks.filter(b => b.user_id !== userId)
-            : [...(p.bookmarks || []), { user_id: userId }],
-        }
-      }),
+    // Optimistic update first
+    const optimisticPosts = posts.map(p => {
+      if (p.id !== postId) return p
+      return {
+        ...p,
+        bookmarks: isBookmarked
+          ? p.bookmarks.filter(b => b.user_id !== userId)
+          : [...(p.bookmarks || []), { user_id: userId }],
+      }
     })
+    set({ posts: optimisticPosts })
+
+    try {
+      if (isBookmarked) {
+        const { error } = await supabase.from('bookmarks').delete().eq('post_id', postId).eq('user_id', userId)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('bookmarks').insert({ post_id: postId, user_id: userId })
+        if (error) throw error
+      }
+    } catch {
+      // Revert optimistic update on failure
+      set({ posts })
+    }
   },
 
   togglePin: async (postId, pin) => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import { useSubscriptionCache } from '../../stores/subscriptionCache'
@@ -27,7 +27,7 @@ export default function HomePage() {
     if (tab === 'following' && user) {
       fetchFollowingFeed(user.id, true).then(() => { initialLoadDone.current = true })
     } else {
-      fetchFeed(true).then(() => { initialLoadDone.current = true })
+      fetchFeed(true, user?.id || null).then(() => { initialLoadDone.current = true })
     }
   }, [tab, user?.id, fetchFeed, fetchFollowingFeed])
 
@@ -38,7 +38,7 @@ export default function HomePage() {
       if (tab === 'following' && user) {
         fetchFollowingFeed(user.id, false)
       } else {
-        fetchFeed(false)
+        fetchFeed(false, user?.id || null)
       }
     }
   }, [inView, hasMore, loading, tab, user?.id, fetchFeed, fetchFollowingFeed])

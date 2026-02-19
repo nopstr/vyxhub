@@ -14,7 +14,7 @@ import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
 import ReportModal from '../ReportModal'
-import { cn, formatRelativeTime, formatNumber, formatCurrency } from '../../lib/utils'
+import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 import { PLATFORM_FEE_PERCENT } from '../../lib/constants'
@@ -25,6 +25,22 @@ const REACTION_TYPES = [
   { type: 'nice', icon: ThumbsUp, label: 'Nice', color: 'text-emerald-500', bg: 'bg-emerald-500/10', fill: false },
   { type: 'sparkle', icon: Sparkles, label: 'Amazing', color: 'text-indigo-400', bg: 'bg-indigo-500/10', fill: true },
 ]
+
+// A2: Render text with clickable hashtags
+function RichContent({ text }) {
+  if (!text) return null
+  const parts = text.split(/(#[a-zA-Z0-9_]{1,50})/g)
+  return parts.map((part, i) => {
+    if (/^#[a-zA-Z0-9_]{1,50}$/.test(part)) {
+      return (
+        <Link key={i} to={`/explore?tag=${part.slice(1)}`} className="text-indigo-400 hover:text-indigo-300 hover:underline">
+          {part}
+        </Link>
+      )
+    }
+    return part
+  })
+}
 
 function MediaGrid({ media, isUnlocked = true }) {
   if (!media || media.length === 0) return null
@@ -428,7 +444,7 @@ function PaywallGate({ creator, post }) {
 }
 
 export default function PostCard({ post }) {
-  const { user, profile } = useAuthStore()
+  const { user } = useAuthStore()
   const { toggleReaction, toggleBookmark, deletePost, togglePin, repost } = usePostStore()
   const { isSubscribedTo, hasPurchasedPost } = useSubscriptionCache()
   const navigate = useNavigate()
@@ -630,7 +646,7 @@ export default function PostCard({ post }) {
           {post.content && (
             <p className="text-[15px] text-zinc-200 leading-relaxed mb-1 whitespace-pre-wrap break-words">
               {isContentUnlocked || post.visibility === 'public'
-                ? post.content
+                ? <RichContent text={post.content} />
                 : post.content.length > 60
                   ? post.content.slice(0, 60) + '…'
                   : post.content

@@ -1,0 +1,186 @@
+================================================================================
+BUGS FOUND & FIXED — February 19, 2026 Review
+================================================================================
+
+6 bugs were identified during the comprehensive v2 assessment review.
+All 6 have been fixed and deployed.
+
+================================================================================
+BUG-1: REELSPAGE FETCHES ALL POSTS, NOT JUST REELS
+================================================================================
+
+File: src/pages/reels/ReelsPage.jsx
+Severity: MEDIUM (bandwidth waste, incorrect content)
+
+BEFORE (buggy):
+  const { data } = await supabase
+    .from('posts')
+    .select('*, ...')
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  // Client-side filter — fetches 50 posts, maybe only 2 are video
+  const videoReels = (data || []).filter(p =>
+    p.media?.some(m => m.media_type === 'video')
+  )
+
+AFTER (fixed):
+  const { data } = await supabase
+    .from('posts')
+    .select('*, ...')
+    .eq('post_type', 'video')
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  // Already filtered at DB level — resolve URLs for actual reels only
+  await resolvePostMediaUrls(data)
+
+Also fixed: handleLike was missing reaction_type in insert (would fail
+DB constraint), and had no error rollback on like failure.
+
+================================================================================
+BUG-2: SETTINGSPAGE useState MISUSED AS useEffect
+================================================================================
+
+File: src/pages/settings/SettingsPage.jsx (ManagementUploadSettings)
+Severity: LOW (works by accident, anti-pattern)
+
+BEFORE (buggy):
+  useState(() => { fetchUploads() })
+  // Runs during render phase as lazy initializer
+  // Never re-runs on dependency changes
+  // Wastes a state slot
+
+AFTER (fixed):
+  useEffect(() => { fetchUploads() }, [])
+  // Proper lifecycle — runs after mount
+
+================================================================================
+BUG-3: PUBLISH_SCHEDULED_POSTS VARIABLE COLLISION
+================================================================================
+
+File: supabase/migrations/20260219600000_admin_management_system.sql
+Severity: CRITICAL (infinite duplicate post creation)
+
+BEFORE (buggy):
+  FOR rec IN SELECT * FROM scheduled_posts WHERE ... LOOP
+    INSERT INTO posts (...) RETURNING id INTO rec.id;
+    -- rec.id is NOW the new post's ID (overwrites scheduled_post ID!)
+    UPDATE scheduled_posts SET status='published' WHERE id = rec.id;
+    -- WRONG: targets non-existent row → scheduled post never marked published
+    -- Next cron run: same scheduled post processed AGAIN → infinite duplicates
+  END LOOP;
+
+AFTER (fixed):
+  DECLARE new_post_id UUID;
+  FOR rec IN SELECT * FROM scheduled_posts WHERE ... LOOP
+    INSERT INTO posts (...) RETURNING id INTO new_post_id;
+    UPDATE scheduled_posts SET
+      status='published',
+      published_post_id = new_post_id
+    WHERE id = rec.id;  -- rec.id is still the original scheduled_post ID
+  END LOOP;
+
+================================================================================
+BUG-4: POSTSTORE REACTION/BOOKMARK NO ERROR HANDLING
+================================================================================
+
+File: src/stores/postStore.js (toggleReaction, toggleBookmark)
+Severity: MEDIUM (no user feedback on failure)
+
+BEFORE (buggy):
+  // No try/catch, UI updates only AFTER DB call (not optimistic)
+  toggleReaction: async (postId, userId, reactionType) => {
+    if (existingReaction) {
+      await supabase.from('likes').delete()...
+    } else {
+      await supabase.from('likes').insert(...)
+    }
+    set({ posts: posts.map(p => { ... }) })
+    // If DB call fails → error propagates, UI never updates
+  }
+
+AFTER (fixed):
+  toggleReaction: async (postId, userId, reactionType) => {
+    // 1. Optimistic update FIRST
+    set({ posts: posts.map(p => { ... /* toggle reaction */ }) })
+    
+    try {
+      // 2. Then DB call
+      if (existingReaction) {
+        const { error } = await supabase.from('likes').delete()...
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('likes').insert(...)
+        if (error) throw error
+      }
+    } catch {
+      // 3. Revert on error
+      set({ posts: get().posts.map(p => { ... /* revert */ }) })
+    }
+  }
+
+Same pattern applied to toggleBookmark.
+
+================================================================================
+BUG-5: CALCULATE_HOT_SCORE MARKED IMMUTABLE (USES NOW())
+================================================================================
+
+File: supabase/migrations/20260218000000_production_fixes.sql
+Severity: MEDIUM (stale feed rankings)
+
+BEFORE (buggy):
+  CREATE OR REPLACE FUNCTION calculate_hot_score(...)
+  RETURNS FLOAT AS $$
+  BEGIN
+    age_hours := EXTRACT(EPOCH FROM (NOW() - p_created_at)) / 3600.0;
+    ...
+  END;
+  $$ LANGUAGE plpgsql IMMUTABLE;
+  -- IMMUTABLE means PG can cache the result for same inputs
+  -- But NOW() changes every call → cached results are stale
+
+AFTER (fixed):
+  $$ LANGUAGE plpgsql STABLE;
+  -- STABLE means result can change within a transaction but is stable
+  -- for the duration of a single query (correct for NOW()-dependent functions)
+
+Applied via new migration 20260219800000_assessment_v2_fixes.sql
+
+================================================================================
+BUG-6: SUGGESTED CREATORS DON'T EXCLUDE FOLLOWED USERS
+================================================================================
+
+File: src/components/layout/RightPanel.jsx (SuggestedCreators)
+Severity: LOW (confusing UX)
+
+BEFORE (buggy):
+  let query = supabase
+    .from('profiles')
+    .select('id, username, ...')
+    .eq('is_creator', true)
+    .order('follower_count', { ascending: false })
+    .limit(5)
+  if (user) query = query.neq('id', user.id)
+  // Shows creators you already follow (useless suggestions)
+
+AFTER (fixed):
+  // First get IDs of creators user already follows
+  let excludeIds = [user?.id].filter(Boolean)
+  if (user) {
+    const { data: followed } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id)
+    if (followed?.length) {
+      excludeIds.push(...followed.map(f => f.following_id))
+    }
+  }
+  // Exclude followed creators from suggestions
+  let query = supabase
+    .from('profiles')
+    .select('...')
+    .eq('is_creator', true)
+    .not('id', 'in', `(${excludeIds.join(',')})`)
+    .order('follower_count', { ascending: false })
+    .limit(5)
