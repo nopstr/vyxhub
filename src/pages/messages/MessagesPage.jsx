@@ -4,10 +4,12 @@ import { useAuthStore } from '../../stores/authStore'
 import { useMessageStore } from '../../stores/messageStore'
 import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/ui/Avatar'
+import Button from '../../components/ui/Button'
 import { PageLoader } from '../../components/ui/Spinner'
-import { Send, ArrowLeft, ShieldCheck, PenSquare, Search, X, Crown, Shield } from 'lucide-react'
-import { formatMessageTime, cn } from '../../lib/utils'
-import { CEO_USERNAME, SYSTEM_ROLES } from '../../lib/constants'
+import { Send, ArrowLeft, ShieldCheck, PenSquare, Search, X, Crown, Shield, DollarSign, Lock, CheckCircle, CreditCard } from 'lucide-react'
+import { formatMessageTime, cn, formatCurrency } from '../../lib/utils'
+import { CEO_USERNAME, PLATFORM_FEE_PERCENT } from '../../lib/constants'
+import { toast } from 'sonner'
 
 function NewMessageModal({ onClose, onSelect }) {
   const [query, setQuery] = useState('')
@@ -183,17 +185,207 @@ function NewMessageModal({ onClose, onSelect }) {
   )
 }
 
-function MessageThread({ conversationId, userId }) {
-  const { messages, fetchMessages, sendMessage, subscribeToMessages } = useMessageStore()
+function PaymentRequestBubble({ msg, isOwn, userId }) {
+  const { payMessageRequest } = useMessageStore()
+  const [paying, setPaying] = useState(false)
+  const isPaid = msg.payment_status === 'paid'
+  const canPay = !isOwn && !isPaid
+
+  const handlePay = async () => {
+    if (paying) return
+    setPaying(true)
+    try {
+      await payMessageRequest(userId, msg.id)
+      toast.success(`Paid $${parseFloat(msg.payment_amount).toFixed(2)}!`)
+    } catch (err) {
+      toast.error(err.message || 'Payment failed')
+    } finally {
+      setPaying(false)
+    }
+  }
+
+  return (
+    <div className={cn(
+      'rounded-2xl overflow-hidden border min-w-[220px] max-w-[300px]',
+      isPaid
+        ? 'border-emerald-500/40 bg-emerald-500/10'
+        : 'border-indigo-500/30 bg-zinc-900/80',
+      isOwn ? 'rounded-br-md' : 'rounded-bl-md'
+    )}>
+      {/* Header */}
+      <div className={cn(
+        'px-4 py-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider',
+        isPaid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'
+      )}>
+        {isPaid ? <CheckCircle size={13} /> : <DollarSign size={13} />}
+        {isPaid ? 'Payment Complete' : 'Payment Request'}
+      </div>
+
+      {/* Body */}
+      <div className="px-4 py-3">
+        {msg.payment_note && (
+          <p className="text-sm text-zinc-300 mb-2">{msg.payment_note}</p>
+        )}
+        <p className={cn(
+          'text-2xl font-bold',
+          isPaid ? 'text-emerald-400' : 'text-white'
+        )}>
+          ${parseFloat(msg.payment_amount).toFixed(2)}
+        </p>
+        {!isPaid && !isOwn && (
+          <p className="text-[10px] text-zinc-500 mt-1">
+            Platform fee: {PLATFORM_FEE_PERCENT}%
+          </p>
+        )}
+      </div>
+
+      {/* Action */}
+      {canPay && (
+        <div className="px-4 pb-3">
+          <button
+            onClick={handlePay}
+            disabled={paying}
+            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+          >
+            {paying ? (
+              <span>Processing...</span>
+            ) : (
+              <>
+                <CreditCard size={15} />
+                Pay ${parseFloat(msg.payment_amount).toFixed(2)}
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
+      {isPaid && (
+        <div className="px-4 pb-3">
+          <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
+            <CheckCircle size={13} />
+            {isOwn ? 'Payment received' : 'You paid this request'}
+          </div>
+        </div>
+      )}
+
+      {/* Pending for sender */}
+      {isOwn && !isPaid && (
+        <div className="px-4 pb-3">
+          <p className="text-xs text-zinc-500 flex items-center gap-1">
+            <Lock size={11} /> Waiting for payment
+          </p>
+        </div>
+      )}
+
+      <div className="px-4 pb-2">
+        <p className="text-[10px] text-zinc-600">{formatMessageTime(msg.created_at)}</p>
+      </div>
+    </div>
+  )
+}
+
+function PaymentRequestModal({ onClose, onSend }) {
+  const [amount, setAmount] = useState('')
+  const [note, setNote] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    const parsed = parseFloat(amount)
+    if (!parsed || parsed < 1 || parsed > 5000) {
+      toast.error('Amount must be between $1 and $5,000')
+      return
+    }
+    setLoading(true)
+    try {
+      await onSend(parsed, note.trim())
+      onClose()
+    } catch {
+      toast.error('Failed to send payment request')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+          <h3 className="font-bold text-white flex items-center gap-2">
+            <DollarSign size={18} className="text-indigo-400" />
+            Send Payment Request
+          </h3>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-zinc-800 cursor-pointer">
+            <X size={18} className="text-zinc-500" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Amount</label>
+            <div className="relative">
+              <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="number"
+                min="1"
+                max="5000"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="25.00"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                autoFocus
+              />
+            </div>
+            {amount && parseFloat(amount) > 0 && (
+              <p className="text-xs text-zinc-500 mt-1">
+                You earn <span className="text-emerald-400">${(parseFloat(amount) * (100 - PLATFORM_FEE_PERCENT) / 100).toFixed(2)}</span> after {PLATFORM_FEE_PERCENT}% fee
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Note (optional)</label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. Custom photo set request"
+              maxLength={200}
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            />
+          </div>
+          <Button type="submit" loading={loading} className="w-full" disabled={!amount || parseFloat(amount) < 1}>
+            Send Request
+          </Button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function MessageThread({ conversationId, userId, otherUser }) {
+  const {
+    messages, fetchMessages, sendMessage, subscribeToMessages,
+    checkMessageAccess, payMessageUnlock, sendPaymentRequest,
+    messageAccess,
+  } = useMessageStore()
+  const { profile } = useAuthStore()
   const [text, setText] = useState('')
   const [sending, setSending] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [unlocking, setUnlocking] = useState(false)
   const bottomRef = useRef(null)
+  const isCreator = profile?.is_creator
 
   useEffect(() => {
     fetchMessages(conversationId)
     const unsub = subscribeToMessages(conversationId)
+    // Check message access for this conversation partner
+    if (otherUser?.id) {
+      checkMessageAccess(userId, otherUser.id)
+    }
     return unsub
-  }, [conversationId])
+  }, [conversationId, otherUser?.id])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -213,6 +405,26 @@ function MessageThread({ conversationId, userId }) {
     }
   }
 
+  const handleUnlockMessages = async () => {
+    setUnlocking(true)
+    try {
+      await payMessageUnlock(userId, otherUser.id, conversationId)
+      toast.success('Messages unlocked!')
+    } catch (err) {
+      toast.error(err.message || 'Failed to unlock')
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
+  const handleSendPaymentRequest = async (amount, note) => {
+    await sendPaymentRequest(conversationId, userId, amount, note)
+    toast.success('Payment request sent!')
+  }
+
+  const needsPaywall = messageAccess && !messageAccess.allowed && messageAccess.reason === 'paywall'
+  const paywallPrice = messageAccess?.price || 0
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages */}
@@ -222,6 +434,8 @@ function MessageThread({ conversationId, userId }) {
           const senderRole = msg.sender_system_role || msg.sender?.system_role
           const isCeoMsg = msg.sender?.username === CEO_USERNAME
           const isStaffMsg = !!senderRole && !isCeoMsg
+          const isPaymentRequest = msg.message_type === 'payment_request'
+
           return (
             <div key={msg.id} className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}>
               <div className="flex items-end gap-2 max-w-[75%]">
@@ -245,28 +459,35 @@ function MessageThread({ conversationId, userId }) {
                       {isCeoMsg ? 'CEO' : senderRole.toUpperCase()}
                     </p>
                   )}
-                  <div
-                    className={cn(
-                      'px-4 py-2.5 rounded-2xl text-sm',
-                      isOwn
-                        ? 'bg-indigo-600 text-white rounded-br-md'
-                        : isCeoMsg
-                          ? 'bg-amber-500/15 text-amber-100 border border-amber-500/30 rounded-bl-md'
-                          : isStaffMsg
-                            ? 'bg-purple-500/15 text-purple-100 border border-purple-500/30 rounded-bl-md'
-                            : 'bg-zinc-800 text-zinc-200 rounded-bl-md'
-                    )}
-                  >
-                    <p className="break-words">{msg.content}</p>
-                    <p className={cn(
-                      'text-[10px] mt-1',
-                      isOwn ? 'text-indigo-200' :
-                      isCeoMsg ? 'text-amber-400/60' :
-                      isStaffMsg ? 'text-purple-400/60' : 'text-zinc-500'
-                    )}>
-                      {formatMessageTime(msg.created_at)}
-                    </p>
-                  </div>
+
+                  {/* Payment request embed */}
+                  {isPaymentRequest ? (
+                    <PaymentRequestBubble msg={msg} isOwn={isOwn} userId={userId} />
+                  ) : (
+                    /* Regular message bubble */
+                    <div
+                      className={cn(
+                        'px-4 py-2.5 rounded-2xl text-sm',
+                        isOwn
+                          ? 'bg-indigo-600 text-white rounded-br-md'
+                          : isCeoMsg
+                            ? 'bg-amber-500/15 text-amber-100 border border-amber-500/30 rounded-bl-md'
+                            : isStaffMsg
+                              ? 'bg-purple-500/15 text-purple-100 border border-purple-500/30 rounded-bl-md'
+                              : 'bg-zinc-800 text-zinc-200 rounded-bl-md'
+                      )}
+                    >
+                      <p className="break-words">{msg.content}</p>
+                      <p className={cn(
+                        'text-[10px] mt-1',
+                        isOwn ? 'text-indigo-200' :
+                        isCeoMsg ? 'text-amber-400/60' :
+                        isStaffMsg ? 'text-purple-400/60' : 'text-zinc-500'
+                      )}>
+                        {formatMessageTime(msg.created_at)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -275,25 +496,69 @@ function MessageThread({ conversationId, userId }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSend} className="p-4 border-t border-zinc-800/50">
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50"
-          />
-          <button
-            type="submit"
-            disabled={!text.trim() || sending}
-            className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white disabled:opacity-40 transition-colors cursor-pointer"
-          >
-            <Send size={18} />
-          </button>
+      {/* Paywall gate */}
+      {needsPaywall ? (
+        <div className="p-4 border-t border-zinc-800/50">
+          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 text-center">
+            <Lock size={24} className="text-indigo-400 mx-auto mb-2" />
+            <h4 className="text-sm font-bold text-white mb-1">Message Locked</h4>
+            <p className="text-xs text-zinc-500 mb-4">
+              Pay <span className="text-white font-semibold">${parseFloat(paywallPrice).toFixed(2)}</span> to unlock messaging with this creator
+            </p>
+            <button
+              onClick={handleUnlockMessages}
+              disabled={unlocking}
+              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            >
+              {unlocking ? 'Processing...' : (
+                <>
+                  <CreditCard size={16} />
+                  Unlock for ${parseFloat(paywallPrice).toFixed(2)}
+                </>
+              )}
+            </button>
+          </div>
         </div>
-      </form>
+      ) : (
+        /* Normal input + creator payment request button */
+        <form onSubmit={handleSend} className="p-4 border-t border-zinc-800/50">
+          <div className="flex items-center gap-2">
+            {/* Creator: payment request button */}
+            {isCreator && (
+              <button
+                type="button"
+                onClick={() => setShowPaymentModal(true)}
+                className="p-3 rounded-xl text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer flex-shrink-0"
+                title="Send payment request"
+              >
+                <DollarSign size={18} />
+              </button>
+            )}
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Type a message..."
+              className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50"
+            />
+            <button
+              type="submit"
+              disabled={!text.trim() || sending}
+              className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white disabled:opacity-40 transition-colors cursor-pointer"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Payment Request Modal */}
+      {showPaymentModal && (
+        <PaymentRequestModal
+          onClose={() => setShowPaymentModal(false)}
+          onSend={handleSendPaymentRequest}
+        />
+      )}
     </div>
   )
 }
@@ -400,7 +665,11 @@ export default function MessagesPage() {
                 ) : null
               })()}
             </header>
-            <MessageThread conversationId={selectedId} userId={user.id} />
+            <MessageThread
+              conversationId={selectedId}
+              userId={user.id}
+              otherUser={conversations.find(c => c.id === selectedId)?.otherUser}
+            />
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center">

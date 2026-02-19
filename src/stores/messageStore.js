@@ -10,6 +10,7 @@ export const useMessageStore = create((set, get) => ({
   activeConversation: null,
   messages: [],
   loading: false,
+  messageAccess: null, // { allowed, reason, price }
 
   fetchConversations: async (userId) => {
     set({ loading: true })
@@ -182,12 +183,23 @@ export const useMessageStore = create((set, get) => ({
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'messages',
           filter: `conversation_id=eq.${conversationId}`,
         },
         async (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            // Handle payment_status updates (payment request paid)
+            set({
+              messages: get().messages.map(m =>
+                m.id === payload.new.id ? { ...m, ...payload.new } : m
+              ),
+            })
+            return
+          }
+
+          // INSERT
           const { data } = await supabase
             .from('profiles')
             .select('id, username, display_name, avatar_url')
@@ -204,5 +216,79 @@ export const useMessageStore = create((set, get) => ({
       .subscribe()
 
     return () => supabase.removeChannel(channel)
+  },
+
+  // Check if user can message another user (paywall check)
+  checkMessageAccess: async (senderId, receiverId) => {
+    const { data, error } = await supabase.rpc('check_message_access', {
+      p_sender_id: senderId,
+      p_receiver_id: receiverId,
+    })
+    if (error) {
+      set({ messageAccess: { allowed: true, reason: 'error_fallback', price: 0 } })
+      return { allowed: true, reason: 'error_fallback', price: 0 }
+    }
+    set({ messageAccess: data })
+    return data
+  },
+
+  // Pay the message unlock fee (paywall)
+  payMessageUnlock: async (senderId, receiverId, conversationId) => {
+    const { data, error } = await supabase.rpc('pay_message_unlock', {
+      p_sender_id: senderId,
+      p_receiver_id: receiverId,
+      p_conversation_id: conversationId,
+    })
+    if (error) throw error
+    // After paying, recheck access
+    await get().checkMessageAccess(senderId, receiverId)
+    return data
+  },
+
+  // Creator sends a payment request
+  sendPaymentRequest: async (conversationId, senderId, amount, note) => {
+    const now = Date.now()
+    if (now - _lastSendTime < SEND_THROTTLE_MS) return null
+    _lastSendTime = now
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: senderId,
+        content: note || 'Payment request',
+        message_type: 'payment_request',
+        payment_status: 'pending',
+        payment_amount: amount,
+        payment_note: note || null,
+      })
+      .select(`
+        *,
+        sender:profiles!sender_id(id, username, display_name, avatar_url, system_role)
+      `)
+      .single()
+
+    if (!error && data) {
+      set({ messages: [...get().messages, data] })
+    }
+    return data
+  },
+
+  // User pays a payment request
+  payMessageRequest: async (payerId, messageId) => {
+    const { data, error } = await supabase.rpc('pay_message_request', {
+      p_payer_id: payerId,
+      p_message_id: messageId,
+    })
+    if (error) throw error
+    if (!data?.success) throw new Error(data?.error || 'Payment failed')
+
+    // Optimistically update the message status locally
+    set({
+      messages: get().messages.map(m =>
+        m.id === messageId ? { ...m, payment_status: 'paid' } : m
+      ),
+    })
+    return data
   },
 }))
