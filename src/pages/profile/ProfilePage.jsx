@@ -93,7 +93,14 @@ export default function ProfilePage() {
           author:profiles!author_id(*),
           media(*),
           likes(user_id, reaction_type),
-          bookmarks(user_id)
+          bookmarks(user_id),
+          polls(
+            id,
+            question,
+            ends_at,
+            poll_options(id, option_text, votes_count, sort_order),
+            poll_votes(user_id, option_id)
+          )
         `)
         .eq('author_id', profileData.id)
         .order('created_at', { ascending: false })
@@ -249,15 +256,16 @@ export default function ProfilePage() {
   }
 
   const regularPosts = posts
-    .filter(p => p.post_type === 'post' || !p.post_type)
+    .filter(p => (p.post_type === 'post' || !p.post_type) && !p.is_draft)
     .sort((a, b) => {
       // Pinned posts first, then by created_at desc
       if (a.is_pinned && !b.is_pinned) return -1
       if (!a.is_pinned && b.is_pinned) return 1
       return 0
     })
-  const setContent = posts.filter(p => p.post_type === 'set')
-  const videoContent = posts.filter(p => p.post_type === 'video')
+  const setContent = posts.filter(p => p.post_type === 'set' && !p.is_draft)
+  const videoContent = posts.filter(p => p.post_type === 'video' && !p.is_draft)
+  const draftPosts = posts.filter(p => p.is_draft)
 
   return (
     <div>
@@ -389,6 +397,7 @@ export default function ProfilePage() {
           { key: 'posts', label: 'Posts', icon: null, count: regularPosts.length },
           { key: 'sets', label: 'Sets', icon: Grid3x3, count: setContent.length },
           { key: 'videos', label: 'Videos', icon: Film, count: videoContent.length },
+          ...(isOwnProfile ? [{ key: 'drafts', label: 'Drafts', icon: null, count: draftPosts.length }] : []),
         ].map(t => (
           <button
             key={t.key}
@@ -449,6 +458,17 @@ export default function ProfilePage() {
             <div className="text-center py-16">
               <Film size={40} className="mx-auto mb-3 text-zinc-700" />
               <p className="text-zinc-500">No videos yet</p>
+            </div>
+          )
+        )}
+
+        {/* Drafts Tab - Timeline View */}
+        {tab === 'drafts' && isOwnProfile && (
+          draftPosts.length > 0 ? (
+            draftPosts.map(post => <PostCard key={post.id} post={post} />)
+          ) : (
+            <div className="text-center py-16">
+              <p className="text-zinc-500">No drafts yet</p>
             </div>
           )
         )}

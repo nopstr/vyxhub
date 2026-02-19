@@ -4,7 +4,7 @@ import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
-  Repeat2, VolumeX
+  Repeat2, VolumeX, Edit2, EyeOff
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
@@ -14,6 +14,7 @@ import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
 import ReportModal from '../ReportModal'
+import EditPostModal from './EditPostModal'
 import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
@@ -445,12 +446,14 @@ function PaywallGate({ creator, post }) {
 
 export default function PostCard({ post }) {
   const { user } = useAuthStore()
-  const { toggleReaction, toggleBookmark, deletePost, togglePin, repost } = usePostStore()
+  const { toggleReaction, toggleBookmark, deletePost, togglePin, repost, hidePost } = usePostStore()
   const { isSubscribedTo, hasPurchasedPost } = useSubscriptionCache()
   const navigate = useNavigate()
   const author = post.author
   const [showReactions, setShowReactions] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editedContent, setEditedContent] = useState(post.content)
   const reactionsRef = useRef(null)
   const reactionsTimeout = useRef(null)
 
@@ -533,6 +536,22 @@ export default function PostCard({ post }) {
     toast.success('Link copied!')
   }
 
+  const handlePublishDraft = async (e) => {
+    e.stopPropagation()
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ is_draft: false, created_at: new Date().toISOString() })
+        .eq('id', post.id)
+      if (error) throw error
+      toast.success('Draft published!')
+      // Optimistic update or rely on realtime
+      window.location.reload() // Simple refresh for now to update lists
+    } catch (err) {
+      toast.error('Failed to publish draft')
+    }
+  }
+
   const handlePin = async () => {
     if (!user) return
     try {
@@ -568,6 +587,17 @@ export default function PostCard({ post }) {
       toast.success('Reposted!')
     } catch (err) {
       toast.error(err.message || 'Failed to repost')
+    }
+  }
+
+  const handleHide = async (e) => {
+    e?.stopPropagation()
+    if (!user) return toast.error('Sign in to hide posts')
+    try {
+      await hidePost(post.id, user.id)
+      toast.success('Post hidden')
+    } catch (err) {
+      toast.error('Failed to hide post')
     }
   }
 
@@ -625,6 +655,10 @@ export default function PostCard({ post }) {
             >
               {isOwn ? (
                 <>
+                  {post.is_draft && (
+                    <DropdownItem icon={Zap} onClick={handlePublishDraft}>Publish Draft</DropdownItem>
+                  )}
+                  <DropdownItem icon={Edit2} onClick={() => setShowEditModal(true)}>Edit post</DropdownItem>
                   <DropdownItem icon={Pin} onClick={handlePin}>
                     {post.is_pinned ? 'Unpin from profile' : 'Pin to profile'}
                   </DropdownItem>
@@ -633,6 +667,7 @@ export default function PostCard({ post }) {
                 </>
               ) : (
                 <>
+                  <DropdownItem icon={EyeOff} onClick={handleHide}>Hide post</DropdownItem>
                   <DropdownItem icon={VolumeX} onClick={() => handleBlock(true)}>Mute @{author.username}</DropdownItem>
                   <DropdownItem icon={UserX} onClick={() => handleBlock(false)}>Block @{author.username}</DropdownItem>
                   <DropdownDivider />
@@ -643,23 +678,28 @@ export default function PostCard({ post }) {
           </div>
 
           {/* Content — gate text for subscriber-only posts */}
-          {post.content && (
+          {editedContent && (
             <p className="text-[15px] text-zinc-200 leading-relaxed mb-1 whitespace-pre-wrap break-words">
               {isContentUnlocked || post.visibility === 'public'
-                ? <RichContent text={post.content} />
-                : post.content.length > 60
-                  ? post.content.slice(0, 60) + '…'
-                  : post.content
+                ? <RichContent text={editedContent} />
+                : editedContent.length > 60
+                  ? editedContent.slice(0, 60) + '…'
+                  : editedContent
               }
-              {!isContentUnlocked && post.visibility !== 'public' && post.content.length > 60 && (
+              {!isContentUnlocked && post.visibility !== 'public' && editedContent.length > 60 && (
                 <span className="text-indigo-400 text-sm ml-1">Subscribe to see full post</span>
               )}
             </p>
           )}
 
           {/* Post type badge */}
-          {(isSet || isVideo) && (
+          {(isSet || isVideo || post.is_draft) && (
             <div className="flex items-center gap-2 mt-1 mb-1">
+              {post.is_draft && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-400 bg-zinc-500/10 px-2 py-0.5 rounded-md">
+                  Draft
+                </span>
+              )}
               {isSet && (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md">
                   <Grid3x3 size={12} /> Set · {post.media?.length || 0} photos
@@ -693,6 +733,76 @@ export default function PostCard({ post }) {
           {(isSet || isVideo) && showPaywall && (
             <div className="mt-2">
               <PaywallGate creator={author} post={post} />
+            </div>
+          )}
+
+          {/* Poll */}
+          {post.polls && post.polls.length > 0 && (
+            <div className="mt-3 p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
+              <h4 className="text-sm font-medium text-zinc-200 mb-3">{post.polls[0].question}</h4>
+              <div className="space-y-2">
+                {post.polls[0].poll_options?.sort((a, b) => a.sort_order - b.sort_order).map(opt => {
+                  const totalVotes = post.polls[0].poll_options.reduce((sum, o) => sum + (o.votes_count || 0), 0)
+                  const percent = totalVotes > 0 ? Math.round(((opt.votes_count || 0) / totalVotes) * 100) : 0
+                  const hasVoted = post.polls[0].poll_votes?.some(v => v.user_id === user?.id)
+                  const isMyVote = post.polls[0].poll_votes?.some(v => v.user_id === user?.id && v.option_id === opt.id)
+                  const isExpired = new Date(post.polls[0].ends_at) < new Date()
+
+                  return (
+                    <button
+                      key={opt.id}
+                      disabled={hasVoted || isExpired || !user}
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        if (!user) return toast.error('Sign in to vote')
+                        try {
+                          const { error } = await supabase.from('poll_votes').insert({
+                            poll_id: post.polls[0].id,
+                            option_id: opt.id,
+                            user_id: user.id
+                          })
+                          if (error) throw error
+                          toast.success('Vote recorded!')
+                          // Optimistic update would go here, but for now we rely on realtime or refetch
+                        } catch (err) {
+                          toast.error('Failed to vote')
+                        }
+                      }}
+                      className={cn(
+                        "relative w-full text-left overflow-hidden rounded-lg border transition-all",
+                        hasVoted || isExpired ? "border-zinc-800 cursor-default" : "border-zinc-700 hover:border-indigo-500/50 cursor-pointer",
+                        isMyVote ? "border-indigo-500/50" : ""
+                      )}
+                    >
+                      {(hasVoted || isExpired) && (
+                        <div 
+                          className={cn(
+                            "absolute inset-y-0 left-0 opacity-20 transition-all duration-1000",
+                            isMyVote ? "bg-indigo-500" : "bg-zinc-500"
+                          )}
+                          style={{ width: `${percent}%` }}
+                        />
+                      )}
+                      <div className="relative flex items-center justify-between px-4 py-2.5">
+                        <span className={cn("text-sm font-medium", isMyVote ? "text-indigo-400" : "text-zinc-300")}>
+                          {opt.option_text}
+                        </span>
+                        {(hasVoted || isExpired) && (
+                          <span className="text-xs text-zinc-500 font-medium">{percent}%</span>
+                        )}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="mt-3 flex items-center justify-between text-xs text-zinc-500">
+                <span>{post.polls[0].poll_options?.reduce((sum, o) => sum + (o.votes_count || 0), 0)} votes</span>
+                <span>
+                  {new Date(post.polls[0].ends_at) < new Date() 
+                    ? 'Poll ended' 
+                    : `${Math.ceil((new Date(post.polls[0].ends_at) - new Date()) / (1000 * 60 * 60 * 24))} days left`}
+                </span>
+              </div>
             </div>
           )}
 
@@ -824,6 +934,15 @@ export default function PostCard({ post }) {
           postId={post.id}
           userId={author.id}
           username={author.username}
+        />
+      )}
+
+      {/* Edit Post Modal */}
+      {showEditModal && (
+        <EditPostModal
+          post={{ ...post, content: editedContent }}
+          onClose={() => setShowEditModal(false)}
+          onUpdate={(newContent) => setEditedContent(newContent)}
         />
       )}
     </article>

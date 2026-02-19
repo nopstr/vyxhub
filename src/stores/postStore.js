@@ -13,7 +13,14 @@ const POST_SELECT = `
   author:profiles!author_id(*),
   media(*),
   likes(user_id, reaction_type),
-  bookmarks(user_id)
+  bookmarks(user_id),
+  polls(
+    id,
+    question,
+    ends_at,
+    poll_options(id, option_text, votes_count, sort_order),
+    poll_votes(user_id, option_id)
+  )
 `
 
 // A5: Feed diversity — cap posts per creator and interleave content types
@@ -273,12 +280,77 @@ export const usePostStore = create((set, get) => ({
     }
   },
 
-  createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl, category }) => {
+  createScheduledPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, scheduledFor, onProgress }) => {
+    // 1. Insert scheduled post row
+    const { data: scheduledPost, error: postError } = await supabase
+      .from('scheduled_posts')
+      .insert({
+        author_id: userId,
+        scheduled_by: userId,
+        content,
+        post_type: postType,
+        visibility,
+        price: price || 0,
+        scheduled_for: scheduledFor,
+      })
+      .select()
+      .single()
+
+    if (postError) throw postError
+
+    // 2. Upload media if any
+    if (mediaFiles?.length > 0) {
+      for (const file of mediaFiles) {
+        validateFile(file)
+      }
+
+      let completedUploads = 0;
+      const totalUploads = mediaFiles.length;
+
+      const uploadResults = await Promise.all(
+        mediaFiles.map(async (file, i) => {
+          const optimizedFile = await optimizeImage(file)
+          const ext = optimizedFile.name.split('.').pop()
+          const filePath = `${userId}/scheduled_${scheduledPost.id}/${i}.${ext}`
+          
+          const { error: uploadError } = await supabase.storage
+            .from('posts')
+            .upload(filePath, optimizedFile)
+          if (uploadError) throw uploadError
+          
+          completedUploads++;
+          if (onProgress) {
+            onProgress(Math.round((completedUploads / totalUploads) * 100));
+          }
+
+          const isPreview = previewIndices ? previewIndices.includes(i) : false
+          return {
+            url: filePath,
+            type: file.type.startsWith('video') ? 'video' : 'image',
+            is_preview: isPreview
+          }
+        })
+      )
+
+      // 3. Update scheduled post with media URLs
+      const { error: updateError } = await supabase
+        .from('scheduled_posts')
+        .update({ media_urls: uploadResults })
+        .eq('id', scheduledPost.id)
+
+      if (updateError) throw updateError
+    }
+
+    return scheduledPost
+  },
+
+  createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl, category, isDraft, pollData, onProgress }) => {
     const postInsert = {
       author_id: userId,
       content,
       visibility: visibility || 'public',
       post_type: postType || 'post',
+      is_draft: isDraft || false,
     }
 
     if (price && price > 0) postInsert.price = price
@@ -296,11 +368,41 @@ export const usePostStore = create((set, get) => ({
 
     if (postError) throw postError
 
+    // Handle Poll Creation
+    if (pollData && pollData.question && pollData.options?.length >= 2) {
+      const { data: poll, error: pollError } = await supabase
+        .from('polls')
+        .insert({
+          post_id: post.id,
+          question: pollData.question,
+          ends_at: new Date(Date.now() + (pollData.durationDays || 1) * 24 * 60 * 60 * 1000).toISOString()
+        })
+        .select()
+        .single()
+
+      if (pollError) throw pollError
+
+      const pollOptions = pollData.options.map((opt, idx) => ({
+        poll_id: poll.id,
+        option_text: opt,
+        sort_order: idx
+      }))
+
+      const { error: optionsError } = await supabase
+        .from('poll_options')
+        .insert(pollOptions)
+
+      if (optionsError) throw optionsError
+    }
+
     if (mediaFiles?.length > 0) {
       // Validate all files first
       for (const file of mediaFiles) {
         validateFile(file)
       }
+
+      let completedUploads = 0;
+      const totalUploads = mediaFiles.length;
 
       // Upload all files in parallel for faster post creation
       const uploadResults = await Promise.all(
@@ -308,10 +410,22 @@ export const usePostStore = create((set, get) => ({
           const optimizedFile = await optimizeImage(file)
           const ext = optimizedFile.name.split('.').pop()
           const filePath = `${userId}/${post.id}/${i}.${ext}`
+          
+          // We don't have a real progress callback from supabase storage upload yet,
+          // but we can simulate it or just rely on the loading state.
+          // For a real implementation, we'd need to use XMLHttpRequest or a custom fetch
+          // to track upload progress. For now, we'll just await the upload.
+          
           const { error: uploadError } = await supabase.storage
             .from('posts')
             .upload(filePath, optimizedFile)
           if (uploadError) throw uploadError
+          
+          completedUploads++;
+          if (onProgress) {
+            onProgress(Math.round((completedUploads / totalUploads) * 100));
+          }
+
           return { file: optimizedFile, filePath, index: i }
         })
       )
@@ -375,6 +489,24 @@ export const usePostStore = create((set, get) => ({
     const { error } = await supabase.from('posts').delete().eq('id', postId)
     if (error) throw error
     set({ posts: get().posts.filter(p => p.id !== postId) })
+  },
+
+  hidePost: async (postId, userId) => {
+    if (!userId) return
+    
+    // Optimistic update
+    set({ posts: get().posts.filter(p => p.id !== postId) })
+    
+    try {
+      const { error } = await supabase
+        .from('hidden_posts')
+        .insert({ user_id: userId, post_id: postId })
+        
+      if (error) throw error
+    } catch (err) {
+      console.error('Failed to hide post:', err)
+      // Revert optimistic update if needed, but usually fine to leave it hidden in UI
+    }
   },
 
   toggleReaction: async (postId, userId, reactionType = 'heart') => {

@@ -27,7 +27,14 @@ const POST_SELECT = `
   author:profiles!author_id(*),
   media(*),
   likes(user_id, reaction_type),
-  bookmarks(user_id)
+  bookmarks(user_id),
+  polls(
+    id,
+    question,
+    ends_at,
+    poll_options(id, option_text, votes_count, sort_order),
+    poll_votes(user_id, option_id)
+  )
 `
 
 function CreatorCard({ profile }) {

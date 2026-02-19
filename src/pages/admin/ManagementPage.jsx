@@ -218,6 +218,8 @@ function PostAsCreator({ creator }) {
           content: content.trim(),
           post_type: postType,
           visibility,
+          is_draft: false,
+          is_nsfw: false,
         }
         if (price) postInsert.price = parseFloat(price)
 
