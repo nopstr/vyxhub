@@ -22,8 +22,10 @@ const REACTION_TYPES = [
   { type: 'sparkle', icon: Sparkles, label: 'Amazing', color: 'text-indigo-400', bg: 'bg-indigo-500/10', fill: true },
 ]
 
-function MediaGrid({ media }) {
+function MediaGrid({ media, isUnlocked = true }) {
   if (!media || media.length === 0) return null
+  // Never render actual media URLs if content is not unlocked
+  if (!isUnlocked) return null
 
   return (
     <div className={cn(
@@ -70,54 +72,53 @@ function MediaGrid({ media }) {
   )
 }
 
-/* Set Preview: shows unblurred previews + blurred locked images */
-function SetPreview({ media, isUnlocked }) {
+/* Set Preview: shows unblurred previews + placeholder for locked images */
+function SetPreview({ media, isUnlocked, totalMediaCount }) {
   if (!media || media.length === 0) return null
 
-  const previewMedia = media.filter(m => m.is_preview)
-  const lockedMedia = media.filter(m => !m.is_preview)
-  const displayMedia = isUnlocked ? media : previewMedia
+  // Only show preview media (is_preview=true) when locked
+  // RLS will strip non-preview URLs, but double-check client-side
+  const previewMedia = media.filter(m => m.is_preview && m.url)
+  const displayMedia = isUnlocked ? media.filter(m => m.url) : previewMedia
+  const lockedCount = isUnlocked ? 0 : (totalMediaCount || media.length) - previewMedia.length
 
   return (
     <div className="mt-3">
-      {/* Preview images */}
-      <div className={cn(
-        'grid gap-1 rounded-2xl overflow-hidden border border-zinc-800/50',
-        displayMedia.length === 1 && 'grid-cols-1',
-        displayMedia.length === 2 && 'grid-cols-2',
-        displayMedia.length >= 3 && 'grid-cols-3',
-      )}>
-        {displayMedia.slice(0, isUnlocked ? undefined : 3).map((item, i) => (
-          <div key={item.id} className="relative aspect-square overflow-hidden bg-zinc-950 group">
-            <img
-              src={item.url}
-              alt=""
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-              loading="lazy"
-            />
-          </div>
-        ))}
-      </div>
+      {/* Preview images (only ones with actual URLs) */}
+      {displayMedia.length > 0 && (
+        <div className={cn(
+          'grid gap-1 rounded-2xl overflow-hidden border border-zinc-800/50',
+          displayMedia.length === 1 && 'grid-cols-1',
+          displayMedia.length === 2 && 'grid-cols-2',
+          displayMedia.length >= 3 && 'grid-cols-3',
+        )}>
+          {displayMedia.slice(0, isUnlocked ? undefined : 3).map((item, i) => (
+            <div key={item.id} className="relative aspect-square overflow-hidden bg-zinc-950 group">
+              <img
+                src={item.url}
+                alt=""
+                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Blurred locked image teaser */}
-      {!isUnlocked && lockedMedia.length > 0 && (
+      {/* Gradient placeholder for locked images — NO real URLs */}
+      {!isUnlocked && lockedCount > 0 && (
         <div className="relative mt-1 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-[16/8]">
           <div className="absolute inset-0 grid grid-cols-3 gap-0.5">
-            {lockedMedia.slice(0, 3).map((item, i) => (
-              <div key={item.id} className="overflow-hidden">
-                <img
-                  src={item.url}
-                  alt=""
-                  className="w-full h-full object-cover blur-xl brightness-50 scale-110"
-                  loading="lazy"
-                />
+            {Array.from({ length: Math.min(lockedCount, 3) }).map((_, i) => (
+              <div key={i} className="overflow-hidden">
+                <div className="w-full h-full bg-gradient-to-br from-zinc-800/80 via-zinc-900 to-zinc-950" />
               </div>
             ))}
           </div>
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
             <div className="flex items-center gap-2 text-white/90">
               <Lock size={16} />
-              <span className="text-sm font-bold">+{lockedMedia.length} locked photos</span>
+              <span className="text-sm font-bold">+{lockedCount} locked photos</span>
             </div>
           </div>
         </div>
@@ -126,12 +127,12 @@ function SetPreview({ media, isUnlocked }) {
   )
 }
 
-/* Video Preview: shows thumbnail with play overlay, gated playback */
+/* Video Preview: shows player for unlocked, gradient placeholder for locked — NEVER loads actual URL when locked */
 function VideoPreview({ media, isUnlocked, post }) {
   const videoMedia = media?.find(m => m.media_type === 'video')
   if (!videoMedia) return null
 
-  if (isUnlocked) {
+  if (isUnlocked && videoMedia.url) {
     return (
       <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800/50">
         <video
@@ -144,15 +145,16 @@ function VideoPreview({ media, isUnlocked, post }) {
     )
   }
 
+  // LOCKED: Never load the real video URL — use a gradient placeholder
+  const isPPV = post?.price && parseFloat(post.price) > 0
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950">
-      {/* Blurred thumbnail from video */}
-      <video
-        src={videoMedia.url}
-        className="w-full h-full object-cover blur-lg brightness-50 scale-110"
-        preload="metadata"
-        muted
-      />
+      {/* Gradient placeholder — no actual media loaded */}
+      <div className="absolute inset-0 bg-gradient-to-br from-zinc-800/60 via-zinc-900 to-zinc-950" />
+      <div className="absolute inset-0 opacity-30">
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-indigo-600/20 blur-[80px] rounded-full" />
+        <div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-violet-600/20 blur-[60px] rounded-full" />
+      </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/20">
@@ -160,8 +162,11 @@ function VideoPreview({ media, isUnlocked, post }) {
           </div>
           <div className="flex items-center gap-1.5 text-white/80">
             <Lock size={14} />
-            <span className="text-sm font-semibold">Subscribe to watch</span>
+            <span className="text-sm font-semibold">{isPPV ? 'Purchase to watch' : 'Subscribe to watch'}</span>
           </div>
+          {videoMedia.duration_seconds > 0 && (
+            <span className="text-xs text-zinc-500">{Math.floor(videoMedia.duration_seconds / 60)}:{String(videoMedia.duration_seconds % 60).padStart(2, '0')}</span>
+          )}
         </div>
       </div>
     </div>
@@ -184,9 +189,9 @@ function PaywallGate({ creator, post }) {
           subscriber_id: user.id,
           creator_id: creator.id,
           status: 'active',
-          amount: creator.subscription_price,
-          current_period_start: new Date().toISOString(),
-          current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          price_paid: creator.subscription_price,
+          starts_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         })
       if (error) throw error
       addSubscription(creator.id)
@@ -446,11 +451,11 @@ export default function PostCard({ post }) {
           {showPaywall && !isSet && !isVideo ? (
             <PaywallGate creator={author} post={post} />
           ) : isSet ? (
-            <SetPreview media={post.media} isUnlocked={isContentUnlocked} />
+            <SetPreview media={post.media} isUnlocked={isContentUnlocked} totalMediaCount={post.media_count || post.media?.length} />
           ) : isVideo ? (
             <VideoPreview media={post.media} isUnlocked={isContentUnlocked} post={post} />
           ) : (
-            <MediaGrid media={post.media} />
+            <MediaGrid media={post.media} isUnlocked={isContentUnlocked} />
           )}
 
           {/* PPV gate below set/video if not unlocked */}
