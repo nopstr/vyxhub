@@ -24,6 +24,11 @@ const PostDetailPage = lazy(() => import('./pages/post/PostDetailPage'))
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
+// Staff pages
+const AdminPage = lazy(() => import('./pages/admin/AdminPage'))
+const SupportPage = lazy(() => import('./pages/admin/SupportPage'))
+const ManagementPage = lazy(() => import('./pages/admin/ManagementPage'))
+
 // Legal pages
 const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage'))
 const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
@@ -43,6 +48,18 @@ function GuestRoute({ children }) {
 
   if (loading) return <PageLoader />
   if (user) return <Navigate to="/" replace />
+
+  return children
+}
+
+function StaffRoute({ children, roles }) {
+  const { user, profile, loading } = useAuthStore()
+
+  if (loading) return <PageLoader />
+  if (!user) return <Navigate to="/auth" replace />
+  if (!profile?.system_role || !roles.includes(profile.system_role)) {
+    return <Navigate to="/" replace />
+  }
 
   return children
 }
@@ -101,6 +118,35 @@ export default function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="dashboard" element={<CreatorDashboardPage />} />
             <Route path="compose" element={<HomePage />} />
+          </Route>
+
+          {/* Staff routes — role-gated */}
+          <Route
+            element={
+              <StaffRoute roles={['admin', 'support']}>
+                <Layout />
+              </StaffRoute>
+            }
+          >
+            <Route path="support" element={<SupportPage />} />
+          </Route>
+          <Route
+            element={
+              <StaffRoute roles={['admin', 'manager']}>
+                <Layout />
+              </StaffRoute>
+            }
+          >
+            <Route path="management" element={<ManagementPage />} />
+          </Route>
+          <Route
+            element={
+              <StaffRoute roles={['admin']}>
+                <Layout />
+              </StaffRoute>
+            }
+          >
+            <Route path="admin" element={<AdminPage />} />
           </Route>
 
           {/* Reels - public full-screen layout */}

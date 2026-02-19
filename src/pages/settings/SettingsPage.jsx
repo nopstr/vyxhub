@@ -5,7 +5,8 @@ import {
   Camera, Save, Trash2, Eye, EyeOff, Lock,
   DollarSign, Globe, MessageCircle, Droplets, MapPin,
   Link as LinkIcon, Star, Package, Percent, ShieldCheck, Zap,
-  Heart, AlertTriangle, KeyRound
+  Heart, AlertTriangle, KeyRound, Upload, Image, Film, FileText,
+  CheckCircle, XCircle, Clock
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -40,7 +41,7 @@ const GEO_REGIONS = [
   'Turkey', 'Saudi Arabia', 'UAE',
 ]
 
-const tabs = [
+const baseTabs = [
   { id: 'profile', label: 'Profile', icon: User },
   { id: 'account', label: 'Account', icon: Shield },
   { id: 'notifications', label: 'Notifications', icon: Bell },
@@ -866,14 +867,153 @@ function NotificationSettings() {
   )
 }
 
+// ─── Management Upload Tab (for managed creators) ──────────────────
+function ManagementUploadSettings() {
+  const { profile } = useAuthStore()
+  const fileInputRef = useRef(null)
+  const [instructions, setInstructions] = useState('')
+  const [files, setFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [uploads, setUploads] = useState([])
+  const [loadingUploads, setLoadingUploads] = useState(true)
+
+  const fetchUploads = async () => {
+    const { data } = await supabase
+      .from('content_uploads')
+      .select('*')
+      .eq('creator_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setUploads(data || [])
+    setLoadingUploads(false)
+  }
+
+  useState(() => { fetchUploads() })
+
+  const handleUpload = async () => {
+    if (files.length === 0) return toast.error('Select files to upload')
+    setUploading(true)
+    try {
+      for (const file of files) {
+        const ext = file.name.split('.').pop()
+        const filePath = `${profile.id}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`
+        const { error: storageErr } = await supabase.storage.from('content-uploads').upload(filePath, file)
+        if (storageErr) throw storageErr
+
+        const { data: { publicUrl } } = supabase.storage.from('content-uploads').getPublicUrl(filePath)
+
+        const { error: insertErr } = await supabase.from('content_uploads').insert({
+          creator_id: profile.id,
+          file_url: publicUrl,
+          file_type: file.type.startsWith('video') ? 'video' : 'image',
+          instructions: instructions.trim() || null,
+        })
+        if (insertErr) throw insertErr
+      }
+      toast.success(`${files.length} file(s) uploaded for management team`)
+      setFiles([])
+      setInstructions('')
+      fetchUploads()
+    } catch (err) {
+      toast.error(err.message || 'Upload failed')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader icon={Upload} title="Upload Content" description="Upload images, sets, and videos for your management team to post" />
+
+      <div className="space-y-4">
+        <div>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-4 py-3 w-full bg-zinc-900/30 border border-dashed border-zinc-700/50 rounded-2xl text-sm text-zinc-400 hover:bg-zinc-900/50 hover:border-zinc-600 transition-colors cursor-pointer"
+          >
+            <Upload size={18} /> Click to select images or videos
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            className="hidden"
+            onChange={(e) => setFiles(Array.from(e.target.files || []))}
+          />
+          {files.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {files.map((f, i) => (
+                <span key={i} className="px-2 py-1 bg-zinc-800 rounded-lg text-xs text-zinc-400 flex items-center gap-1">
+                  {f.type.startsWith('video') ? <Film size={11} /> : <Image size={11} />}
+                  {f.name.length > 20 ? f.name.slice(0, 17) + '...' : f.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <Textarea
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder="Optional instructions for management (e.g., 'Post this set on Friday with caption…')"
+          rows={3}
+          maxLength={1000}
+        />
+
+        <Button onClick={handleUpload} loading={uploading}>
+          <Upload size={16} /> Upload for Management
+        </Button>
+      </div>
+
+      {/* Previous uploads */}
+      <div className="mt-8">
+        <SectionHeader icon={FileText} title="Your Uploads" description="Track what you've sent to management" />
+        {loadingUploads ? (
+          <p className="text-sm text-zinc-500">Loading...</p>
+        ) : uploads.length === 0 ? (
+          <p className="text-sm text-zinc-500">No uploads yet</p>
+        ) : (
+          <div className="space-y-2">
+            {uploads.map(u => (
+              <div key={u.id} className="flex items-center gap-3 p-3 bg-zinc-900/30 border border-zinc-800/50 rounded-xl">
+                <div className="w-8 h-8 bg-zinc-800 rounded-lg flex items-center justify-center">
+                  {u.file_type === 'video' ? <Film size={14} className="text-zinc-500" /> : <Image size={14} className="text-zinc-500" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  {u.instructions && <p className="text-xs text-zinc-400 truncate">{u.instructions}</p>}
+                  <p className="text-[10px] text-zinc-600">{new Date(u.created_at).toLocaleDateString()}</p>
+                </div>
+                <span className={cn(
+                  'text-[10px] px-2 py-0.5 rounded-full font-medium',
+                  u.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                  u.status === 'used' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                )}>
+                  {u.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const [tab, setTab] = useState('profile')
+  const { profile } = useAuthStore()
+
+  const tabs = profile?.is_managed
+    ? [...baseTabs, { id: 'management', label: 'Management', icon: Upload }]
+    : baseTabs
 
   const content = {
     profile: <ProfileSettings />,
     account: <AccountSettings />,
     notifications: <NotificationSettings />,
     creator: <CreatorSettings />,
+    management: <ManagementUploadSettings />,
   }
 
   return (

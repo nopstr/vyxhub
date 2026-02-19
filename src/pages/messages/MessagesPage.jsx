@@ -5,8 +5,9 @@ import { useMessageStore } from '../../stores/messageStore'
 import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/ui/Avatar'
 import { PageLoader } from '../../components/ui/Spinner'
-import { Send, ArrowLeft, ShieldCheck, PenSquare, Search, X } from 'lucide-react'
+import { Send, ArrowLeft, ShieldCheck, PenSquare, Search, X, Crown, Shield } from 'lucide-react'
 import { formatMessageTime, cn } from '../../lib/utils'
+import { CEO_USERNAME, SYSTEM_ROLES } from '../../lib/constants'
 
 function NewMessageModal({ onClose, onSelect }) {
   const [query, setQuery] = useState('')
@@ -108,43 +109,76 @@ function NewMessageModal({ onClose, onSelect }) {
 
   return (
     <div className="divide-y divide-zinc-800/50">
-      {conversations.map(conv => (
-        <button
-          key={conv.id}
-          onClick={() => onSelect(conv.id)}
-          className={cn(
-            'w-full flex items-center gap-3 p-4 hover:bg-zinc-900/40 transition-colors text-left cursor-pointer',
-            activeId === conv.id && 'bg-zinc-900/40'
-          )}
-        >
-          <Avatar
-            src={conv.otherUser?.avatar_url}
-            alt={conv.otherUser?.display_name}
-            size="lg"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1">
-                <span className="font-semibold text-sm text-white truncate">
-                  {conv.otherUser?.display_name || 'Unknown'}
+      {conversations.map(conv => {
+        const isCeo = conv.otherUser?.username === CEO_USERNAME
+        const isStaff = !!conv.otherUser?.system_role
+        const hasStaffMessage = conv.lastMessage?.sender_system_role
+
+        return (
+          <button
+            key={conv.id}
+            onClick={() => onSelect(conv.id)}
+            className={cn(
+              'w-full flex items-center gap-3 p-4 hover:bg-zinc-900/40 transition-colors text-left cursor-pointer',
+              activeId === conv.id && 'bg-zinc-900/40',
+              isCeo && conv.unreadCount > 0 && 'bg-amber-500/5 hover:bg-amber-500/10',
+              isStaff && !isCeo && conv.unreadCount > 0 && 'bg-purple-500/5 hover:bg-purple-500/10'
+            )}
+          >
+            <div className="relative">
+              <Avatar
+                src={conv.otherUser?.avatar_url}
+                alt={conv.otherUser?.display_name}
+                size="lg"
+              />
+              {isCeo && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center border-2 border-[#050505]">
+                  <Crown size={10} className="text-black" />
+                </div>
+              )}
+              {isStaff && !isCeo && (
+                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center border-2 border-[#050505]">
+                  <Shield size={10} className="text-white" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1">
+                  <span className={cn(
+                    'font-semibold text-sm truncate',
+                    isCeo ? 'text-amber-400' : isStaff ? 'text-purple-400' : 'text-white'
+                  )}>
+                    {conv.otherUser?.display_name || 'Unknown'}
+                  </span>
+                  {conv.otherUser?.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+                  {isCeo && <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full ml-1">CEO</span>}
+                  {isStaff && !isCeo && <span className="text-[9px] font-bold bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full ml-1">STAFF</span>}
+                </div>
+                <span className="text-[11px] text-zinc-600">
+                  {formatMessageTime(conv.lastMessage?.created_at)}
                 </span>
-                {conv.otherUser?.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
               </div>
-              <span className="text-[11px] text-zinc-600">
-                {formatMessageTime(conv.lastMessage?.created_at)}
-              </span>
+              <p className={cn(
+                'text-xs truncate mt-0.5',
+                hasStaffMessage ? 'text-purple-400' : 'text-zinc-500'
+              )}>
+                {conv.lastMessage?.content || 'No messages'}
+              </p>
             </div>
-            <p className="text-xs text-zinc-500 truncate mt-0.5">
-              {conv.lastMessage?.content || 'No messages'}
-            </p>
-          </div>
-          {conv.unreadCount > 0 && (
-            <div className="w-5 h-5 bg-indigo-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-[10px] font-bold text-white">{conv.unreadCount}</span>
-            </div>
-          )}
-        </button>
-      ))}
+            {conv.unreadCount > 0 && (
+              <div className={cn(
+                'min-w-[20px] h-5 rounded-full flex items-center justify-center flex-shrink-0 px-1',
+                isCeo ? 'bg-amber-500' : isStaff ? 'bg-purple-500' : 'bg-indigo-500'
+              )}>
+                <span className="text-[10px] font-bold text-white">
+                  {isCeo ? 'CEO' : conv.unreadCount > 99 ? '99+' : conv.unreadCount}
+                </span>
+              </div>
+            )}
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -185,24 +219,54 @@ function MessageThread({ conversationId, userId }) {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map(msg => {
           const isOwn = msg.sender_id === userId
+          const senderRole = msg.sender_system_role || msg.sender?.system_role
+          const isCeoMsg = msg.sender?.username === CEO_USERNAME
+          const isStaffMsg = !!senderRole && !isCeoMsg
           return (
             <div key={msg.id} className={cn('flex', isOwn ? 'justify-end' : 'justify-start')}>
               <div className="flex items-end gap-2 max-w-[75%]">
                 {!isOwn && (
-                  <Avatar src={msg.sender?.avatar_url} alt={msg.sender?.display_name} size="sm" />
+                  <div className="relative">
+                    <Avatar src={msg.sender?.avatar_url} alt={msg.sender?.display_name} size="sm" />
+                    {isCeoMsg && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
+                        <Crown size={7} className="text-black" />
+                      </div>
+                    )}
+                  </div>
                 )}
-                <div
-                  className={cn(
-                    'px-4 py-2.5 rounded-2xl text-sm',
-                    isOwn
-                      ? 'bg-indigo-600 text-white rounded-br-md'
-                      : 'bg-zinc-800 text-zinc-200 rounded-bl-md'
+                <div>
+                  {/* Staff label above bubble */}
+                  {!isOwn && (isCeoMsg || isStaffMsg) && (
+                    <p className={cn(
+                      'text-[10px] font-bold mb-0.5 ml-1',
+                      isCeoMsg ? 'text-amber-400' : 'text-purple-400'
+                    )}>
+                      {isCeoMsg ? 'CEO' : senderRole.toUpperCase()}
+                    </p>
                   )}
-                >
-                  <p className="break-words">{msg.content}</p>
-                  <p className={cn('text-[10px] mt-1', isOwn ? 'text-indigo-200' : 'text-zinc-500')}>
-                    {formatMessageTime(msg.created_at)}
-                  </p>
+                  <div
+                    className={cn(
+                      'px-4 py-2.5 rounded-2xl text-sm',
+                      isOwn
+                        ? 'bg-indigo-600 text-white rounded-br-md'
+                        : isCeoMsg
+                          ? 'bg-amber-500/15 text-amber-100 border border-amber-500/30 rounded-bl-md'
+                          : isStaffMsg
+                            ? 'bg-purple-500/15 text-purple-100 border border-purple-500/30 rounded-bl-md'
+                            : 'bg-zinc-800 text-zinc-200 rounded-bl-md'
+                    )}
+                  >
+                    <p className="break-words">{msg.content}</p>
+                    <p className={cn(
+                      'text-[10px] mt-1',
+                      isOwn ? 'text-indigo-200' :
+                      isCeoMsg ? 'text-amber-400/60' :
+                      isStaffMsg ? 'text-purple-400/60' : 'text-zinc-500'
+                    )}>
+                      {formatMessageTime(msg.created_at)}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -309,13 +373,26 @@ export default function MessagesPage() {
               </button>
               {(() => {
                 const conv = conversations.find(c => c.id === selectedId)
+                const isCeo = conv?.otherUser?.username === CEO_USERNAME
+                const isStaff = !!conv?.otherUser?.system_role
                 return conv?.otherUser ? (
                   <div className="flex items-center gap-3">
-                    <Avatar src={conv.otherUser.avatar_url} alt={conv.otherUser.display_name} size="md" />
+                    <div className="relative">
+                      <Avatar src={conv.otherUser.avatar_url} alt={conv.otherUser.display_name} size="md" />
+                      {isCeo && (
+                        <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center border border-[#050505]">
+                          <Crown size={8} className="text-black" />
+                        </div>
+                      )}
+                    </div>
                     <div>
                       <div className="flex items-center gap-1">
-                        <span className="font-bold text-sm">{conv.otherUser.display_name}</span>
+                        <span className={cn('font-bold text-sm', isCeo ? 'text-amber-400' : isStaff ? 'text-purple-400' : '')}>
+                          {conv.otherUser.display_name}
+                        </span>
                         {conv.otherUser.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+                        {isCeo && <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">CEO</span>}
+                        {isStaff && !isCeo && <span className="text-[9px] font-bold bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full">STAFF</span>}
                       </div>
                       <span className="text-xs text-zinc-500">@{conv.otherUser.username}</span>
                     </div>

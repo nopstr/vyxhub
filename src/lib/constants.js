@@ -36,9 +36,21 @@ export const VISIBILITY_OPTIONS = [
   { value: 'subscribers_only', label: 'Subscribers', description: 'Only paying subscribers' },
 ]
 
+export const MANAGED_CREATOR_SPLIT = 60 // managed creators keep 60%
+export const MANAGED_PLATFORM_CUT = 40 // platform takes 40% for managed
+
+export const CEO_USERNAME = 'ceo_steve_b'
+
+export const SYSTEM_ROLES = {
+  admin: 'admin',
+  support: 'support',
+  manager: 'manager',
+}
+
 export const STORAGE_BUCKETS = {
   avatars: 'avatars',
   banners: 'banners',
   posts: 'posts',
   messages: 'messages',
+  contentUploads: 'content-uploads',
 }

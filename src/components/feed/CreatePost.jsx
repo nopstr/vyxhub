@@ -1,10 +1,11 @@
 import { useState, useRef } from 'react'
 import {
   Image, Video, Lock, Globe, Users, X, DollarSign,
-  Grid3x3, Film, FileText, Eye, EyeOff
+  Grid3x3, Film, FileText, Eye, EyeOff, Calendar, Clock
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
+import { supabase } from '../../lib/supabase'
 import Avatar from '../ui/Avatar'
 import Button from '../ui/Button'
 import { toast } from 'sonner'
@@ -31,6 +32,9 @@ export default function CreatePost({ onSuccess }) {
   const [price, setPrice] = useState('')
   const [loading, setLoading] = useState(false)
   const [showVisibility, setShowVisibility] = useState(false)
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduleDate, setScheduleDate] = useState('')
+  const [scheduleTime, setScheduleTime] = useState('')
   const fileRef = useRef(null)
   const textRef = useRef(null)
 
@@ -150,20 +154,53 @@ export default function CreatePost({ onSuccess }) {
     }
     if (!content.trim() && mediaFiles.length === 0) return
 
+    // Validate schedule
+    if (scheduling) {
+      if (!scheduleDate || !scheduleTime) {
+        toast.error('Set date and time for scheduled post')
+        return
+      }
+      const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}`)
+      if (scheduledFor <= new Date()) {
+        toast.error('Schedule must be in the future')
+        return
+      }
+    }
+
     setLoading(true)
 
     try {
       const parsedPrice = price ? parseFloat(price) : null
 
-      await createPost({
-        content: content.trim(),
-        visibility,
-        postType,
-        mediaFiles,
-        userId: user.id,
-        price: parsedPrice && parsedPrice > 0 ? parsedPrice : null,
-        previewIndices: postType === 'set' ? Array.from(previewIndices) : null,
-      })
+      if (scheduling && scheduleDate && scheduleTime) {
+        const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}`).toISOString()
+        const { error } = await supabase.from('scheduled_posts').insert({
+          author_id: user.id,
+          scheduled_by: user.id,
+          content: content.trim(),
+          post_type: postType,
+          visibility,
+          price: parsedPrice && parsedPrice > 0 ? parsedPrice : 0,
+          scheduled_for: scheduledFor,
+        })
+        if (error) throw error
+        toast.success(`Post scheduled for ${scheduleDate} ${scheduleTime}`)
+      } else {
+        await createPost({
+          content: content.trim(),
+          visibility,
+          postType,
+          mediaFiles,
+          userId: user.id,
+          price: parsedPrice && parsedPrice > 0 ? parsedPrice : null,
+          previewIndices: postType === 'set' ? Array.from(previewIndices) : null,
+        })
+        toast.success(
+          postType === 'set' ? 'Set published!' :
+          postType === 'video' ? 'Video published!' :
+          'Post created!'
+        )
+      }
 
       setContent('')
       setMediaFiles([])
@@ -171,11 +208,9 @@ export default function CreatePost({ onSuccess }) {
       setPreviewIndices(new Set([0]))
       setPrice('')
       setPostType('post')
-      toast.success(
-        postType === 'set' ? 'Set published!' :
-        postType === 'video' ? 'Video published!' :
-        'Post created!'
-      )
+      setScheduling(false)
+      setScheduleDate('')
+      setScheduleTime('')
       onSuccess?.()
     } catch (err) {
       toast.error(err.message || 'Failed to create post')
@@ -417,6 +452,18 @@ export default function CreatePost({ onSuccess }) {
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Schedule toggle */}
+              <button
+                onClick={() => setScheduling(!scheduling)}
+                className={cn(
+                  'p-2 rounded-xl transition-colors cursor-pointer',
+                  scheduling ? 'text-blue-400 bg-blue-500/10' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                )}
+                title="Schedule post"
+              >
+                <Calendar size={18} />
+              </button>
+
               {content.length > 0 && (
                 <span className={cn('text-xs font-medium', charsLeft < 50 ? 'text-amber-400' : 'text-zinc-600')}>
                   {charsLeft}
@@ -429,9 +476,31 @@ export default function CreatePost({ onSuccess }) {
                 size="sm"
                 className="px-5"
               >
-                {postType === 'set' ? 'Publish Set' : postType === 'video' ? 'Publish Video' : 'Post'}
+                {scheduling
+                  ? 'Schedule'
+                  : postType === 'set' ? 'Publish Set' : postType === 'video' ? 'Publish Video' : 'Post'}
               </Button>
             </div>
+
+            {/* Schedule date/time picker */}
+            {scheduling && (
+              <div className="flex items-center gap-2 mt-2 pl-1">
+                <Clock size={14} className="text-blue-400" />
+                <input
+                  type="date"
+                  value={scheduleDate}
+                  onChange={(e) => setScheduleDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-2 py-1 text-xs text-zinc-200"
+                />
+                <input
+                  type="time"
+                  value={scheduleTime}
+                  onChange={(e) => setScheduleTime(e.target.value)}
+                  className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-2 py-1 text-xs text-zinc-200"
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

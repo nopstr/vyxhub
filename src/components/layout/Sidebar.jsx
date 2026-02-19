@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Search, Bell, Mail, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star } from 'lucide-react'
+import { Home, Search, Bell, Mail, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../ui/Avatar'
@@ -100,6 +100,22 @@ export default function Sidebar() {
               <>
                 <SidebarLink to="/become-creator" icon={Star} label="Become a Creator" />
                 <SidebarLink to="/settings" icon={Settings} label="Settings" />
+              </>
+            )}
+
+            {/* Staff sections — role-based */}
+            {profile?.system_role && (
+              <>
+                <div className="h-px bg-zinc-800/50 my-2 mx-4" />
+                {(profile.system_role === 'admin' || profile.system_role === 'support') && (
+                  <SidebarLink to="/support" icon={Headset} label="Support" />
+                )}
+                {(profile.system_role === 'admin' || profile.system_role === 'manager') && (
+                  <SidebarLink to="/management" icon={Users} label="Management" />
+                )}
+                {profile.system_role === 'admin' && (
+                  <SidebarLink to="/admin" icon={ShieldAlert} label="Admin" />
+                )}
               </>
             )}
           </>

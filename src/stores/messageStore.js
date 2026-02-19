@@ -35,7 +35,7 @@ export const useMessageStore = create((set, get) => ({
     // Batch: fetch all other participants for all conversations at once
     const { data: allParticipants } = await supabase
       .from('conversation_participants')
-      .select('conversation_id, user:profiles!user_id(id, username, display_name, avatar_url, is_verified)')
+      .select('conversation_id, user:profiles!user_id(id, username, display_name, avatar_url, is_verified, system_role)')
       .in('conversation_id', conversationIds)
       .neq('user_id', userId)
 
@@ -43,7 +43,7 @@ export const useMessageStore = create((set, get) => ({
     // We get recent messages for all conversations, then pick the latest per conv
     const { data: recentMessages } = await supabase
       .from('messages')
-      .select('conversation_id, content, created_at, sender_id')
+      .select('conversation_id, content, created_at, sender_id, sender_system_role, is_system_message')
       .in('conversation_id', conversationIds)
       .order('created_at', { ascending: false })
 
@@ -104,7 +104,7 @@ export const useMessageStore = create((set, get) => ({
       .from('messages')
       .select(`
         *,
-        sender:profiles!sender_id(id, username, display_name, avatar_url)
+        sender:profiles!sender_id(id, username, display_name, avatar_url, system_role)
       `)
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true })
@@ -129,7 +129,7 @@ export const useMessageStore = create((set, get) => ({
       })
       .select(`
         *,
-        sender:profiles!sender_id(id, username, display_name, avatar_url)
+        sender:profiles!sender_id(id, username, display_name, avatar_url, system_role)
       `)
       .single()
 
