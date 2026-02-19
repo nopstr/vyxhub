@@ -222,7 +222,7 @@ function SetPreview({ media, isUnlocked, totalMediaCount, post, author }) {
 /* Video Preview: shows player for unlocked, 5s teaser for locked */
 function VideoPreview({ media, isUnlocked, post, author }) {
   const videoMedia = media?.find(m => m.media_type === 'video')
-  const [showPaywall, setShowPaywall] = useState(!isUnlocked)
+  const [showPaywall, setShowPaywall] = useState(false)
   const videoRef = useRef(null)
 
   if (!videoMedia) return null
@@ -276,9 +276,10 @@ function VideoPreview({ media, isUnlocked, post, author }) {
           )}
           onTimeUpdate={handleTimeUpdate}
           controls={!showPaywall}
+          playsInline
           controlsList="nodownload nofullscreen noremoteplayback"
           disablePictureInPicture
-          preload="metadata"
+          preload="auto"
         />
       )}
       
