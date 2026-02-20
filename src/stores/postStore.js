@@ -215,17 +215,22 @@ export const usePostStore = create((set, get) => ({
     set({ loading: true })
 
     try {
-      // Get IDs of followed users
-      const { data: follows, error: followError } = await supabase
-        .from('follows')
-        .select('following_id')
-        .eq('follower_id', userId)
+      // Get IDs of followed users and subscribed creators
+      const [followsRes, subsRes] = await Promise.all([
+        supabase.from('follows').select('following_id').eq('follower_id', userId),
+        supabase.from('subscriptions').select('creator_id').eq('subscriber_id', userId).eq('status', 'active')
+      ])
 
-      if (followError) throw followError
+      if (followsRes.error) throw followsRes.error
+      if (subsRes.error) throw subsRes.error
 
-      const followIds = follows?.map(f => f.following_id) || []
+      const followIds = followsRes.data?.map(f => f.following_id) || []
+      const subIds = subsRes.data?.map(s => s.creator_id) || []
+      
+      // Combine and deduplicate IDs
+      const targetIds = [...new Set([...followIds, ...subIds])]
 
-      if (followIds.length === 0) {
+      if (targetIds.length === 0) {
         set({ posts: reset ? [] : get().posts, loading: false, hasMore: false })
         return []
       }
@@ -236,7 +241,7 @@ export const usePostStore = create((set, get) => ({
       const { data, error } = await supabase
         .from('posts')
         .select(POST_SELECT)
-        .in('author_id', followIds)
+        .in('author_id', targetIds)
         .order('created_at', { ascending: false })
         .range(from, to)
 

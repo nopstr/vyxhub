@@ -48,7 +48,17 @@ export default function HomePage() {
   }, [inView, hasMore, loading, tab, user?.id, fetchFeed, fetchFollowingFeed])
 
   const handleTabChange = (newTab) => {
-    if (newTab === tab) return
+    if (newTab === tab) {
+      // If clicking the active tab, reload content and scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      initialLoadDone.current = false
+      if (tab === 'following' && user) {
+        fetchFollowingFeed(user.id, true).then(() => { initialLoadDone.current = true })
+      } else {
+        fetchFeed(true, user?.id || null).then(() => { initialLoadDone.current = true })
+      }
+      return
+    }
     setTab(newTab)
   }
 
@@ -74,7 +84,7 @@ export default function HomePage() {
               tab === 'following' ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            Following
+            Following & Subscribed
             {tab === 'following' && (
               <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />
             )}
@@ -91,7 +101,7 @@ export default function HomePage() {
           <EmptyState
             icon={tab === 'foryou' ? Compass : Users}
             title={tab === 'foryou' ? "No posts yet" : "Your feed is empty"}
-            description={tab === 'foryou' ? "Check back later for new content." : "Follow some creators to see their posts here."}
+            description={tab === 'foryou' ? "Check back later for new content." : "Follow or subscribe to some creators to see their posts here."}
             action={
               tab === 'following' && (
                 <Link to="/explore">
