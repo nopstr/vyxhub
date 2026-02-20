@@ -853,16 +853,45 @@ function NotificationSettings() {
     }
   }
 
+  const [readReceipts, setReadReceipts] = useState(profile?.read_receipts_enabled ?? true)
+  const [savingReceipts, setSavingReceipts] = useState(false)
+
+  const handleToggleReadReceipts = async (value) => {
+    setReadReceipts(value)
+    try {
+      setSavingReceipts(true)
+      await updateProfile({ read_receipts_enabled: value })
+      toast.success(value ? 'Read receipts enabled' : 'Read receipts disabled')
+    } catch {
+      setReadReceipts(!value)
+      toast.error('Failed to save read receipt preference')
+    } finally {
+      setSavingReceipts(false)
+    }
+  }
+
   return (
-    <div className="space-y-2">
-      {Object.entries(prefs).map(([key, value]) => (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        {Object.entries(prefs).map(([key, value]) => (
+          <Toggle
+            key={key}
+            checked={value}
+            onChange={(v) => handleToggle(key, v)}
+            label={key.charAt(0).toUpperCase() + key.slice(1)}
+          />
+        ))}
+      </div>
+
+      <div className="pt-4 border-t border-zinc-800">
+        <h3 className="text-sm font-bold text-white mb-3">Message Privacy</h3>
         <Toggle
-          key={key}
-          checked={value}
-          onChange={(v) => handleToggle(key, v)}
-          label={key.charAt(0).toUpperCase() + key.slice(1)}
+          checked={readReceipts}
+          onChange={handleToggleReadReceipts}
+          label="Read Receipts"
+          description="When disabled, others won't see when you've read their messages — and you won't see their read receipts either"
         />
-      ))}
+      </div>
     </div>
   )
 }
