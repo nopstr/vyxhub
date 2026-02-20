@@ -4,7 +4,7 @@ import {
   User, Mail, Shield, Bell, CreditCard, LogOut,
   Camera, Save, Trash2, Eye, EyeOff, Lock,
   DollarSign, Globe, MessageCircle, Droplets, MapPin,
-  Link as LinkIcon, Star, Package, Percent, ShieldCheck, Zap,
+  Link as LinkIcon, Star, Package, ShieldCheck, Zap,
   Heart, AlertTriangle, KeyRound, Upload, Image, Film, FileText,
   CheckCircle, XCircle, Clock
 } from 'lucide-react'
@@ -16,7 +16,7 @@ import Input, { Textarea } from '../../components/ui/Input'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
 import { uploadAvatar, uploadBanner, optimizeImage } from '../../lib/storage'
-import { PLATFORM_FEE_PERCENT, MIN_SUBSCRIPTION_PRICE, MAX_SUBSCRIPTION_PRICE } from '../../lib/constants'
+import { MIN_SUBSCRIPTION_PRICE, MAX_SUBSCRIPTION_PRICE } from '../../lib/constants'
 
 const MODEL_CATEGORIES = [
   { value: 'female', label: 'Female' },
@@ -397,6 +397,11 @@ function CreatorSettings() {
     allow_free_messages: profile?.allow_free_messages ?? false,
     message_price: profile?.message_price || 5,
     show_activity_status: profile?.show_activity_status ?? true,
+    read_receipts_enabled: profile?.read_receipts_enabled ?? true,
+    allow_media_from_subscribers: profile?.allow_media_from_subscribers ?? true,
+    allow_media_from_users: profile?.allow_media_from_users ?? false,
+    allow_voice_from_subscribers: profile?.allow_voice_from_subscribers ?? true,
+    allow_voice_from_users: profile?.allow_voice_from_users ?? false,
     watermark_enabled: profile?.watermark_enabled ?? false,
     geoblocking_regions: profile?.geoblocking_regions || [],
     payout_method: profile?.payout_method || 'bank_transfer',
@@ -434,6 +439,11 @@ function CreatorSettings() {
         allow_free_messages: form.allow_free_messages,
         message_price: parseFloat(form.message_price) || 0,
         show_activity_status: form.show_activity_status,
+        read_receipts_enabled: form.read_receipts_enabled,
+        allow_media_from_subscribers: form.allow_media_from_subscribers,
+        allow_media_from_users: form.allow_media_from_users,
+        allow_voice_from_subscribers: form.allow_voice_from_subscribers,
+        allow_voice_from_users: form.allow_voice_from_users,
         watermark_enabled: form.watermark_enabled,
         geoblocking_regions: form.geoblocking_regions,
         payout_method: form.payout_method,
@@ -485,10 +495,10 @@ function CreatorSettings() {
           </div>
           <div className="grid grid-cols-2 gap-3 mb-5">
             {[
-              { icon: Percent, text: `Keep ${100 - PLATFORM_FEE_PERCENT}% of earnings` },
               { icon: DollarSign, text: 'Set your own prices' },
               { icon: ShieldCheck, text: 'Content protection' },
               { icon: Globe, text: 'Global audience' },
+              { icon: Star, text: 'Fan engagement tools' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-2 text-sm text-zinc-300">
                 <item.icon size={14} className="text-pink-400 flex-shrink-0" />
@@ -514,7 +524,7 @@ function CreatorSettings() {
               onChange={(e) => setForm(f => ({ ...f, subscription_price: e.target.value }))}
             />
             <p className="text-xs text-zinc-500">
-              You earn <strong className="text-emerald-400">${((parseFloat(form.subscription_price) || 0) * (100 - PLATFORM_FEE_PERCENT) / 100).toFixed(2)}/subscriber</strong> after {PLATFORM_FEE_PERCENT}% platform fee
+              This is what fans pay monthly to access your exclusive content
             </p>
           </div>
 
@@ -623,20 +633,7 @@ function CreatorSettings() {
                 className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               />
             </div>
-            <div className="mt-2 bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50">
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-zinc-500">Price</span>
-                <span className="text-zinc-300">${parseFloat(form.subscription_price || 0).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-zinc-500">Platform Fee ({PLATFORM_FEE_PERCENT}%)</span>
-                <span className="text-red-400">-${((parseFloat(form.subscription_price) || 0) * PLATFORM_FEE_PERCENT / 100).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-xs pt-1 border-t border-zinc-800">
-                <span className="text-zinc-400 font-medium">Your Earnings</span>
-                <span className="text-emerald-400 font-bold">${((parseFloat(form.subscription_price) || 0) * (100 - PLATFORM_FEE_PERCENT) / 100).toFixed(2)}/subscriber</span>
-              </div>
-            </div>
+            <p className="text-xs text-zinc-500 mt-1">Monthly price fans pay to access your exclusive content</p>
           </div>
 
           <Toggle
@@ -672,38 +669,85 @@ function CreatorSettings() {
         <div className="space-y-5">
           <SectionHeader icon={MessageCircle} title="Messaging" description="Control how fans can message you" />
 
-          <Toggle
-            checked={form.allow_free_messages}
-            onChange={(v) => setForm(f => ({ ...f, allow_free_messages: v }))}
-            label="Allow Free Messages"
-            description="Let non-subscribers send you messages for free"
-          />
+          {/* Message Access */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Message Access</h4>
+            <Toggle
+              checked={form.allow_free_messages}
+              onChange={(v) => setForm(f => ({ ...f, allow_free_messages: v }))}
+              label="Allow Free Messages"
+              description="Let non-subscribers message you without paying"
+            />
 
-          {!form.allow_free_messages && (
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">Message Price (non-subscribers)</label>
-              <div className="relative">
-                <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  type="number"
-                  min="1"
-                  max="50"
-                  step="0.5"
-                  value={form.message_price}
-                  onChange={(e) => setForm(f => ({ ...f, message_price: e.target.value }))}
-                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-                />
+            {!form.allow_free_messages && (
+              <div className="ml-1">
+                <label className="block text-sm font-medium text-zinc-300 mb-1.5">Message Unlock Price</label>
+                <div className="relative w-36">
+                  <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    step="0.5"
+                    value={form.message_price}
+                    onChange={(e) => setForm(f => ({ ...f, message_price: e.target.value }))}
+                    className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  />
+                </div>
+                <p className="text-xs text-zinc-500 mt-1">Non-subscribers pay this once to unlock messaging with you</p>
               </div>
-              <p className="text-xs text-zinc-500 mt-1">Non-subscribers pay this to send you a message</p>
-            </div>
-          )}
+            )}
+          </div>
 
-          <Toggle
-            checked={form.show_activity_status}
-            onChange={(v) => setForm(f => ({ ...f, show_activity_status: v }))}
-            label="Show Activity Status"
-            description="Let fans see when you were last active"
-          />
+          {/* Media Permissions */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Media Permissions — Subscribers</h4>
+            <Toggle
+              checked={form.allow_media_from_subscribers}
+              onChange={(v) => setForm(f => ({ ...f, allow_media_from_subscribers: v }))}
+              label="Allow Photos & Videos"
+              description="Subscribers can send you images and videos in chat"
+            />
+            <Toggle
+              checked={form.allow_voice_from_subscribers}
+              onChange={(v) => setForm(f => ({ ...f, allow_voice_from_subscribers: v }))}
+              label="Allow Voice Messages"
+              description="Subscribers can send you voice recordings"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Media Permissions — Non-Subscribers</h4>
+            <Toggle
+              checked={form.allow_media_from_users}
+              onChange={(v) => setForm(f => ({ ...f, allow_media_from_users: v }))}
+              label="Allow Photos & Videos"
+              description="Non-subscribers can send you images and videos in chat"
+            />
+            <Toggle
+              checked={form.allow_voice_from_users}
+              onChange={(v) => setForm(f => ({ ...f, allow_voice_from_users: v }))}
+              label="Allow Voice Messages"
+              description="Non-subscribers can send you voice recordings"
+            />
+          </div>
+
+          {/* Privacy */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Privacy</h4>
+            <Toggle
+              checked={form.read_receipts_enabled}
+              onChange={(v) => setForm(f => ({ ...f, read_receipts_enabled: v }))}
+              label="Read Receipts"
+              description="When disabled, others won't see when you've read their messages — and you won't see theirs either"
+            />
+            <Toggle
+              checked={form.show_activity_status}
+              onChange={(v) => setForm(f => ({ ...f, show_activity_status: v }))}
+              label="Show Activity Status"
+              description="Let fans see when you were last active"
+            />
+          </div>
         </div>
       )}
 
@@ -780,14 +824,6 @@ function CreatorSettings() {
             <h4 className="text-sm font-medium text-zinc-300 mb-2">Payout Schedule</h4>
             <p className="text-xs text-zinc-500">Payouts are processed weekly on Fridays. Minimum payout threshold is $50.00. Earnings from the previous period will be included in the next cycle.</p>
           </div>
-
-          <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Percent size={14} className="text-indigo-400" />
-              <h4 className="text-sm font-medium text-white">Platform Fee</h4>
-            </div>
-            <p className="text-xs text-zinc-400">VyxHub takes a {PLATFORM_FEE_PERCENT}% platform fee on all earnings (subscriptions, tips, PPV, custom requests). You keep {100 - PLATFORM_FEE_PERCENT}% of all revenue.</p>
-          </div>
         </div>
       )}
 
@@ -853,23 +889,6 @@ function NotificationSettings() {
     }
   }
 
-  const [readReceipts, setReadReceipts] = useState(profile?.read_receipts_enabled ?? true)
-  const [savingReceipts, setSavingReceipts] = useState(false)
-
-  const handleToggleReadReceipts = async (value) => {
-    setReadReceipts(value)
-    try {
-      setSavingReceipts(true)
-      await updateProfile({ read_receipts_enabled: value })
-      toast.success(value ? 'Read receipts enabled' : 'Read receipts disabled')
-    } catch {
-      setReadReceipts(!value)
-      toast.error('Failed to save read receipt preference')
-    } finally {
-      setSavingReceipts(false)
-    }
-  }
-
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -883,15 +902,7 @@ function NotificationSettings() {
         ))}
       </div>
 
-      <div className="pt-4 border-t border-zinc-800">
-        <h3 className="text-sm font-bold text-white mb-3">Message Privacy</h3>
-        <Toggle
-          checked={readReceipts}
-          onChange={handleToggleReadReceipts}
-          label="Read Receipts"
-          description="When disabled, others won't see when you've read their messages — and you won't see their read receipts either"
-        />
-      </div>
+
     </div>
   )
 }
