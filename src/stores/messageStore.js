@@ -10,6 +10,7 @@ export const useMessageStore = create((set, get) => ({
   activeConversation: null,
   messages: [],
   loading: false,
+  messagesLoading: false,
   messageAccess: null, // { allowed, reason, price }
 
   fetchConversations: async (userId) => {
@@ -100,7 +101,7 @@ export const useMessageStore = create((set, get) => ({
   },
 
   fetchMessages: async (conversationId) => {
-    set({ loading: true })
+    set({ messagesLoading: true })
     const { data, error } = await supabase
       .from('messages')
       .select(`
@@ -111,7 +112,9 @@ export const useMessageStore = create((set, get) => ({
       .order('created_at', { ascending: true })
 
     if (!error) {
-      set({ messages: data || [], activeConversation: conversationId, loading: false })
+      set({ messages: data || [], activeConversation: conversationId, messagesLoading: false })
+    } else {
+      set({ messagesLoading: false })
     }
   },
 
