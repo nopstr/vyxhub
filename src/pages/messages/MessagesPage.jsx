@@ -14,13 +14,51 @@ import { toast } from 'sonner'
 function NewMessageModal({ onClose, onSelect }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
+  const [defaultUsers, setDefaultUsers] = useState([])
   const [searching, setSearching] = useState(false)
-  const { user } = useAuthStore()
+  const [loadingDefaults, setLoadingDefaults] = useState(true)
+  const { user, profile } = useAuthStore()
   const inputRef = useRef(null)
 
   useEffect(() => {
     inputRef.current?.focus()
   }, [])
+
+  useEffect(() => {
+    async function loadDefaults() {
+      setLoadingDefaults(true)
+      try {
+        const [followsRes, subsRes] = await Promise.all([
+          supabase.from('follows').select('following_id').eq('follower_id', user.id),
+          supabase.from('subscriptions').select('creator_id').eq('subscriber_id', user.id).eq('status', 'active')
+        ])
+
+        const followIds = followsRes.data?.map(f => f.following_id) || []
+        const subIds = subsRes.data?.map(s => s.creator_id) || []
+        const targetIds = [...new Set([...followIds, ...subIds])]
+
+        if (targetIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, username, display_name, avatar_url, is_verified, is_creator, message_price, allow_free_messages')
+            .in('id', targetIds)
+          
+          // Mark subscribed users so we know they don't have to pay
+          const profilesWithSub = profiles?.map(p => ({
+            ...p,
+            isSubscribed: subIds.includes(p.id)
+          })) || []
+          
+          setDefaultUsers(profilesWithSub)
+        }
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoadingDefaults(false)
+      }
+    }
+    loadDefaults()
+  }, [user.id])
 
   useEffect(() => {
     const q = query.trim()
@@ -30,7 +68,7 @@ function NewMessageModal({ onClose, onSelect }) {
       setSearching(true)
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, display_name, avatar_url, is_verified')
+        .select('id, username, display_name, avatar_url, is_verified, is_creator, message_price, allow_free_messages')
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
         .neq('id', user.id)
         .limit(10)
@@ -38,7 +76,42 @@ function NewMessageModal({ onClose, onSelect }) {
       setSearching(false)
     }, 300)
     return () => clearTimeout(timer)
-  }, [query])
+  }, [query, user.id])
+
+  const displayUsers = query.length >= 2 ? results : defaultUsers
+
+  const renderUser = (u) => {
+    // Determine if there's a paywall
+    // If sender is creator, it's free. If receiver is not creator, it's free.
+    // If subscribed, it's free. If allow_free_messages, it's free.
+    const isFree = profile?.is_creator || !u.is_creator || u.isSubscribed || u.allow_free_messages || !u.message_price || u.message_price <= 0
+    const showPaywall = !isFree
+
+    return (
+      <button
+        key={u.id}
+        onClick={() => onSelect(u)}
+        className="w-full flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors text-left cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <Avatar src={u.avatar_url} alt={u.display_name} size="md" />
+          <div>
+            <div className="flex items-center gap-1">
+              <span className="text-sm font-semibold text-white">{u.display_name}</span>
+              {u.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+            </div>
+            <span className="text-xs text-zinc-500">@{u.username}</span>
+          </div>
+        </div>
+        {showPaywall && (
+          <div className="flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-1 rounded-full">
+            <Lock size={12} />
+            {formatCurrency(u.message_price)}
+          </div>
+        )}
+      </button>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4">
@@ -65,25 +138,13 @@ function NewMessageModal({ onClose, onSelect }) {
           {!searching && query.length >= 2 && results.length === 0 && (
             <div className="p-4 text-center text-sm text-zinc-500">No users found</div>
           )}
-          {results.map(u => (
-            <button
-              key={u.id}
-              onClick={() => onSelect(u)}
-              className="w-full flex items-center gap-3 p-4 hover:bg-zinc-800/50 transition-colors text-left cursor-pointer"
-            >
-              <Avatar src={u.avatar_url} alt={u.display_name} size="md" />
-              <div>
-                <div className="flex items-center gap-1">
-                  <span className="text-sm font-semibold text-white">{u.display_name}</span>
-                  {u.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
-                </div>
-                <span className="text-xs text-zinc-500">@{u.username}</span>
-              </div>
-            </button>
-          ))}
-          {!searching && query.length < 2 && (
+          {!searching && query.length < 2 && loadingDefaults && (
+            <div className="p-4 text-center text-sm text-zinc-500">Loading...</div>
+          )}
+          {!searching && query.length < 2 && !loadingDefaults && defaultUsers.length === 0 && (
             <div className="p-4 text-center text-sm text-zinc-500">Type at least 2 characters to search</div>
           )}
+          {displayUsers.map(renderUser)}
         </div>
       </div>
     </div>
@@ -559,10 +620,11 @@ function MessageThread({ conversationId, userId, otherUser }) {
 }
 
 export default function MessagesPage() {
-  const { user } = useAuthStore()
+  const { user, profile } = useAuthStore()
   const { conversations, loading, fetchConversations, startConversation } = useMessageStore()
   const [selectedId, setSelectedId] = useState(null)
   const [showNewMessage, setShowNewMessage] = useState(false)
+  const [paywallUser, setPaywallUser] = useState(null)
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
@@ -681,8 +743,52 @@ export default function MessagesPage() {
       {showNewMessage && (
         <NewMessageModal
           onClose={() => setShowNewMessage(false)}
-          onSelect={handleNewMessage}
+          onSelect={(u) => {
+            const isFree = profile?.is_creator || !u.is_creator || u.isSubscribed || u.allow_free_messages || !u.message_price || u.message_price <= 0
+            if (!isFree) {
+              setPaywallUser(u)
+              setShowNewMessage(false)
+            } else {
+              handleNewMessage(u)
+            }
+          }}
         />
+      )}
+
+      {/* Paywall Modal */}
+      {paywallUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60" onClick={() => setPaywallUser(null)} />
+          <div className="relative w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl p-6 text-center">
+            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock size={32} className="text-amber-500" />
+            </div>
+            <h3 className="text-xl font-bold text-white mb-2">Unlock Messages</h3>
+            <p className="text-zinc-400 mb-6">
+              Pay a one-time fee of <span className="text-white font-bold">{formatCurrency(paywallUser.message_price)}</span> to start a conversation with @{paywallUser.username}.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setPaywallUser(null)}>Cancel</Button>
+              <Button variant="primary" className="flex-1" onClick={async () => {
+                try {
+                  const { data, error } = await supabase.rpc('pay_message_unlock', {
+                    p_sender_id: user.id,
+                    p_receiver_id: paywallUser.id,
+                    p_conversation_id: null // Will be linked later if needed
+                  })
+                  if (error) throw error
+                  toast.success('Messages unlocked!')
+                  handleNewMessage(paywallUser)
+                  setPaywallUser(null)
+                } catch (err) {
+                  toast.error(err.message || 'Payment failed')
+                }
+              }}>
+                Pay {formatCurrency(paywallUser.message_price)}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

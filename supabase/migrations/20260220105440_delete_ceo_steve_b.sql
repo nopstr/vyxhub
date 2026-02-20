@@ -21,16 +21,19 @@ BEGIN
     UPDATE public.profiles SET verified_by = NULL WHERE verified_by = v_user_id;
     UPDATE public.profiles SET managed_by = NULL WHERE managed_by = v_user_id;
     
-    -- 4. Set NULL in verification_requests where the user is the reviewer
-    UPDATE public.verification_requests SET reviewed_by = NULL WHERE reviewed_by = v_user_id;
-    
+    -- 4. Set NULL in verification_requests where the user is the reviewer (if table exists)
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'verification_requests') THEN
+      EXECUTE 'UPDATE public.verification_requests SET reviewed_by = NULL WHERE reviewed_by = $1' USING v_user_id;
+    END IF;
+
     -- 5. Delete scheduled posts where the user is the scheduler
     DELETE FROM public.scheduled_posts WHERE scheduled_by = v_user_id;
-    
+
     -- 6. Delete reports where the user is the reporter (due to ON DELETE SET NULL NOT NULL constraint)
     DELETE FROM public.reports WHERE reporter_id = v_user_id;
-    
+
     -- 7. Delete from auth.users (this will cascade to public.profiles and all other tables with ON DELETE CASCADE)
     DELETE FROM auth.users WHERE id = v_user_id;
   END IF;
-END $$;
+END;
+$$;
