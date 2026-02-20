@@ -5,7 +5,7 @@ import { resolvePostMediaUrls } from '../../lib/storage'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
-import PostCard from '../../components/feed/PostCard'
+import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import { SkeletonPost } from '../../components/ui/Spinner'
 import { Link, useSearchParams } from 'react-router-dom'
 import { debounce, formatNumber, cn } from '../../lib/utils'
@@ -345,7 +345,7 @@ export default function ExplorePage() {
                 <SkeletonPost />
               </>
             ) : posts.length > 0 ? (
-              posts.map(post => <PostCard key={post.id} post={post} />)
+              posts.map(post => <VirtualizedPost key={post.id} post={post} />)
             ) : (
               <div className="text-center py-16">
                 <TrendingUp size={48} className="text-zinc-700 mx-auto mb-4" />
@@ -365,7 +365,7 @@ export default function ExplorePage() {
                 <SkeletonPost />
               </>
             ) : posts.length > 0 ? (
-              posts.map(post => <PostCard key={post.id} post={post} />)
+              posts.map(post => <VirtualizedPost key={post.id} post={post} />)
             ) : (
               <div className="text-center py-16">
                 <FileText size={48} className="text-zinc-700 mx-auto mb-4" />

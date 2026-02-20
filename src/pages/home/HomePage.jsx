@@ -1,10 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import CreatePost from '../../components/feed/CreatePost'
 
-import PostCard from '../../components/feed/PostCard'
+import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import { SkeletonPost } from '../../components/ui/Spinner'
 import { useInView } from 'react-intersection-observer'
 import EmptyState from '../../components/ui/EmptyState'
@@ -101,8 +101,8 @@ export default function HomePage() {
             }
           />
         ) : (
-          posts.map(post => (
-            <PostCard key={post.id} post={post} />
+          posts.map((post, index) => (
+            <VirtualizedPost key={post.id} post={post} index={index} />
           ))
         )}
 

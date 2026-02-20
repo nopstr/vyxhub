@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
-import PostCard from '../../components/feed/PostCard'
+import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import { PageLoader } from '../../components/ui/Spinner'
 import { Unlock } from 'lucide-react'
 
@@ -46,7 +46,7 @@ export default function UnlocksPage() {
       </header>
 
       {posts.length > 0 ? (
-        posts.map(post => <PostCard key={post.id} post={post} />)
+        posts.map(post => <VirtualizedPost key={post.id} post={post} />)
       ) : (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <div className="w-16 h-16 bg-zinc-800/50 rounded-3xl flex items-center justify-center mb-4">

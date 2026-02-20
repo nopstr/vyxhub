@@ -13,7 +13,7 @@ import { useMessageStore } from '../../stores/messageStore'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
-import PostCard from '../../components/feed/PostCard'
+import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import ReportModal from '../../components/ReportModal'
 import Dropdown, { DropdownItem, DropdownDivider } from '../../components/ui/Dropdown'
 import { SkeletonProfile, SkeletonPost } from '../../components/ui/Spinner'
@@ -422,7 +422,7 @@ export default function ProfilePage() {
         {/* Posts Tab - Timeline View */}
         {tab === 'posts' && (
           regularPosts.length > 0 ? (
-            regularPosts.map(post => <PostCard key={post.id} post={post} />)
+            regularPosts.map(post => <VirtualizedPost key={post.id} post={post} />)
           ) : (
             <div className="text-center py-16">
               <p className="text-zinc-500">No posts yet</p>
@@ -465,7 +465,7 @@ export default function ProfilePage() {
         {/* Drafts Tab - Timeline View */}
         {tab === 'drafts' && isOwnProfile && (
           draftPosts.length > 0 ? (
-            draftPosts.map(post => <PostCard key={post.id} post={post} />)
+            draftPosts.map(post => <VirtualizedPost key={post.id} post={post} />)
           ) : (
             <div className="text-center py-16">
               <p className="text-zinc-500">No drafts yet</p>

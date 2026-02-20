@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
-import PostCard from '../../components/feed/PostCard'
+import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import { PageLoader } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import { Bookmark } from 'lucide-react'
@@ -47,7 +47,7 @@ export default function BookmarksPage() {
       </header>
 
       {posts.length > 0 ? (
-        posts.map(post => <PostCard key={post.id} post={post} />)
+        posts.map(post => <VirtualizedPost key={post.id} post={post} />)
       ) : (
         <EmptyState
           icon={Bookmark}

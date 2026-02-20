@@ -536,12 +536,9 @@ export default function PostCard({ post }) {
   const { isSubscribedTo, hasPurchasedPost } = useSubscriptionCache()
   const navigate = useNavigate()
   const author = post.author
-  const [showReactions, setShowReactions] = useState(false)
   const [showReportModal, setShowReportModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [editedContent, setEditedContent] = useState(post.content)
-  const reactionsRef = useRef(null)
-  const reactionsTimeout = useRef(null)
 
   if (!author) return null
 
@@ -559,18 +556,12 @@ export default function PostCard({ post }) {
 
   // Get the user's own reactions on this post
   const userReactions = post.likes?.filter(l => l.user_id === user?.id) || []
-  const hasReacted = userReactions.length > 0
 
   // Count reactions by type
   const reactionCounts = REACTION_TYPES.reduce((acc, r) => {
     acc[r.type] = post.likes?.filter(l => l.reaction_type === r.type).length || 0
     return acc
   }, {})
-  const totalReactions = post.likes?.length || post.like_count || 0
-
-  // Find primary reaction to display (first one user made, or heart as default display)
-  const primaryUserReaction = userReactions[0]?.reaction_type
-  const primaryDef = REACTION_TYPES.find(r => r.type === primaryUserReaction) || REACTION_TYPES[0]
 
   const isLocked = post.visibility === 'subscribers_only' && !isOwn
   const showPaywall = (isLocked && !isSubscribed && !hasPurchased) || (isPPV && !isOwn && !hasPurchased)
@@ -580,16 +571,6 @@ export default function PostCard({ post }) {
     e?.stopPropagation()
     if (!user) return toast.error('Sign in to react to posts')
     toggleReaction(post.id, user.id, reactionType)
-    setShowReactions(false)
-  }
-
-  const handleReactionHover = () => {
-    clearTimeout(reactionsTimeout.current)
-    setShowReactions(true)
-  }
-
-  const handleReactionLeave = () => {
-    reactionsTimeout.current = setTimeout(() => setShowReactions(false), 300)
   }
 
   const handleComment = (e) => {
@@ -894,71 +875,42 @@ export default function PostCard({ post }) {
             </div>
           )}
 
-          {/* Reaction Summary */}
-          {totalReactions > 0 && (
-            <div className="flex items-center gap-1 mt-2.5 px-1">
-              <div className="flex -space-x-0.5">
-                {REACTION_TYPES.filter(r => reactionCounts[r.type] > 0)
-                  .slice(0, 3)
-                  .map(r => (
-                    <div key={r.type} className={cn('w-5 h-5 rounded-full flex items-center justify-center', r.bg)}>
-                      <r.icon size={11} className={r.color} fill={r.fill ? 'currentColor' : 'none'} />
-                    </div>
-                  ))}
-              </div>
-              <span className="text-xs text-zinc-500 font-medium">{formatNumber(totalReactions)}</span>
-            </div>
-          )}
-
           {/* Actions */}
           <div className="flex items-center gap-1 mt-2 -ml-2">
-            {/* Reaction Button with Picker */}
-            <div
-              className="relative"
-              ref={reactionsRef}
-              onMouseEnter={handleReactionHover}
-              onMouseLeave={handleReactionLeave}
-            >
-              <button
-                onClick={(e) => handleReaction(primaryDef.type, e)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors group cursor-pointer',
-                  hasReacted ? primaryDef.color : 'text-zinc-500 hover:text-rose-400'
-                )}
-              >
-                <primaryDef.icon
-                  size={18}
-                  fill={hasReacted && primaryDef.fill ? 'currentColor' : 'none'}
-                  className="group-hover:scale-110 transition-transform"
-                />
-                <span className="text-xs font-semibold">{formatNumber(totalReactions)}</span>
-              </button>
-
-              {/* Reaction Picker Popup */}
-              {showReactions && (
-                <div
-                  className="absolute bottom-full left-0 mb-2 flex items-center gap-0.5 bg-zinc-900 border border-zinc-700/50 rounded-2xl p-1.5 shadow-xl z-20 animate-dropdown-in"
-                  onMouseEnter={handleReactionHover}
-                  onMouseLeave={handleReactionLeave}
-                >
-                  {REACTION_TYPES.map(r => {
-                    const isActive = userReactions.some(ur => ur.reaction_type === r.type)
-                    return (
-                      <button
-                        key={r.type}
-                        onClick={(e) => handleReaction(r.type, e)}
-                        title={r.label}
+            {/* Inline Reactions */}
+            <div className="flex items-center gap-1">
+              {REACTION_TYPES.map(r => {
+                const isActive = userReactions.some(ur => ur.reaction_type === r.type)
+                const count = reactionCounts[r.type] || 0
+                return (
+                  <button
+                    key={r.type}
+                    onClick={(e) => handleReaction(r.type, e)}
+                    title={r.label}
+                    className={cn(
+                      'flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all group cursor-pointer',
+                      isActive ? r.color : 'text-zinc-500 hover:bg-zinc-800/50'
+                    )}
+                  >
+                    <div className="relative">
+                      <r.icon
+                        size={18}
+                        fill={isActive && r.fill ? 'currentColor' : 'none'}
                         className={cn(
-                          'p-2 rounded-xl transition-all hover:scale-125 cursor-pointer',
-                          isActive ? cn(r.bg, r.color) : 'text-zinc-400 hover:bg-zinc-800'
+                          "transition-transform duration-300",
+                          isActive ? "scale-110" : "group-hover:scale-110"
                         )}
-                      >
-                        <r.icon size={20} fill={isActive && r.fill ? 'currentColor' : 'none'} />
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
+                      />
+                      {isActive && (
+                        <div className={cn("absolute inset-0 rounded-full animate-ping opacity-0", r.bg)} />
+                      )}
+                    </div>
+                    {count > 0 && (
+                      <span className="text-xs font-semibold">{formatNumber(count)}</span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
 
             {/* Comment Button — subscriber-only */}
