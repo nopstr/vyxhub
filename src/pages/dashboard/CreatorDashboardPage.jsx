@@ -3,7 +3,8 @@ import {
   DollarSign, TrendingUp, Users, Eye, Heart, Image, MessageCircle,
   ArrowUpRight, ArrowDownRight, Calendar, BarChart3, Send, Download,
   Clock, CheckCircle, XCircle, ChevronDown, Filter, FileText,
-  Megaphone, ClipboardList, ArrowLeft, Loader2, Star, Package
+  Megaphone, ClipboardList, ArrowLeft, Loader2, Star, Package,
+  Tag, Link2, Trash2, Percent, CalendarClock, Gift
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -291,6 +292,11 @@ function MassMessageTab({ userId }) {
   const [sending, setSending] = useState(false)
   const [subCount, setSubCount] = useState(null)
   const [history, setHistory] = useState([])
+  const [scheduleMode, setScheduleMode] = useState(false)
+  const [scheduledDate, setScheduledDate] = useState('')
+  const [scheduledTime, setScheduledTime] = useState('')
+  const [scheduledMessages, setScheduledMessages] = useState([])
+  const [cancellingId, setCancellingId] = useState(null)
 
   useEffect(() => {
     // Get active subscriber count
@@ -310,11 +316,52 @@ function MassMessageTab({ userId }) {
       .order('created_at', { ascending: false })
       .limit(5)
       .then(({ data }) => setHistory(data || []))
+
+    // Load scheduled messages
+    fetchScheduled()
   }, [userId])
+
+  const fetchScheduled = async () => {
+    const { data } = await supabase
+      .from('scheduled_messages')
+      .select('*')
+      .eq('creator_id', userId)
+      .in('status', ['pending', 'sent'])
+      .order('scheduled_at', { ascending: true })
+    setScheduledMessages(data || [])
+  }
 
   const handleSend = async () => {
     if (!content.trim()) return toast.error('Message cannot be empty')
     if (subCount === 0) return toast.error('No active subscribers to message')
+
+    // If scheduling, validate date/time
+    if (scheduleMode) {
+      if (!scheduledDate || !scheduledTime) return toast.error('Pick a date and time for scheduling')
+      const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}`)
+      if (scheduledAt <= new Date()) return toast.error('Scheduled time must be in the future')
+
+      setSending(true)
+      try {
+        const { error } = await supabase.rpc('schedule_mass_message', {
+          p_creator_id: userId,
+          p_content: content.trim(),
+          p_scheduled_at: scheduledAt.toISOString(),
+        })
+        if (error) throw error
+        toast.success(`Message scheduled for ${scheduledAt.toLocaleString()}`)
+        setContent('')
+        setScheduledDate('')
+        setScheduledTime('')
+        setScheduleMode(false)
+        fetchScheduled()
+      } catch (err) {
+        toast.error(err.message || 'Failed to schedule message')
+      } finally {
+        setSending(false)
+      }
+      return
+    }
     
     const confirmed = confirm(`Send this message to ${subCount} active subscriber${subCount !== 1 ? 's' : ''}?`)
     if (!confirmed) return
@@ -332,6 +379,24 @@ function MassMessageTab({ userId }) {
       toast.error(err.message || 'Failed to send mass message')
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleCancelScheduled = async (id) => {
+    setCancellingId(id)
+    try {
+      const { error } = await supabase
+        .from('scheduled_messages')
+        .update({ status: 'cancelled' })
+        .eq('id', id)
+        .eq('creator_id', userId)
+      if (error) throw error
+      toast.success('Scheduled message cancelled')
+      fetchScheduled()
+    } catch (err) {
+      toast.error('Failed to cancel')
+    } finally {
+      setCancellingId(null)
     }
   }
 
@@ -362,6 +427,47 @@ function MassMessageTab({ userId }) {
             </div>
           </div>
 
+          {/* Schedule toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setScheduleMode(!scheduleMode)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer border',
+                scheduleMode
+                  ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                  : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:text-zinc-200'
+              )}
+            >
+              <CalendarClock size={14} />
+              {scheduleMode ? 'Scheduling enabled' : 'Schedule for later'}
+            </button>
+          </div>
+
+          {/* Schedule date/time */}
+          {scheduleMode && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={scheduledDate}
+                  onChange={e => setScheduledDate(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-violet-500/50 [color-scheme:dark]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Time</label>
+                <input
+                  type="time"
+                  value={scheduledTime}
+                  onChange={e => setScheduledTime(e.target.value)}
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-violet-500/50 [color-scheme:dark]"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
             <p className="text-xs text-amber-300">
               <strong>Note:</strong> This will create or open a conversation with each subscriber and send them this message. 
@@ -375,11 +481,38 @@ function MassMessageTab({ userId }) {
             disabled={!content.trim() || subCount === 0}
             className="w-full"
           >
-            <Send size={16} />
-            Send to {subCount ?? '...'} Subscriber{subCount !== 1 ? 's' : ''}
+            {scheduleMode ? <CalendarClock size={16} /> : <Send size={16} />}
+            {scheduleMode ? 'Schedule Message' : `Send to ${subCount ?? '...'} Subscriber${subCount !== 1 ? 's' : ''}`}
           </Button>
         </div>
       </SectionCard>
+
+      {/* Scheduled messages queue */}
+      {scheduledMessages.filter(m => m.status === 'pending').length > 0 && (
+        <SectionCard title="Scheduled Queue" icon={CalendarClock}>
+          <div className="space-y-3">
+            {scheduledMessages.filter(m => m.status === 'pending').map(msg => (
+              <div key={msg.id} className="flex items-start gap-3 py-2 border-b border-zinc-800/50 last:border-0">
+                <CalendarClock size={14} className="text-violet-400 mt-1 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-zinc-300 line-clamp-2">{msg.content}</p>
+                  <p className="text-xs text-violet-400 mt-1">
+                    Scheduled for {new Date(msg.scheduled_at).toLocaleString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleCancelScheduled(msg.id)}
+                  disabled={cancellingId === msg.id}
+                  className="text-zinc-600 hover:text-red-400 transition-colors cursor-pointer p-1"
+                  title="Cancel scheduled message"
+                >
+                  {cancellingId === msg.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                </button>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
 
       <SectionCard title="Recent Messages" icon={Clock}>
         {history.length === 0 ? (
@@ -775,6 +908,321 @@ function EarningsExportTab({ userId }) {
   )
 }
 
+// ─── Promotions Tab ─────────────────────────────────────────────────────────
+
+function PromotionsTab({ userId }) {
+  const { profile } = useAuthStore()
+  const [activePromo, setActivePromo] = useState(null)
+  const [promoHistory, setPromoHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  const [deactivating, setDeactivating] = useState(false)
+  const [discountPercent, setDiscountPercent] = useState(25)
+  const [durationDays, setDurationDays] = useState(7)
+
+  useEffect(() => { fetchPromos() }, [userId])
+
+  const fetchPromos = async () => {
+    setLoading(true)
+    try {
+      // Get active promotion
+      const { data: active } = await supabase.rpc('get_active_promotion', { p_creator_id: userId })
+      setActivePromo(active)
+
+      // Get all promotions for history
+      const { data: all } = await supabase
+        .from('creator_promotions')
+        .select('*')
+        .eq('creator_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10)
+      setPromoHistory(all || [])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreate = async () => {
+    if (!profile?.subscription_price || parseFloat(profile.subscription_price) <= 0) {
+      return toast.error('Set a subscription price in Settings first')
+    }
+    setCreating(true)
+    try {
+      const { data, error } = await supabase.rpc('create_promotion', {
+        p_creator_id: userId,
+        p_discount_percent: discountPercent,
+        p_duration_days: durationDays,
+      })
+      if (error) throw error
+      toast.success(`Promotion created! ${discountPercent}% off for ${durationDays} days`)
+      fetchPromos()
+    } catch (err) {
+      toast.error(err.message || 'Failed to create promotion')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleDeactivate = async () => {
+    if (!activePromo?.id) return
+    if (!confirm('Deactivate this promotion? New subscribers will pay full price.')) return
+    setDeactivating(true)
+    try {
+      const { error } = await supabase.rpc('deactivate_promotion', {
+        p_creator_id: userId,
+        p_promo_id: activePromo.id,
+      })
+      if (error) throw error
+      toast.success('Promotion deactivated')
+      setActivePromo(null)
+      fetchPromos()
+    } catch (err) {
+      toast.error('Failed to deactivate')
+    } finally {
+      setDeactivating(false)
+    }
+  }
+
+  const subPrice = parseFloat(profile?.subscription_price) || 0
+  const previewPrice = +(subPrice * (100 - discountPercent) / 100).toFixed(2)
+
+  if (loading) return <PageLoader />
+
+  return (
+    <div className="space-y-5">
+      {/* Active promotion */}
+      {activePromo ? (
+        <SectionCard title="Active Promotion" icon={Tag}>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-2xl font-bold text-emerald-400">{activePromo.discount_percent}% OFF</span>
+                  <span className="text-sm text-zinc-500 line-through">{formatCurrency(activePromo.original_price)}</span>
+                  <span className="text-lg font-semibold text-white">{formatCurrency(activePromo.promo_price)}</span>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  Expires {new Date(activePromo.expires_at).toLocaleDateString()} · {activePromo.used_count} use{activePromo.used_count !== 1 ? 's' : ''}
+                  {activePromo.max_uses ? ` / ${activePromo.max_uses} max` : ''}
+                </p>
+              </div>
+            </div>
+            <Button variant="danger" size="sm" onClick={handleDeactivate} loading={deactivating}>
+              <XCircle size={14} /> End Promotion
+            </Button>
+          </div>
+        </SectionCard>
+      ) : (
+        <SectionCard title="Create Promotion" icon={Tag}>
+          <div className="space-y-4">
+            {subPrice <= 0 ? (
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-3">
+                <p className="text-xs text-amber-300">
+                  Set a subscription price in Settings before creating promotions.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">Discount</label>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range"
+                      min={5}
+                      max={90}
+                      step={5}
+                      value={discountPercent}
+                      onChange={e => setDiscountPercent(Number(e.target.value))}
+                      className="flex-1 accent-indigo-500"
+                    />
+                    <span className="text-lg font-bold text-indigo-400 min-w-[50px] text-right">{discountPercent}%</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-2 text-xs text-zinc-500">
+                    <span>Regular: {formatCurrency(subPrice)}</span>
+                    <span className="text-emerald-400 font-medium">Promo: {formatCurrency(previewPrice)}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-2">Duration</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {[3, 7, 14, 30, 60].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => setDurationDays(d)}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+                          durationDays === d ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                        )}
+                      >
+                        {d} day{d !== 1 ? 's' : ''}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-3">
+                  <p className="text-xs text-indigo-300">
+                    New subscribers will see a <strong>{discountPercent}% off</strong> badge on your profile.
+                    They'll pay <strong>{formatCurrency(previewPrice)}/mo</strong> instead of {formatCurrency(subPrice)}/mo for their first month.
+                  </p>
+                </div>
+
+                <Button onClick={handleCreate} loading={creating} className="w-full">
+                  <Tag size={16} /> Launch {discountPercent}% Off Promotion
+                </Button>
+              </>
+            )}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Promotion history */}
+      {promoHistory.length > 0 && (
+        <SectionCard title="Promotion History" icon={Clock}>
+          <div className="space-y-3">
+            {promoHistory.map(p => (
+              <div key={p.id} className="flex items-center justify-between py-2 border-b border-zinc-800/50 last:border-0">
+                <div>
+                  <p className="text-sm text-zinc-300">
+                    {p.discount_percent}% off · {formatCurrency(p.promo_price)}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    {new Date(p.starts_at).toLocaleDateString()} — {new Date(p.expires_at).toLocaleDateString()}
+                    · {p.used_count} use{p.used_count !== 1 ? 's' : ''}
+                  </p>
+                </div>
+                <span className={cn(
+                  'text-xs font-medium px-2 py-0.5 rounded-full',
+                  p.active && new Date(p.expires_at) > new Date()
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'bg-zinc-800 text-zinc-500'
+                )}>
+                  {p.active && new Date(p.expires_at) > new Date() ? 'Active' : 'Ended'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
+// ─── Referrals Tab ──────────────────────────────────────────────────────────
+
+function ReferralsTab({ userId }) {
+  const { profile } = useAuthStore()
+  const [stats, setStats] = useState(null)
+  const [recentReferrals, setRecentReferrals] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    fetchData()
+  }, [userId])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [statsRes, referralsRes] = await Promise.all([
+        supabase.rpc('get_referral_stats', { p_creator_id: userId }),
+        supabase
+          .from('referrals')
+          .select('*, referred_user:referred_user_id(display_name, username, avatar_url)')
+          .eq('referrer_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ])
+      setStats(statsRes.data)
+      setRecentReferrals(referralsRes.data || [])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const profileUrl = `${window.location.origin}/@${profile?.username}`
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(profileUrl)
+    setCopied(true)
+    toast.success('Profile link copied!')
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  if (loading) return <PageLoader />
+
+  return (
+    <div className="space-y-5">
+      <SectionCard title="How Referrals Work" icon={Gift}>
+        <div className="space-y-3 text-sm text-zinc-400">
+          <p>
+            When someone who <strong className="text-white">doesn't have an account</strong> visits your profile, 
+            a 24-hour referral cookie is saved. If they sign up within that window, they're linked to you as a referral.
+          </p>
+          <p>
+            Referred users who subscribe on the platform earn you a reduced platform fee — you keep <strong className="text-emerald-400">80%</strong> instead of the standard 70%.
+          </p>
+        </div>
+      </SectionCard>
+
+      {/* Share link */}
+      <SectionCard title="Your Profile Link" icon={Link2}>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-300 truncate">
+            {profileUrl}
+          </div>
+          <Button size="sm" onClick={handleCopy}>
+            {copied ? <CheckCircle size={14} /> : <Link2 size={14} />}
+            {copied ? 'Copied' : 'Copy'}
+          </Button>
+        </div>
+        <p className="text-xs text-zinc-600 mt-2">Share this link — no special URL needed. Just your regular profile page.</p>
+      </SectionCard>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatCard label="Total Referrals" value={stats?.total_referrals ?? 0} icon={Users} color="indigo" />
+        <StatCard label="Subscribed" value={stats?.total_subscribed ?? 0} icon={CheckCircle} color="emerald" />
+        <StatCard label="Commission" value={formatCurrency(stats?.total_commission ?? 0)} icon={DollarSign} color="amber" />
+      </div>
+
+      {/* Recent referrals */}
+      <SectionCard title="Recent Referrals" icon={Users}>
+        {recentReferrals.length === 0 ? (
+          <p className="text-sm text-zinc-600">No referrals yet. Share your profile link to get started!</p>
+        ) : (
+          <div className="space-y-3">
+            {recentReferrals.map(ref => (
+              <div key={ref.id} className="flex items-center gap-3 py-2 border-b border-zinc-800/50 last:border-0">
+                <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-medium text-zinc-400">
+                  {ref.referred_user?.display_name?.[0]?.toUpperCase() || '?'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-zinc-300 truncate">
+                    {ref.referred_user?.display_name || ref.referred_user?.username || 'Unknown'}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    Joined {new Date(ref.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className={cn(
+                  'text-xs font-medium px-2 py-0.5 rounded-full',
+                  ref.status === 'earned' ? 'bg-emerald-500/10 text-emerald-400' :
+                  ref.status === 'subscribed' ? 'bg-indigo-500/10 text-indigo-400' :
+                  'bg-zinc-800 text-zinc-500'
+                )}>
+                  {ref.status === 'earned' ? 'Earned' : ref.status === 'subscribed' ? 'Subscribed' : 'Signed up'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+    </div>
+  )
+}
+
 // ─── Main Dashboard Page ────────────────────────────────────────────────────
 
 export default function CreatorDashboardPage() {
@@ -842,6 +1290,8 @@ export default function CreatorDashboardPage() {
         <div className="flex items-center gap-1 min-w-max">
           <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={BarChart3} label="Overview" />
           <TabButton active={activeTab === 'mass-message'} onClick={() => setActiveTab('mass-message')} icon={Megaphone} label="Mass Message" />
+          <TabButton active={activeTab === 'promotions'} onClick={() => setActiveTab('promotions')} icon={Tag} label="Promotions" />
+          <TabButton active={activeTab === 'referrals'} onClick={() => setActiveTab('referrals')} icon={Gift} label="Referrals" />
           <TabButton active={activeTab === 'requests'} onClick={() => setActiveTab('requests')} icon={ClipboardList} label="Requests" badge={pendingRequests} />
           <TabButton active={activeTab === 'export'} onClick={() => setActiveTab('export')} icon={Download} label="Export" />
         </div>
@@ -852,6 +1302,8 @@ export default function CreatorDashboardPage() {
           loading && !analytics ? <PageLoader /> : <OverviewTab analytics={analytics} period={period} setPeriod={setPeriod} />
         )}
         {activeTab === 'mass-message' && <MassMessageTab userId={user.id} />}
+        {activeTab === 'promotions' && <PromotionsTab userId={user.id} />}
+        {activeTab === 'referrals' && <ReferralsTab userId={user.id} />}
         {activeTab === 'requests' && <CustomRequestsTab userId={user.id} />}
         {activeTab === 'export' && <EarningsExportTab userId={user.id} />}
       </div>

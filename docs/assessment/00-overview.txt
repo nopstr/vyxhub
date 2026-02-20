@@ -100,7 +100,7 @@ FEAT-3. MESSAGING V2 (Complete Rewrite)
     → Payment requests (creator-only SECURITY DEFINER RPC)
     → DB migration: messaging_v2_features.sql (typing_status, message_reactions, read_receipts_enabled)
 
-FEAT-4. CREATOR TOOLS V2 (4 New Features)
+FEAT-4. CREATOR TOOLS V2 (4 New Features) + V3 (3 More Features)
     → Analytics deep-dive: single RPC with period selector (7d/30d/90d/1y/all),
       earnings trends, subscriber growth, revenue breakdown by type, top posts,
       engagement rate calculation
@@ -112,6 +112,13 @@ FEAT-4. CREATOR TOOLS V2 (4 New Features)
     → Earnings export: CSV export via RPC with date range, preview table
     → DB migration: creator_tools_v2.sql (custom_requests table, 6 RPCs,
       accepts_custom_requests + custom_request_min_price on profiles)
+    → Scheduled mass messages: schedule_mass_message RPC, scheduled_messages
+      table, date/time picker UI, scheduled queue with cancel, process function
+    → Promotional pricing: creator_promotions table, create/deactivate RPCs,
+      discount badge on profile subscribe button, promo-aware subscribe_to_creator
+    → Referral system: 24h cookie on creator profile visit (non-logged-in users),
+      record_referral RPC on signup, referral stats dashboard tab, commission tracking
+    → DB migration: creator_tools_remaining.sql (3 new tables, 7 new RPCs)
 
 ================================================================================
 NEW: BUGS FOUND & FIXED IN THIS REVIEW (Feb 19, 2026)
@@ -298,7 +305,7 @@ Notifications                        70%       85%       95%        95%
 Monetization                         40%       95%       60%        70%
 Content Protection                   80%       95%       N/A        N/A
 Admin/Moderation                     75%       90%       95%        95%
-Creator Tools                        90%       85%       70%        80%
+Creator Tools                       100%       85%       70%        80%
 Mobile Experience                    50%       80%       95%        98%
 Search                               40%       50%       90%        85%
 Accessibility                        60%       50%       80%        85%
@@ -434,7 +441,7 @@ DETAILED MATURITY BREAKDOWN
    ❌ Missing: Appeal system
    ❌ Missing: IP-based bans
 
-10. CREATOR TOOLS (90%)
+10. CREATOR TOOLS (100%)
     ✅ Dashboard (earnings, subscribers, posts, likes, views)
     ✅ Creator settings
     ✅ Application with ID verification
@@ -444,9 +451,9 @@ DETAILED MATURITY BREAKDOWN
     ✅ Mass messaging (send to all active subscribers, server-side RPC)
     ✅ Custom requests (fan-to-creator requests with pricing, accept/decline/counter/complete lifecycle)
     ✅ Earnings export (CSV export with date range, preview table)
-    ❌ Missing: Scheduled mass messages
-    ❌ Missing: Promotional pricing / discounts
-    ❌ Missing: Referral system (Referrals have 10% reduced platform fee, maybe we can make a cookie system where a user that has no account yet clicks on a creators profile url (no special url) and then signs up is in the referrals (cookie for 24 hours))
+    ✅ Scheduled mass messages (date/time picker, scheduled queue, cancel support, process_scheduled_messages RPC)
+    ✅ Promotional pricing / discounts (create/deactivate promos, discount badge on profile, promo-aware subscribe_to_creator)
+    ✅ Referral system (24h cookie on creator profile visit, record_referral on signup, referral stats dashboard, commission tracking)
 
 11. MOBILE EXPERIENCE (50%)
     ✅ Responsive design

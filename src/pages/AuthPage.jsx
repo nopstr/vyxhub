@@ -4,8 +4,20 @@ import { Zap, Mail, Lock, User, AtSign, Eye, EyeOff, Star, ChevronRight } from '
 import { useAuthStore } from '../stores/authStore'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import { supabase } from '../lib/supabase'
 import { toast } from 'sonner'
 import { cn } from '../lib/utils'
+
+// Helper to read a cookie by name
+function getCookie(name) {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? match[2] : null
+}
+
+// Helper to delete a cookie
+function deleteCookie(name) {
+  document.cookie = `${name}=;path=/;max-age=0`
+}
 
 export default function AuthPage() {
   const [mode, setMode] = useState('login') // login | signup | forgot
@@ -37,10 +49,23 @@ export default function AuthPage() {
           return
         }
         const cleanUsername = username.toLowerCase().replace(/[^a-z0-9_]/g, '')
-        await signUp(email, password, {
+        const signUpResult = await signUp(email, password, {
           username: cleanUsername,
           display_name: displayName || username,
         })
+        
+        // Check for referral cookie and record it
+        const referrerId = getCookie('vyxhub_ref')
+        if (referrerId && signUpResult?.user?.id) {
+          try {
+            await supabase.rpc('record_referral', {
+              p_referrer_id: referrerId,
+              p_referred_user_id: signUpResult.user.id,
+            })
+          } catch (_) { /* non-blocking */ }
+          deleteCookie('vyxhub_ref')
+        }
+        
         toast.success('Welcome to VyxHub!')
         navigate('/')
       } else {

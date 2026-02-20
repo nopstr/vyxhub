@@ -38,6 +38,7 @@ export default function ProfilePage() {
   const { startConversation } = useMessageStore()
   const [showReportModal, setShowReportModal] = useState(false)
   const [showCustomRequestModal, setShowCustomRequestModal] = useState(false)
+  const [activePromo, setActivePromo] = useState(null)
 
   const cleanUsername = username?.replace('@', '')
   const isOwnProfile = myProfile?.username === cleanUsername
@@ -63,6 +64,17 @@ export default function ProfilePage() {
       }
 
       setProfile(profileData)
+
+      // Set referral cookie for non-logged-in visitors on creator profiles (24h)
+      if (!user && profileData.is_creator) {
+        document.cookie = `vyxhub_ref=${profileData.id};path=/;max-age=86400;SameSite=Lax`
+      }
+
+      // Fetch active promotion for this creator
+      if (profileData.is_creator) {
+        supabase.rpc('get_active_promotion', { p_creator_id: profileData.id })
+          .then(({ data }) => setActivePromo(data))
+      }
 
       // Check follow status
       if (user && !isOwnProfile) {
@@ -149,26 +161,27 @@ export default function ProfilePage() {
     if (!user) return toast.error('Sign in to subscribe')
     setSubLoading(true)
     try {
-      const amount = parseFloat(profile.subscription_price) || 0
+      const amount = activePromo ? parseFloat(activePromo.promo_price) : (parseFloat(profile.subscription_price) || 0)
       const { data: subResult, error } = await supabase.rpc('subscribe_to_creator', {
         p_subscriber_id: user.id,
         p_creator_id: profile.id,
         p_price: amount,
       })
       if (error) throw error
+      const paidPrice = parseFloat(subResult?.price_paid) || amount
       setIsSubscribed(true)
       addSubscription(profile.id)
       setProfile(p => ({ ...p, subscriber_count: (p.subscriber_count || 0) + 1 }))
       // Record transaction for financial tracking
-      if (amount > 0) {
-        const fee = +(amount * PLATFORM_FEE_PERCENT / 100).toFixed(2)
+      if (paidPrice > 0) {
+        const fee = +(paidPrice * PLATFORM_FEE_PERCENT / 100).toFixed(2)
         await supabase.from('transactions').insert({
           from_user_id: user.id,
           to_user_id: profile.id,
           transaction_type: 'subscription',
-          amount,
+          amount: paidPrice,
           platform_fee: fee,
-          net_amount: +(amount - fee).toFixed(2),
+          net_amount: +(paidPrice - fee).toFixed(2),
           status: 'completed',
         }) // non-blocking, ignore error
       }
@@ -334,10 +347,24 @@ export default function ProfilePage() {
                   {isFollowing ? 'Following' : 'Follow'}
                 </Button>
                 {profile.is_creator && profile.subscription_price > 0 && !isSubscribed && (
-                  <Button variant="premium" size="sm" onClick={handleSubscribe} loading={subLoading}>
-                    <Zap size={14} className="fill-current" />
-                    Subscribe ${profile.subscription_price}/mo
-                  </Button>
+                  <div className="relative">
+                    {activePromo && (
+                      <div className="absolute -top-2.5 -right-1 bg-gradient-to-r from-pink-500 to-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10 shadow-lg">
+                        {activePromo.discount_percent}% OFF
+                      </div>
+                    )}
+                    <Button variant="premium" size="sm" onClick={handleSubscribe} loading={subLoading}>
+                      <Zap size={14} className="fill-current" />
+                      {activePromo ? (
+                        <>
+                          <span className="line-through opacity-60 text-xs">${profile.subscription_price}</span>
+                          {' '}${activePromo.promo_price}/mo
+                        </>
+                      ) : (
+                        <>Subscribe ${profile.subscription_price}/mo</>
+                      )}
+                    </Button>
+                  </div>
                 )}
                 {isSubscribed && (
                   <Button
