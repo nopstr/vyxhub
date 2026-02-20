@@ -552,7 +552,8 @@ export default function PostCard({ post }) {
   const hasPurchased = hasPurchasedPost(post.id)
 
   // Determine if content is unlocked
-  const isContentUnlocked = isOwn || isSubscribed || hasPurchased || post.visibility === 'public'
+  // For PPV posts: subscription alone doesn't unlock — must also purchase
+  const isContentUnlocked = isOwn || hasPurchased || (isSubscribed && !isPPV) || post.visibility === 'public'
 
   // Get the user's own reactions on this post
   const userReactions = post.likes?.filter(l => l.user_id === user?.id) || []
@@ -795,8 +796,14 @@ export default function PostCard({ post }) {
           )}
 
           {/* Media / Set / Video / Paywall */}
-          {showPaywall && !isSet && !isVideo ? (
-            <PaywallGate creator={author} post={post} />
+          {showPaywall ? (
+            (isSet) ? (
+              <SetPreview media={post.media} isUnlocked={false} totalMediaCount={post.media_count || post.media?.length} post={post} author={author} />
+            ) : (isVideo) ? (
+              <VideoPreview media={post.media} isUnlocked={false} post={post} author={author} />
+            ) : (
+              <PaywallGate creator={author} post={post} />
+            )
           ) : isSet ? (
             <SetPreview media={post.media} isUnlocked={isContentUnlocked} totalMediaCount={post.media_count || post.media?.length} post={post} author={author} />
           ) : isVideo ? (

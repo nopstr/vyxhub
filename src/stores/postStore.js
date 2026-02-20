@@ -218,7 +218,7 @@ export const usePostStore = create((set, get) => ({
       // Get IDs of followed users and subscribed creators
       const [followsRes, subsRes] = await Promise.all([
         supabase.from('follows').select('following_id').eq('follower_id', userId),
-        supabase.from('subscriptions').select('creator_id').eq('subscriber_id', userId).eq('status', 'active')
+        supabase.from('subscriptions').select('creator_id').eq('subscriber_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString())
       ])
 
       if (followsRes.error) throw followsRes.error

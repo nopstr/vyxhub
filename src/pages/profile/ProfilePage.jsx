@@ -81,6 +81,7 @@ export default function ProfilePage() {
           .eq('subscriber_id', user.id)
           .eq('creator_id', profileData.id)
           .eq('status', 'active')
+          .gt('expires_at', new Date().toISOString())
           .maybeSingle()
 
         setIsSubscribed(!!subData)
@@ -148,24 +149,17 @@ export default function ProfilePage() {
     if (!user) return toast.error('Sign in to subscribe')
     setSubLoading(true)
     try {
-      const now = new Date()
-      const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-      const { error } = await supabase
-        .from('subscriptions')
-        .insert({
-          subscriber_id: user.id,
-          creator_id: profile.id,
-          status: 'active',
-          price_paid: profile.subscription_price || 0,
-          starts_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-        })
+      const amount = parseFloat(profile.subscription_price) || 0
+      const { data: subResult, error } = await supabase.rpc('subscribe_to_creator', {
+        p_subscriber_id: user.id,
+        p_creator_id: profile.id,
+        p_price: amount,
+      })
       if (error) throw error
       setIsSubscribed(true)
       addSubscription(profile.id)
       setProfile(p => ({ ...p, subscriber_count: (p.subscriber_count || 0) + 1 }))
       // Record transaction for financial tracking
-      const amount = parseFloat(profile.subscription_price) || 0
       if (amount > 0) {
         const fee = +(amount * PLATFORM_FEE_PERCENT / 100).toFixed(2)
         await supabase.from('transactions').insert({
@@ -185,6 +179,8 @@ export default function ProfilePage() {
         setProfile(p => ({ ...p, follower_count: p.follower_count + 1 }))
       }
       toast.success(`Subscribed to @${profile.username}!`)
+      // Re-fetch posts to show subscribers_only content
+      fetchProfile()
     } catch (err) {
       toast.error(err.message || 'Failed to subscribe')
     } finally {
