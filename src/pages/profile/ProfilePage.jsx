@@ -70,7 +70,7 @@ export default function ProfilePage() {
           .select('following_id')
           .eq('follower_id', user.id)
           .eq('following_id', profileData.id)
-          .single()
+          .maybeSingle()
 
         setIsFollowing(!!followData)
 
@@ -80,7 +80,7 @@ export default function ProfilePage() {
           .eq('subscriber_id', user.id)
           .eq('creator_id', profileData.id)
           .eq('status', 'active')
-          .single()
+          .maybeSingle()
 
         setIsSubscribed(!!subData)
       }

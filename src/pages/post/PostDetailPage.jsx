@@ -159,7 +159,7 @@ export default function PostDetailPage() {
       if (user && user.id !== postData.author_id) {
         const { data: subData } = await supabase
           .from('subscriptions')
-          .select('id')
+          .select('creator_id')
           .eq('subscriber_id', user.id)
           .eq('creator_id', postData.author_id)
           .eq('status', 'active')
