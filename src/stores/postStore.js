@@ -173,7 +173,9 @@ export const usePostStore = create((set, get) => ({
       // Track views (single batch RPC instead of N individual calls)
       if (data?.length > 0) {
         const postIds = data.map(p => p.id)
-        supabase.rpc('increment_view_counts', { p_post_ids: postIds }).catch(() => {})
+        supabase.rpc('increment_view_counts', { p_post_ids: postIds }).then(({ error }) => {
+          if (error) console.error('Failed to increment view counts:', error)
+        })
       }
 
       const newPosts = reset ? data : [...get().posts, ...data]
