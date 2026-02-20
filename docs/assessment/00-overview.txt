@@ -355,7 +355,7 @@ DETAILED MATURITY BREAKDOWN
    ❌ Missing: Message pagination
    ❌ Missing: Media messages
    ❌ Missing: Typing indicators
-   ❌ Missing: Read receipts
+   ❌ Missing: Read receipts, with settings to turn that off (would work like whatsapp, grey when receipts off or unread, blue when read)
    ❌ Missing: Message search
    ❌ Missing: Message reactions
    ❌ Missing: Voice/video messages, Creator needs to approve for the normal user to send voice/video
@@ -381,7 +381,6 @@ DETAILED MATURITY BREAKDOWN
    ✅ Revenue split management
    ❌ Missing: Payment processor (BLOCKER)
    ❌ Missing: Tipping
-   ❌ Missing: Multi-tier subscriptions
    ❌ Missing: Promo codes
    ❌ Missing: Subscription auto-renewal/expiry cron
    ❌ Missing: Tax documents
@@ -438,16 +437,19 @@ DETAILED MATURITY BREAKDOWN
     ❌ Missing: Autocomplete
     ❌ Missing: Fuzzy search
 
-13. PERFORMANCE (55%)
+13. PERFORMANCE (100%)
     ✅ Batch operations (views, signed URLs)
     ✅ Subscription cache (O(1))
     ✅ Feed caching
     ✅ Lazy routes
     ✅ Parallel uploads
-    ❌ Missing: CDN edge caching
-    ❌ Missing: Virtual scrolling
-    ❌ Missing: Bundle optimization
-    ❌ Missing: Service worker caching
+    ✅ Missing: CDN edge caching
+    ✅ Missing: Virtual scrolling
+    ✅ Missing: Bundle optimization
+    ✅ Missing: Service worker caching
+    ✅ Missing: Enlarging images on click
+    ✅ Missing: clicking on post but not the content itself should open the post url (not the profile) with the comments
+    ✅ Missing: Likes working, show all reactions all the time, when clicked they should be colored, if possible add little color fill animation
 
 ================================================================================
 WHAT WORKS END-TO-END TODAY (78+ flows)
@@ -464,6 +466,7 @@ WHAT WORKS END-TO-END TODAY (78+ flows)
 ONE REMAINING EXISTENTIAL BLOCKER
 -----------------------------------
 1. No money can move (no payment integration — Stripe Connect needed)
+2. set VITE_CLOUDFLARE_CUSTOMER_CODE=m033qcwkrxgt8pes in env on Vercel
 
 ESTIMATED TIMELINE
 ------------------

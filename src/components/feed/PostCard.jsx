@@ -670,7 +670,7 @@ export default function PostCard({ post }) {
 
   const handleCardClick = (e) => {
     // Don't navigate if clicking on interactive elements
-    if (e.target.closest('button, a, img, video, .dropdown-content')) return
+    if (e.target.closest('button, a, img, video, .dropdown-content, [role="dialog"]')) return
     navigate(`/post/${post.id}`)
   }
 
