@@ -67,7 +67,7 @@ export default function ProfilePage() {
       if (user && !isOwnProfile) {
         const { data: followData } = await supabase
           .from('follows')
-          .select('id')
+          .select('following_id')
           .eq('follower_id', user.id)
           .eq('following_id', profileData.id)
           .single()
@@ -76,7 +76,7 @@ export default function ProfilePage() {
 
         const { data: subData } = await supabase
           .from('subscriptions')
-          .select('id')
+          .select('creator_id')
           .eq('subscriber_id', user.id)
           .eq('creator_id', profileData.id)
           .eq('status', 'active')
