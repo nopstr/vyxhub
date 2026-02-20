@@ -6,7 +6,7 @@ import {
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
   Repeat2, VolumeX, Edit2, EyeOff
 } from 'lucide-react'
-import { Stream } from '@cloudflare/stream-react'
+import SecureVideoPlayer from '../ui/SecureVideoPlayer'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import { useSubscriptionCache } from '../../stores/subscriptionCache'
@@ -229,7 +229,9 @@ function VideoPreview({ media, isUnlocked, post, author }) {
   if (!videoMedia) return null
 
   const handleTimeUpdate = (e) => {
-    if (!isUnlocked && e.currentTime >= 5) {
+    // Cloudflare Stream passes { currentTime }, standard video passes event
+    const currentTime = e.currentTime !== undefined ? e.currentTime : e.target?.currentTime
+    if (!isUnlocked && currentTime >= 5) {
       if (streamRef.current) {
         streamRef.current.pause()
       }
@@ -247,7 +249,7 @@ function VideoPreview({ media, isUnlocked, post, author }) {
     }
   }
 
-  // If we have a Cloudflare UID, use the Stream player
+  // If we have a Cloudflare UID, use the SecureVideoPlayer with Stream
   if (videoMedia.cloudflare_uid) {
     return (
       <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950 group">
@@ -255,14 +257,11 @@ function VideoPreview({ media, isUnlocked, post, author }) {
           "w-full h-full transition-all duration-500",
           showPaywall ? "blur-xl brightness-50 scale-110 pointer-events-none" : ""
         )}>
-          <Stream
-            streamRef={streamRef}
-            src={videoMedia.cloudflare_uid}
+          <SecureVideoPlayer
+            videoRef={streamRef}
+            cloudflareUid={videoMedia.cloudflare_uid}
             controls={!showPaywall}
-            responsive={false}
-            className="w-full h-full"
             onTimeUpdate={handleTimeUpdate}
-            preload="metadata"
           />
         </div>
         
@@ -278,12 +277,10 @@ function VideoPreview({ media, isUnlocked, post, author }) {
   // Fallback to standard video tag for legacy videos
   if (isUnlocked && (videoMedia.signedUrl || videoMedia.url)) {
     return (
-      <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800/50">
-        <video
+      <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950">
+        <SecureVideoPlayer
           src={videoMedia.signedUrl || videoMedia.url}
-          className="w-full aspect-video object-contain bg-black"
-          controls
-          preload="metadata"
+          controls={true}
         />
       </div>
     )
@@ -295,24 +292,21 @@ function VideoPreview({ media, isUnlocked, post, author }) {
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950 group">
       {teaserUrl && (
-        <video
-          ref={streamRef}
-          src={teaserUrl}
-          className={cn(
-            "w-full h-full object-contain bg-black transition-all duration-500",
-            showPaywall ? "blur-xl brightness-50 scale-110" : ""
-          )}
-          onTimeUpdate={(e) => handleTimeUpdate({ currentTime: e.target.currentTime })}
-          controls={!showPaywall}
-          playsInline
-          controlsList="nodownload nofullscreen noremoteplayback"
-          disablePictureInPicture
-          preload="metadata"
-        />
+        <div className={cn(
+          "w-full h-full transition-all duration-500",
+          showPaywall ? "blur-xl brightness-50 scale-110 pointer-events-none" : ""
+        )}>
+          <SecureVideoPlayer
+            videoRef={streamRef}
+            src={teaserUrl}
+            controls={!showPaywall}
+            onTimeUpdate={handleTimeUpdate}
+          />
+        </div>
       )}
       
       {showPaywall && (
-        <div className="absolute inset-0 flex items-center justify-center p-4 bg-black/20">
+        <div className="absolute inset-0 flex items-center justify-center p-4 bg-black/20 z-10">
           <PaywallGate creator={author} post={post} onReplay={handlePlay} />
         </div>
       )}

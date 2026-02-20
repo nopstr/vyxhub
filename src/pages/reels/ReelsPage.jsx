@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../../components/ui/Avatar'
 import { PageLoader } from '../../components/ui/Spinner'
 import { cn, formatNumber } from '../../lib/utils'
+import SecureVideoPlayer from '../../components/ui/SecureVideoPlayer'
 
 function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
   const videoRef = useRef(null)
@@ -76,19 +77,22 @@ function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
   }
 
   const mediaUrl = reel.media?.[0]?.signedUrl || reel.media?.[0]?.url || ''
+  const cloudflareUid = reel.media?.[0]?.cloudflare_uid
 
   return (
     <div className="relative w-full h-full bg-black snap-start snap-always flex items-center justify-center">
-      {mediaUrl ? (
-        <video
-          ref={videoRef}
-          src={mediaUrl}
-          className="w-full h-full object-cover"
-          loop
-          muted={muted}
-          playsInline
-          onClick={togglePlay}
-        />
+      {cloudflareUid || mediaUrl ? (
+        <div className="w-full h-full absolute inset-0" onClick={togglePlay}>
+          <SecureVideoPlayer
+            videoRef={videoRef}
+            cloudflareUid={cloudflareUid}
+            src={mediaUrl}
+            className="w-full h-full object-cover"
+            loop={true}
+            muted={muted}
+            controls={false}
+          />
+        </div>
       ) : (
         <div className="w-full h-full bg-gradient-to-br from-zinc-900 to-zinc-800 flex items-center justify-center">
           <p className="text-zinc-600 text-sm">No video available</p>
@@ -96,8 +100,8 @@ function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
       )}
 
       {/* Play/Pause overlay */}
-      {!playing && mediaUrl && (
-        <button onClick={togglePlay} className="absolute inset-0 flex items-center justify-center cursor-pointer">
+      {!playing && (cloudflareUid || mediaUrl) && (
+        <button onClick={togglePlay} className="absolute inset-0 flex items-center justify-center cursor-pointer z-20">
           <div className="p-4 rounded-full bg-black/30 backdrop-blur-sm">
             <Play size={32} className="text-white fill-white" />
           </div>
@@ -106,42 +110,46 @@ function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
 
       {/* Mute toggle */}
       <button
-        onClick={() => setMuted(!muted)}
-        className="absolute top-4 right-4 p-2 rounded-full bg-black/30 backdrop-blur-sm cursor-pointer"
+        onClick={(e) => {
+          e.stopPropagation()
+          setMuted(!muted)
+        }}
+        className="absolute top-4 right-4 p-2 rounded-full bg-black/30 backdrop-blur-sm cursor-pointer z-20"
       >
         {muted ? <VolumeX size={18} className="text-white" /> : <Volume2 size={18} className="text-white" />}
       </button>
 
       {/* Bottom Info */}
-      <div className="absolute bottom-0 left-0 right-16 p-4 bg-gradient-to-t from-black/60 to-transparent">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="absolute bottom-0 left-0 right-16 p-4 bg-gradient-to-t from-black/60 to-transparent z-20 pointer-events-none">
+        <div className="flex items-center gap-2 mb-2 pointer-events-auto">
           <Avatar src={reel.author?.avatar_url} alt={reel.author?.display_name} size="sm" />
           <span className="text-sm font-semibold text-white">{reel.author?.display_name}</span>
           <span className="text-xs text-zinc-400">@{reel.author?.username}</span>
         </div>
         {reel.content && (
-          <p className="text-sm text-white/90 line-clamp-2">{reel.content}</p>
+          <p className="text-sm text-white/90 line-clamp-2 pointer-events-auto">{reel.content}</p>
         )}
       </div>
 
       {/* Side Actions */}
-      <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5">
-        <button onClick={handleLike} className="flex flex-col items-center gap-1 cursor-pointer">
+      <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5 z-20">
+        <button onClick={(e) => { e.stopPropagation(); handleLike(); }} className="flex flex-col items-center gap-1 cursor-pointer">
           <div className={cn('p-2 rounded-full', liked ? 'bg-red-500/20' : 'bg-black/30 backdrop-blur-sm')}>
             <Heart size={22} className={cn(liked ? 'text-red-500 fill-red-500' : 'text-white')} />
           </div>
-          <span className="text-xs text-white font-medium">{formatNumber(likeCount)}</span>
+          <span className="text-xs text-white font-medium drop-shadow-md">{formatNumber(likeCount)}</span>
         </button>
 
-        <button className="flex flex-col items-center gap-1 cursor-pointer">
+        <button onClick={(e) => e.stopPropagation()} className="flex flex-col items-center gap-1 cursor-pointer">
           <div className="p-2 rounded-full bg-black/30 backdrop-blur-sm">
             <MessageCircle size={22} className="text-white" />
           </div>
-          <span className="text-xs text-white font-medium">{formatNumber(reel.comment_count || 0)}</span>
+          <span className="text-xs text-white font-medium drop-shadow-md">{formatNumber(reel.comment_count || 0)}</span>
         </button>
 
         <button
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation()
             if (navigator.share) {
               navigator.share({ title: reel.content || 'Check this out', url: `/post/${reel.id}` }).catch(() => {})
             } else {
@@ -153,7 +161,7 @@ function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
           <div className="p-2 rounded-full bg-black/30 backdrop-blur-sm">
             <Share2 size={22} className="text-white" />
           </div>
-          <span className="text-xs text-white font-medium">Share</span>
+          <span className="text-xs text-white font-medium drop-shadow-md">Share</span>
         </button>
       </div>
     </div>
