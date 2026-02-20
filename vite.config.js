@@ -16,5 +16,16 @@ export default defineConfig({
   ],
   build: {
     sourcemap: true, // Source map generation must be turned on
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'supabase-vendor': ['@supabase/supabase-js', '@supabase/ssr'],
+          'ui-vendor': ['lucide-react', 'sonner', 'react-intersection-observer'],
+          'media-vendor': ['@cloudflare/stream-react', 'browser-image-compression', 'react-image-crop'],
+          'dnd-vendor': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities']
+        }
+      }
+    }
   },
 })

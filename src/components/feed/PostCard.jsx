@@ -7,6 +7,7 @@ import {
   Repeat2, VolumeX, Edit2, EyeOff
 } from 'lucide-react'
 import SecureVideoPlayer from '../ui/SecureVideoPlayer'
+import ImageModal from '../ui/ImageModal'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import { useSubscriptionCache } from '../../stores/subscriptionCache'
@@ -45,6 +46,8 @@ function RichContent({ text }) {
 }
 
 function MediaGrid({ media, isUnlocked = true }) {
+  const [modalIndex, setModalIndex] = useState(null)
+
   if (!media || media.length === 0) return null
 
   // Locked: show blurred low-res thumbnails
@@ -95,52 +98,68 @@ function MediaGrid({ media, isUnlocked = true }) {
   }
 
   return (
-    <div className={cn(
-      'mt-3 rounded-2xl overflow-hidden border border-zinc-800/50',
-      media.length === 1 && 'grid-cols-1',
-      media.length === 2 && 'grid grid-cols-2 gap-0.5',
-      media.length === 3 && 'grid grid-cols-2 grid-rows-2 gap-0.5',
-      media.length >= 4 && 'grid grid-cols-2 grid-rows-2 gap-0.5'
-    )}>
-      {media.slice(0, 4).map((item, i) => (
-        <div
-          key={item.id}
-          className={cn(
-            'relative overflow-hidden bg-zinc-950 cursor-pointer group',
-            media.length === 1 && 'aspect-[16/10]',
-            media.length === 2 && 'aspect-square',
-            media.length === 3 && i === 0 && 'row-span-2 aspect-auto h-full',
-            media.length >= 3 && i > 0 && 'aspect-square',
-          )}
-        >
-          {item.media_type === 'video' ? (
-            <video
-              src={item.signedUrl || item.url}
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-              controls
-              preload="metadata"
-            />
-          ) : (
-            <img
-              src={item.signedUrl || item.url}
-              alt=""
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-              loading="lazy"
-            />
-          )}
-          {i === 3 && media.length > 4 && (
-            <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">+{media.length - 4}</span>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
+    <>
+      <div className={cn(
+        'mt-3 rounded-2xl overflow-hidden border border-zinc-800/50',
+        media.length === 1 && 'grid-cols-1',
+        media.length === 2 && 'grid grid-cols-2 gap-0.5',
+        media.length === 3 && 'grid grid-cols-2 grid-rows-2 gap-0.5',
+        media.length >= 4 && 'grid grid-cols-2 grid-rows-2 gap-0.5'
+      )}>
+        {media.slice(0, 4).map((item, i) => (
+          <div
+            key={item.id}
+            className={cn(
+              'relative overflow-hidden bg-zinc-950 cursor-pointer group',
+              media.length === 1 && 'aspect-[16/10]',
+              media.length === 2 && 'aspect-square',
+              media.length === 3 && i === 0 && 'row-span-2 aspect-auto h-full',
+              media.length >= 3 && i > 0 && 'aspect-square',
+            )}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (item.media_type !== 'video') setModalIndex(i)
+            }}
+          >
+            {item.media_type === 'video' ? (
+              <video
+                src={item.signedUrl || item.url}
+                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                controls
+                preload="metadata"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <img
+                src={item.signedUrl || item.url}
+                alt=""
+                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                loading="lazy"
+              />
+            )}
+            {i === 3 && media.length > 4 && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">+{media.length - 4}</span>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {modalIndex !== null && (
+        <ImageModal 
+          images={media.filter(m => m.media_type !== 'video')} 
+          initialIndex={media.filter(m => m.media_type !== 'video').findIndex(m => m.id === media[modalIndex]?.id)} 
+          onClose={() => setModalIndex(null)} 
+        />
+      )}
+    </>
   )
 }
 
 /* Set Preview: first image clear, second blurred + "Unlock to view X more" when locked */
 function SetPreview({ media, isUnlocked, totalMediaCount, post, author }) {
+  const [modalIndex, setModalIndex] = useState(null)
+
   if (!media || media.length === 0) return null
 
   const allMedia = media.filter(m => m.signedUrl || m.url)
@@ -149,25 +168,41 @@ function SetPreview({ media, isUnlocked, totalMediaCount, post, author }) {
   // Unlocked: show all media in a grid
   if (isUnlocked) {
     return (
-      <div className="mt-3">
-        <div className={cn(
-          'grid gap-1 rounded-2xl overflow-hidden border border-zinc-800/50',
-          allMedia.length === 1 && 'grid-cols-1',
-          allMedia.length === 2 && 'grid-cols-2',
-          allMedia.length >= 3 && 'grid-cols-3',
-        )}>
-          {allMedia.map((item) => (
-            <div key={item.id} className="relative aspect-square overflow-hidden bg-zinc-950 group">
-              <img
-                src={item.signedUrl || item.url}
-                alt=""
-                className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                loading="lazy"
-              />
-            </div>
-          ))}
+      <>
+        <div className="mt-3">
+          <div className={cn(
+            'grid gap-1 rounded-2xl overflow-hidden border border-zinc-800/50',
+            allMedia.length === 1 && 'grid-cols-1',
+            allMedia.length === 2 && 'grid-cols-2',
+            allMedia.length >= 3 && 'grid-cols-3',
+          )}>
+            {allMedia.map((item, i) => (
+              <div 
+                key={item.id} 
+                className="relative aspect-square overflow-hidden bg-zinc-950 group cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setModalIndex(i)
+                }}
+              >
+                <img
+                  src={item.signedUrl || item.url}
+                  alt=""
+                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+        {modalIndex !== null && (
+          <ImageModal 
+            images={allMedia} 
+            initialIndex={modalIndex} 
+            onClose={() => setModalIndex(null)} 
+          />
+        )}
+      </>
     )
   }
 
@@ -652,10 +687,19 @@ export default function PostCard({ post }) {
     }
   }
 
+  const handleCardClick = (e) => {
+    // Don't navigate if clicking on interactive elements
+    if (e.target.closest('button, a, img, video, .dropdown-content')) return
+    navigate(`/post/${post.id}`)
+  }
+
   const isRepost = !!post.repost_of
 
   return (
-    <article className="px-5 py-4 border-b border-zinc-800/50 hover:bg-zinc-900/20 transition-colors">
+    <article 
+      onClick={handleCardClick}
+      className="px-5 py-4 border-b border-zinc-800/50 hover:bg-zinc-900/20 transition-colors cursor-pointer"
+    >
       {/* Repost indicator */}
       {isRepost && post.reposted_by_profile && (
         <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2 ml-12">
