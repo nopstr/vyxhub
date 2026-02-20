@@ -595,7 +595,8 @@ export const usePostStore = create((set, get) => ({
           .insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
         if (error) throw error
       }
-    } catch {
+    } catch (err) {
+      console.error('Failed to toggle reaction:', err)
       // Revert optimistic update on failure
       set({ posts })
     }
