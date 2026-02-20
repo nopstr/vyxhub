@@ -12,6 +12,7 @@ CREATE POLICY "Users can manage their hidden posts"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+DROP FUNCTION IF EXISTS personalized_feed(UUID, INT, INT);
 CREATE OR REPLACE FUNCTION personalized_feed(
   p_user_id UUID DEFAULT NULL,
   p_limit INT DEFAULT 20,
@@ -91,6 +92,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
+DROP FUNCTION IF EXISTS personalized_reels(UUID, INT, INT);
 CREATE OR REPLACE FUNCTION personalized_reels(
   p_user_id UUID DEFAULT NULL,
   p_limit INT DEFAULT 10,

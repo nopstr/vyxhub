@@ -416,21 +416,61 @@ export const usePostStore = create((set, get) => ({
           // For a real implementation, we'd need to use XMLHttpRequest or a custom fetch
           // to track upload progress. For now, we'll just await the upload.
           
-          const { error: uploadError } = await supabase.storage
-            .from('posts')
-            .upload(filePath, optimizedFile)
-          if (uploadError) throw uploadError
+          let cloudflareUid = null;
+          let cloudflarePlaybackUrl = null;
+          let cloudflareThumbnailUrl = null;
+
+          if (file.type.startsWith('video/')) {
+            // 1. Request Cloudflare Stream direct upload URL via Edge Function
+            const { data: cfData, error: cfError } = await supabase.functions.invoke('cloudflare-stream-upload', {
+              body: {
+                uploadLength: file.size,
+                metadata: btoa(JSON.stringify({ name: file.name, uploader: userId }))
+              }
+            });
+
+            if (cfError) throw cfError;
+
+            const { uploadUrl, streamMediaId } = cfData;
+            cloudflareUid = streamMediaId;
+
+            // 2. Upload directly to Cloudflare using TUS protocol (simplified for now)
+            const uploadResponse = await fetch(uploadUrl, {
+              method: 'PATCH',
+              headers: {
+                'Tus-Resumable': '1.0.0',
+                'Upload-Offset': '0',
+                'Content-Type': 'application/offset+octet-stream'
+              },
+              body: file
+            });
+
+            if (!uploadResponse.ok) {
+              throw new Error('Failed to upload video to Cloudflare Stream');
+            }
+
+            // Cloudflare URLs follow a standard format based on the UID
+            // Note: The video won't be ready to stream immediately, it needs to process
+            cloudflarePlaybackUrl = `https://customer-${import.meta.env.VITE_CLOUDFLARE_CUSTOMER_CODE}.cloudflarestream.com/${cloudflareUid}/manifest/video.m3u8`;
+            cloudflareThumbnailUrl = `https://customer-${import.meta.env.VITE_CLOUDFLARE_CUSTOMER_CODE}.cloudflarestream.com/${cloudflareUid}/thumbnails/thumbnail.jpg`;
+          } else {
+            // Standard image upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+              .from('posts')
+              .upload(filePath, optimizedFile)
+            if (uploadError) throw uploadError
+          }
           
           completedUploads++;
           if (onProgress) {
             onProgress(Math.round((completedUploads / totalUploads) * 100));
           }
 
-          return { file: optimizedFile, filePath, index: i }
+          return { file: optimizedFile, filePath, index: i, cloudflareUid, cloudflarePlaybackUrl, cloudflareThumbnailUrl }
         })
       )
 
-      const mediaInserts = uploadResults.map(({ file, filePath, index }) => {
+      const mediaInserts = uploadResults.map(({ file, filePath, index, cloudflareUid, cloudflarePlaybackUrl, cloudflareThumbnailUrl }) => {
         const isPreview = previewIndices ? previewIndices.includes(index) : false
         return {
           post_id: post.id,
@@ -440,6 +480,10 @@ export const usePostStore = create((set, get) => ({
           sort_order: index,
           file_size_bytes: file.size,
           is_preview: isPreview,
+          cloudflare_uid: cloudflareUid,
+          cloudflare_playback_url: cloudflarePlaybackUrl,
+          cloudflare_thumbnail_url: cloudflareThumbnailUrl,
+          cloudflare_ready_to_stream: false // Will be updated via webhook later
         }
       })
 

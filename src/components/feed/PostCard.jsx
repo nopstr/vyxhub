@@ -6,6 +6,7 @@ import {
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
   Repeat2, VolumeX, Edit2, EyeOff
 } from 'lucide-react'
+import { Stream } from '@cloudflare/stream-react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
 import { useSubscriptionCache } from '../../stores/subscriptionCache'
@@ -223,29 +224,58 @@ function SetPreview({ media, isUnlocked, totalMediaCount, post, author }) {
 function VideoPreview({ media, isUnlocked, post, author }) {
   const videoMedia = media?.find(m => m.media_type === 'video')
   const [showPaywall, setShowPaywall] = useState(false)
-  const videoRef = useRef(null)
+  const streamRef = useRef(null)
 
   if (!videoMedia) return null
 
-  const handleTimeUpdate = () => {
-    if (!isUnlocked && videoRef.current) {
-      if (videoRef.current.currentTime >= 5) {
-        videoRef.current.pause()
-        setShowPaywall(true)
+  const handleTimeUpdate = (e) => {
+    if (!isUnlocked && e.currentTime >= 5) {
+      if (streamRef.current) {
+        streamRef.current.pause()
       }
+      setShowPaywall(true)
     }
   }
 
   const handlePlay = () => {
     if (!isUnlocked && showPaywall) {
       setShowPaywall(false)
-      if (videoRef.current) {
-        videoRef.current.currentTime = 0
-        videoRef.current.play()
+      if (streamRef.current) {
+        streamRef.current.currentTime = 0
+        streamRef.current.play()
       }
     }
   }
 
+  // If we have a Cloudflare UID, use the Stream player
+  if (videoMedia.cloudflare_uid) {
+    return (
+      <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950 group">
+        <div className={cn(
+          "w-full h-full transition-all duration-500",
+          showPaywall ? "blur-xl brightness-50 scale-110 pointer-events-none" : ""
+        )}>
+          <Stream
+            streamRef={streamRef}
+            src={videoMedia.cloudflare_uid}
+            controls={!showPaywall}
+            responsive={false}
+            className="w-full h-full"
+            onTimeUpdate={handleTimeUpdate}
+            preload="metadata"
+          />
+        </div>
+        
+        {showPaywall && (
+          <div className="absolute inset-0 flex items-center justify-center p-4 bg-black/20 z-10">
+            <PaywallGate creator={author} post={post} onReplay={handlePlay} />
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Fallback to standard video tag for legacy videos
   if (isUnlocked && (videoMedia.signedUrl || videoMedia.url)) {
     return (
       <div className="mt-3 rounded-2xl overflow-hidden border border-zinc-800/50">
@@ -259,20 +289,20 @@ function VideoPreview({ media, isUnlocked, post, author }) {
     )
   }
 
-  // LOCKED: show 5s teaser, then paywall
+  // LOCKED: show 5s teaser, then paywall (legacy fallback)
   const teaserUrl = videoMedia.signedUrl || videoMedia.url
 
   return (
     <div className="relative mt-3 rounded-2xl overflow-hidden border border-zinc-800/50 aspect-video bg-zinc-950 group">
       {teaserUrl && (
         <video
-          ref={videoRef}
+          ref={streamRef}
           src={teaserUrl}
           className={cn(
             "w-full h-full object-contain bg-black transition-all duration-500",
             showPaywall ? "blur-xl brightness-50 scale-110" : ""
           )}
-          onTimeUpdate={handleTimeUpdate}
+          onTimeUpdate={(e) => handleTimeUpdate({ currentTime: e.target.currentTime })}
           controls={!showPaywall}
           playsInline
           controlsList="nodownload nofullscreen noremoteplayback"
