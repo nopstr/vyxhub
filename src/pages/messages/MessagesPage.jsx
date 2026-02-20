@@ -15,6 +15,7 @@ function NewMessageModal({ onClose, onSelect }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [defaultUsers, setDefaultUsers] = useState([])
+  const [unlockedIds, setUnlockedIds] = useState([])
   const [searching, setSearching] = useState(false)
   const [loadingDefaults, setLoadingDefaults] = useState(true)
   const { user, profile } = useAuthStore()
@@ -28,14 +29,18 @@ function NewMessageModal({ onClose, onSelect }) {
     async function loadDefaults() {
       setLoadingDefaults(true)
       try {
-        const [followsRes, subsRes] = await Promise.all([
+        const [followsRes, subsRes, unlocksRes] = await Promise.all([
           supabase.from('follows').select('following_id').eq('follower_id', user.id),
-          supabase.from('subscriptions').select('creator_id').eq('subscriber_id', user.id).eq('status', 'active')
+          supabase.from('subscriptions').select('creator_id').eq('subscriber_id', user.id).eq('status', 'active'),
+          supabase.from('transactions').select('to_user_id').eq('from_user_id', user.id).eq('transaction_type', 'message_unlock').eq('status', 'completed')
         ])
 
         const followIds = followsRes.data?.map(f => f.following_id) || []
         const subIds = subsRes.data?.map(s => s.creator_id) || []
-        const targetIds = [...new Set([...followIds, ...subIds])]
+        const unlockIds = unlocksRes.data?.map(u => u.to_user_id) || []
+        setUnlockedIds(unlockIds)
+
+        const targetIds = [...new Set([...followIds, ...subIds, ...unlockIds])]
 
         if (targetIds.length > 0) {
           const { data: profiles } = await supabase
@@ -84,13 +89,14 @@ function NewMessageModal({ onClose, onSelect }) {
     // Determine if there's a paywall
     // If sender is creator, it's free. If receiver is not creator, it's free.
     // If subscribed, it's free. If allow_free_messages, it's free.
-    const isFree = profile?.is_creator || !u.is_creator || u.isSubscribed || u.allow_free_messages || !u.message_price || u.message_price <= 0
+    const isUnlocked = unlockedIds.includes(u.id)
+    const isFree = profile?.is_creator || !u.is_creator || u.isSubscribed || isUnlocked || u.allow_free_messages || !u.message_price || u.message_price <= 0
     const showPaywall = !isFree
 
     return (
       <button
         key={u.id}
-        onClick={() => onSelect(u)}
+        onClick={() => onSelect({ ...u, isFree })}
         className="w-full flex items-center justify-between p-4 hover:bg-zinc-800/50 transition-colors text-left cursor-pointer"
       >
         <div className="flex items-center gap-3">
@@ -744,8 +750,7 @@ export default function MessagesPage() {
         <NewMessageModal
           onClose={() => setShowNewMessage(false)}
           onSelect={(u) => {
-            const isFree = profile?.is_creator || !u.is_creator || u.isSubscribed || u.allow_free_messages || !u.message_price || u.message_price <= 0
-            if (!isFree) {
+            if (!u.isFree) {
               setPaywallUser(u)
               setShowNewMessage(false)
             } else {
