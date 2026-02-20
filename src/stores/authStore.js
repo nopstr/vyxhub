@@ -15,7 +15,13 @@ export const useAuthStore = create((set, get) => ({
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         const profile = await get().fetchProfile(session.user.id)
-        set({ user: session.user, session, profile, loading: false, initialized: true })
+        if (!profile) {
+          // User exists in auth session but profile is missing (e.g. deleted from DB)
+          await supabase.auth.signOut()
+          set({ user: null, session: null, profile: null, loading: false, initialized: true })
+        } else {
+          set({ user: session.user, session, profile, loading: false, initialized: true })
+        }
       } else {
         set({ user: null, session: null, profile: null, loading: false, initialized: true })
       }
@@ -28,7 +34,12 @@ export const useAuthStore = create((set, get) => ({
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
           const profile = await get().fetchProfile(session.user.id)
-          set({ user: session.user, session, profile, loading: false })
+          if (!profile) {
+            await supabase.auth.signOut()
+            set({ user: null, session: null, profile: null, loading: false })
+          } else {
+            set({ user: session.user, session, profile, loading: false })
+          }
         } else if (event === 'SIGNED_OUT') {
           set({ user: null, session: null, profile: null, loading: false })
         } else if (event === 'PASSWORD_RECOVERY') {
