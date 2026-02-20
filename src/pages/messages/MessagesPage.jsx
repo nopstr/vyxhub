@@ -86,17 +86,10 @@ function NewMessageModal({ onClose, onSelect }) {
           )}
         </div>
       </div>
-
-      {/* New Message Modal */}
-      {showNewMessage && (
-        <NewMessageModal
-          onClose={() => setShowNewMessage(false)}
-          onSelect={handleNewMessage}
-        />
-      )}
     </div>
   )
-}import EmptyState from '../../components/ui/EmptyState'
+}
+import EmptyState from '../../components/ui/EmptyState'
 import { MessageSquare } from 'lucide-react'
 
 function ConversationList({ conversations, activeId, onSelect }) {
@@ -683,6 +676,14 @@ export default function MessagesPage() {
           </div>
         )}
       </div>
+
+      {/* New Message Modal */}
+      {showNewMessage && (
+        <NewMessageModal
+          onClose={() => setShowNewMessage(false)}
+          onSelect={handleNewMessage}
+        />
+      )}
     </div>
   )
 }
