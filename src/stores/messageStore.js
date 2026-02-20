@@ -141,59 +141,15 @@ export const useMessageStore = create((set, get) => ({
   },
 
   startConversation: async (userId, otherUserId) => {
-    // Check for existing conversation
-    const { data: existing } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', userId)
-
-    if (existing) {
-      for (const cp of existing) {
-        const { data: other } = await supabase
-          .from('conversation_participants')
-          .select('user_id')
-          .eq('conversation_id', cp.conversation_id)
-          .eq('user_id', otherUserId)
-          .single()
-
-        if (other) return cp.conversation_id
-      }
-    }
-
-    // Create new conversation
-    const { data: conv, error: convError } = await supabase
-      .from('conversations')
-      .insert({})
-      .select()
-      .single()
-
-    if (convError) {
-      console.error('Error creating conversation:', convError)
+    const { data, error } = await supabase.rpc('start_or_get_conversation', {
+      p_user_id: userId,
+      p_other_user_id: otherUserId,
+    })
+    if (error) {
+      console.error('Error starting conversation:', error)
       return null
     }
-
-    if (conv) {
-      // Insert current user first so they are a participant
-      const { error: partError1 } = await supabase.from('conversation_participants').insert({
-        conversation_id: conv.id,
-        user_id: userId
-      })
-      
-      if (partError1) {
-        console.error('Error adding self to conversation:', partError1)
-      } else {
-        // Now that current user is a participant, they can add the other user
-        const { error: partError2 } = await supabase.from('conversation_participants').insert({
-          conversation_id: conv.id,
-          user_id: otherUserId
-        })
-        if (partError2) {
-          console.error('Error adding other user to conversation:', partError2)
-        }
-      }
-    }
-
-    return conv?.id
+    return data
   },
 
   subscribeToMessages: (conversationId) => {

@@ -175,11 +175,11 @@ export default function ProfilePage() {
           platform_fee: fee,
           net_amount: +(amount - fee).toFixed(2),
           status: 'completed',
-        }).catch(() => {}) // non-blocking
+        }) // non-blocking, ignore error
       }
       // Also auto-follow if not already
       if (!isFollowing) {
-        await supabase.from('follows').insert({ follower_id: user.id, following_id: profile.id }).catch(() => {})
+        await supabase.from('follows').insert({ follower_id: user.id, following_id: profile.id })
         setIsFollowing(true)
         setProfile(p => ({ ...p, follower_count: p.follower_count + 1 }))
       }
