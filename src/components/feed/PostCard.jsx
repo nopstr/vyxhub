@@ -699,7 +699,7 @@ export default function PostCard({ post }) {
         </div>
       )}
 
-      <div className="flex gap-3.5">
+      <div className="flex gap-3.5 items-start">
         <Link to={`/@${author.username}`} className="flex-shrink-0">
           <Avatar src={author.avatar_url} alt={author.display_name} size="lg" ring />
         </Link>
