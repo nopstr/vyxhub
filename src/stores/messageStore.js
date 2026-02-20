@@ -237,27 +237,30 @@ export const useMessageStore = create((set, get) => ({
     if (now - _lastSendTime < SEND_THROTTLE_MS) return null
     _lastSendTime = now
 
-    const { data, error } = await supabase
-      .from('messages')
-      .insert({
-        conversation_id: conversationId,
-        sender_id: senderId,
-        content: note || 'Payment request',
-        message_type: 'payment_request',
-        payment_status: 'pending',
-        payment_amount: amount,
-        payment_note: note || null,
-      })
-      .select(`
-        *,
-        sender:profiles!sender_id(id, username, display_name, avatar_url, system_role)
-      `)
-      .single()
+    const { data, error } = await supabase.rpc('send_payment_request', {
+      p_conversation_id: conversationId,
+      p_sender_id: senderId,
+      p_amount: amount,
+      p_note: note || null,
+    })
 
-    if (!error && data) {
-      set({ messages: [...get().messages, data] })
+    if (error) throw error
+    if (!data?.success) throw new Error(data?.error || 'Failed to send payment request')
+
+    // Build optimistic message from RPC response
+    const msg = {
+      id: data.message_id,
+      conversation_id: data.conversation_id,
+      sender_id: data.sender_id,
+      content: data.content,
+      message_type: data.message_type,
+      payment_status: data.payment_status,
+      payment_amount: data.payment_amount,
+      payment_note: data.payment_note,
+      created_at: data.created_at,
     }
-    return data
+    set({ messages: [...get().messages, msg] })
+    return msg
   },
 
   // User pays a payment request
