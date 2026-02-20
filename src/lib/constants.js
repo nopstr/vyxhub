@@ -1,6 +1,7 @@
 export const APP_NAME = 'VyxHub'
 export const APP_DESCRIPTION = 'Premium adult content platform'
 export const APP_URL = 'https://vyxhub.vercel.app'
+export const REFERRAL_DOMAIN = 'https://vyxhub.com'
 
 export const PLATFORM_FEE_PERCENT = 30
 export const REFERRAL_EARNING_PERCENT = 80

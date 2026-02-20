@@ -24,6 +24,7 @@ const ReelsPage = lazy(() => import('./pages/reels/ReelsPage'))
 const PostDetailPage = lazy(() => import('./pages/post/PostDetailPage'))
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
+const ReferralRedirect = lazy(() => import('./pages/ReferralRedirect'))
 
 // Staff pages
 const AdminPage = lazy(() => import('./pages/admin/AdminPage'))
@@ -95,6 +96,9 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/2257" element={<CompliancePage />} />
+
+          {/* Referral link — sets cookie and redirects to profile */}
+          <Route path="/r/:username" element={<ReferralRedirect />} />
 
           {/* Public routes within Layout (viewable without login) */}
           <Route element={<Layout />}>

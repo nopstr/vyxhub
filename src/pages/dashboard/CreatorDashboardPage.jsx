@@ -1141,12 +1141,12 @@ function ReferralsTab({ userId }) {
     }
   }
 
-  const profileUrl = `${window.location.origin}/@${profile?.username}`
+  const referralUrl = `https://vyxhub.com/r/@${profile?.username}`
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(profileUrl)
+    navigator.clipboard.writeText(referralUrl)
     setCopied(true)
-    toast.success('Profile link copied!')
+    toast.success('Referral link copied!')
     setTimeout(() => setCopied(false), 2000)
   }
 
@@ -1157,8 +1157,8 @@ function ReferralsTab({ userId }) {
       <SectionCard title="How Referrals Work" icon={Gift}>
         <div className="space-y-3 text-sm text-zinc-400">
           <p>
-            When someone who <strong className="text-white">doesn't have an account</strong> visits your profile, 
-            a 24-hour referral cookie is saved. If they sign up within that window, they're linked to you as a referral.
+            Share your <strong className="text-white">referral link</strong> with potential fans. 
+            When they click it, a 24-hour cookie is saved. If they sign up within that window, they're linked to you as a referral.
           </p>
           <p>
             Referred users who subscribe on the platform earn you a reduced platform fee — you keep <strong className="text-emerald-400">80%</strong> instead of the standard 70%.
@@ -1167,17 +1167,17 @@ function ReferralsTab({ userId }) {
       </SectionCard>
 
       {/* Share link */}
-      <SectionCard title="Your Profile Link" icon={Link2}>
+      <SectionCard title="Your Referral Link" icon={Link2}>
         <div className="flex items-center gap-2">
           <div className="flex-1 bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-300 truncate">
-            {profileUrl}
+            {referralUrl}
           </div>
           <Button size="sm" onClick={handleCopy}>
             {copied ? <CheckCircle size={14} /> : <Link2 size={14} />}
             {copied ? 'Copied' : 'Copy'}
           </Button>
         </div>
-        <p className="text-xs text-zinc-600 mt-2">Share this link — no special URL needed. Just your regular profile page.</p>
+        <p className="text-xs text-zinc-600 mt-2">Share this link to track referrals. Visitors who sign up within 24 hours are linked to you.</p>
       </SectionCard>
 
       {/* Stats */}

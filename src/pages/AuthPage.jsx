@@ -54,12 +54,12 @@ export default function AuthPage() {
           display_name: displayName || username,
         })
         
-        // Check for referral cookie and record it
-        const referrerId = getCookie('vyxhub_ref')
-        if (referrerId && signUpResult?.user?.id) {
+        // Check for referral cookie and record it (cookie stores username from /r/@username link)
+        const referrerUsername = getCookie('vyxhub_ref')
+        if (referrerUsername && signUpResult?.user?.id) {
           try {
-            await supabase.rpc('record_referral', {
-              p_referrer_id: referrerId,
+            await supabase.rpc('record_referral_by_username', {
+              p_referrer_username: decodeURIComponent(referrerUsername),
               p_referred_user_id: signUpResult.user.id,
             })
           } catch (_) { /* non-blocking */ }

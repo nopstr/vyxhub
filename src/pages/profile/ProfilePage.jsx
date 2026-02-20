@@ -65,11 +65,6 @@ export default function ProfilePage() {
 
       setProfile(profileData)
 
-      // Set referral cookie for non-logged-in visitors on creator profiles (24h)
-      if (!user && profileData.is_creator) {
-        document.cookie = `vyxhub_ref=${profileData.id};path=/;max-age=86400;SameSite=Lax`
-      }
-
       // Fetch active promotion for this creator
       if (profileData.is_creator) {
         supabase.rpc('get_active_promotion', { p_creator_id: profileData.id })
