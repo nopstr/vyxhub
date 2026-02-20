@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   Calendar, MapPin, LinkIcon, ShieldCheck, Settings, Mail,
   Grid3x3, Video, Lock, MoreHorizontal, Image, Film, Play, DollarSign, Zap,
-  Flag, UserX, VolumeX, XCircle
+  Flag, UserX, VolumeX, XCircle, ClipboardList, X, Loader2
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const { addSubscription } = useSubscriptionCache()
   const { startConversation } = useMessageStore()
   const [showReportModal, setShowReportModal] = useState(false)
+  const [showCustomRequestModal, setShowCustomRequestModal] = useState(false)
 
   const cleanUsername = username?.replace('@', '')
   const isOwnProfile = myProfile?.username === cleanUsername
@@ -356,6 +357,19 @@ export default function ProfilePage() {
                     </span>
                   </Button>
                 )}
+                {profile.is_creator && profile.accepts_custom_requests && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (!user) return toast.error('Sign in to send a request')
+                      setShowCustomRequestModal(true)
+                    }}
+                  >
+                    <ClipboardList size={14} />
+                    Request
+                  </Button>
+                )}
               </>
             )}
           </div>
@@ -483,6 +497,109 @@ export default function ProfilePage() {
           username={profile.username}
         />
       )}
+
+      {/* Custom Request Modal */}
+      {showCustomRequestModal && (
+        <CustomRequestModal
+          creatorId={profile.id}
+          creatorName={profile.display_name}
+          minPrice={profile.custom_request_min_price || 25}
+          onClose={() => setShowCustomRequestModal(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+/* Custom Request Modal */
+function CustomRequestModal({ creatorId, creatorName, minPrice, onClose }) {
+  const { user } = useAuthStore()
+  const [description, setDescription] = useState('')
+  const [price, setPrice] = useState(minPrice)
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!description.trim()) return toast.error('Please describe your request')
+    if (price < minPrice) return toast.error(`Minimum price is $${minPrice}`)
+    if (price > 10000) return toast.error('Maximum price is $10,000')
+
+    setSubmitting(true)
+    try {
+      const { error } = await supabase.from('custom_requests').insert({
+        creator_id: creatorId,
+        requester_id: user.id,
+        description: description.trim(),
+        price,
+      })
+      if (error) throw error
+      toast.success('Custom request sent!')
+      onClose()
+    } catch (err) {
+      toast.error(err.message || 'Failed to send request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
+          <h3 className="font-semibold text-white">Custom Request</h3>
+          <button onClick={onClose} className="text-zinc-500 hover:text-white cursor-pointer">
+            <X size={20} />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          <p className="text-sm text-zinc-400">
+            Send a custom content request to <span className="text-white font-medium">{creatorName}</span>.
+            They&apos;ll review and respond to your request.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">What would you like?</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Describe your request in detail..."
+              rows={4}
+              maxLength={1000}
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none focus:ring-2 focus:ring-indigo-500/50"
+            />
+            <p className="text-xs text-zinc-600 mt-1">{description.length}/1000</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Your Offer</label>
+            <div className="relative w-36">
+              <DollarSign size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="number"
+                min={minPrice}
+                max={10000}
+                step="1"
+                value={price}
+                onChange={e => setPrice(parseFloat(e.target.value) || 0)}
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500/50"
+              />
+            </div>
+            <p className="text-xs text-zinc-600 mt-1">Minimum: ${minPrice}</p>
+          </div>
+          <div className="bg-zinc-800/30 rounded-xl p-3">
+            <p className="text-xs text-zinc-500">
+              You won&apos;t be charged until the creator completes and delivers your request. 
+              The creator may accept, decline, or suggest a different price.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 pt-1">
+            <Button onClick={handleSubmit} loading={submitting} disabled={!description.trim()} className="flex-1">
+              Send Request
+            </Button>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
