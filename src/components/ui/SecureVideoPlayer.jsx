@@ -11,6 +11,7 @@ export default function SecureVideoPlayer({
   autoPlay = false, 
   muted = false, 
   loop = false,
+  watermark = true,
   onTimeUpdate,
   videoRef: externalRef
 }) {
@@ -106,7 +107,7 @@ export default function SecureVideoPlayer({
       </div>
 
       {/* Dynamic Watermark Overlay (Tiled) */}
-      {isFocused && !isBlackedOut && (
+      {watermark && isFocused && !isBlackedOut && (
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-50 opacity-[0.03] mix-blend-overlay flex flex-wrap gap-8 justify-center items-center rotate-[-20deg]">
           {Array.from({ length: 50 }).map((_, i) => (
             <span key={i} className="text-white font-bold text-xl whitespace-nowrap">

@@ -91,6 +91,7 @@ function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
             loop={true}
             muted={muted}
             controls={false}
+            watermark={reel.author?.watermark_enabled !== false}
           />
         </div>
       ) : (

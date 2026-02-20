@@ -7,6 +7,7 @@ import {
   Repeat2, VolumeX, Edit2, EyeOff
 } from 'lucide-react'
 import SecureVideoPlayer from '../ui/SecureVideoPlayer'
+import ProtectedImage from '../ui/ProtectedImage'
 import ImageModal from '../ui/ImageModal'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
@@ -45,7 +46,7 @@ function RichContent({ text }) {
   })
 }
 
-function MediaGrid({ media, isUnlocked = true }) {
+function MediaGrid({ media, isUnlocked = true, watermarkEnabled = true }) {
   const [modalIndex, setModalIndex] = useState(null)
 
   if (!media || media.length === 0) return null
@@ -126,15 +127,19 @@ function MediaGrid({ media, isUnlocked = true }) {
                 src={item.signedUrl || item.url}
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                 controls
+                controlsList="nodownload"
+                disablePictureInPicture
                 preload="metadata"
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <img
+              <ProtectedImage
                 src={item.signedUrl || item.url}
                 alt=""
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                loading="lazy"
+                containerClassName="w-full h-full"
+                watermark={watermarkEnabled}
+                onClick={(e) => e.stopPropagation()}
               />
             )}
             {i === 3 && media.length > 4 && (
@@ -185,11 +190,12 @@ function SetPreview({ media, isUnlocked, totalMediaCount, post, author }) {
                   setModalIndex(i)
                 }}
               >
-                <img
+                <ProtectedImage
                   src={item.signedUrl || item.url}
                   alt=""
                   className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
-                  loading="lazy"
+                  containerClassName="w-full h-full"
+                  watermark={author?.watermark_enabled !== false}
                 />
               </div>
             ))}
@@ -219,11 +225,12 @@ function SetPreview({ media, isUnlocked, totalMediaCount, post, author }) {
         {/* First image — shown clear as preview */}
         {firstItem && (
           <div className="relative aspect-square overflow-hidden bg-zinc-950">
-            <img
+            <ProtectedImage
               src={firstItem.signedUrl || firstItem.url}
               alt=""
               className="w-full h-full object-cover"
-              loading="lazy"
+              containerClassName="w-full h-full"
+              watermark={author?.watermark_enabled !== false}
             />
           </div>
         )}
@@ -296,6 +303,7 @@ function VideoPreview({ media, isUnlocked, post, author }) {
             videoRef={streamRef}
             cloudflareUid={videoMedia.cloudflare_uid}
             controls={!showPaywall}
+            watermark={author?.watermark_enabled !== false}
             onTimeUpdate={handleTimeUpdate}
           />
         </div>
@@ -316,6 +324,7 @@ function VideoPreview({ media, isUnlocked, post, author }) {
         <SecureVideoPlayer
           src={videoMedia.signedUrl || videoMedia.url}
           controls={true}
+          watermark={author?.watermark_enabled !== false}
         />
       </div>
     )
@@ -335,6 +344,7 @@ function VideoPreview({ media, isUnlocked, post, author }) {
             videoRef={streamRef}
             src={teaserUrl}
             controls={!showPaywall}
+            watermark={author?.watermark_enabled !== false}
             onTimeUpdate={handleTimeUpdate}
           />
         </div>
@@ -809,7 +819,7 @@ export default function PostCard({ post }) {
           ) : isVideo ? (
             <VideoPreview media={post.media} isUnlocked={isContentUnlocked} post={post} author={author} />
           ) : (
-            <MediaGrid media={post.media} isUnlocked={isContentUnlocked} />
+            <MediaGrid media={post.media} isUnlocked={isContentUnlocked} watermarkEnabled={author?.watermark_enabled !== false} />
           )}
 
           {/* Poll */}

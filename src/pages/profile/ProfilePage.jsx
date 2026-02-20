@@ -13,6 +13,7 @@ import { useMessageStore } from '../../stores/messageStore'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
+import ProtectedImage from '../../components/ui/ProtectedImage'
 import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import ReportModal from '../../components/ReportModal'
 import Dropdown, { DropdownItem, DropdownDivider } from '../../components/ui/Dropdown'
@@ -649,6 +650,10 @@ function ContentGridCard({ post, type, isOwnProfile, isSubscribed }) {
           )}
           preload="metadata"
           muted
+          controlsList="nodownload"
+          disablePictureInPicture
+          onContextMenu={(e) => e.preventDefault()}
+          draggable={false}
         />
       ) : (
         <img
@@ -659,6 +664,8 @@ function ContentGridCard({ post, type, isOwnProfile, isSubscribed }) {
             isLocked && !isPPV && 'blur-sm brightness-50'
           )}
           loading="lazy"
+          onContextMenu={(e) => e.preventDefault()}
+          draggable={false}
         />
       )}
 

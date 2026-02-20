@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { X, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '../../lib/utils'
+import ProtectedImage from './ProtectedImage'
 
 export default function ImageModal({ images, initialIndex = 0, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
@@ -61,12 +62,12 @@ export default function ImageModal({ images, initialIndex = 0, onClose }) {
       )}
 
       <div className="relative w-full h-full flex items-center justify-center p-4 md:p-12">
-        <img
+        <ProtectedImage
           src={images[currentIndex]?.signedUrl || images[currentIndex]?.url}
           alt=""
-          className="max-w-full max-h-full object-contain select-none"
+          className="max-w-full max-h-full object-contain"
+          containerClassName="max-w-full max-h-full flex items-center justify-center"
           onClick={(e) => e.stopPropagation()}
-          draggable={false}
         />
       </div>
 

@@ -5,6 +5,7 @@ import { useMessageStore } from '../../stores/messageStore'
 import { supabase } from '../../lib/supabase'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
+import ProtectedImage from '../../components/ui/ProtectedImage'
 import { PageLoader } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import {
@@ -170,18 +171,22 @@ function MediaItem({ media }) {
       <video
         src={url}
         controls
+        controlsList="nodownload"
+        disablePictureInPicture
         className="w-full max-h-64 rounded-xl object-cover bg-black"
         preload="metadata"
+        onContextMenu={(e) => e.preventDefault()}
+        draggable={false}
       />
     )
   }
 
   return (
-    <img
+    <ProtectedImage
       src={url}
       alt={media.name || 'Media'}
       className="w-full max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity"
-      loading="lazy"
+      containerClassName="w-full"
     />
   )
 }

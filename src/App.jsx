@@ -6,6 +6,7 @@ import Layout from './components/layout/Layout'
 import ErrorBoundary from './components/ErrorBoundary'
 import { PageLoader } from './components/ui/Spinner'
 import AgeGate from './components/AgeGate'
+import ContentProtection from './components/ContentProtection'
 import CookieConsent from './components/CookieConsent'
 
 // Lazy-loaded pages for code splitting
@@ -76,6 +77,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AgeGate>
+        <ContentProtection>
         <BrowserRouter>
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -178,6 +180,7 @@ export default function App() {
           }}
         />
       </BrowserRouter>
+    </ContentProtection>
     </AgeGate>
     </ErrorBoundary>
   )
