@@ -8,6 +8,47 @@ const _reactionThrottle = new Map() // postId:reactionType → timestamp
 const _bookmarkThrottle = new Map() // postId → timestamp
 const THROTTLE_MS = 500
 
+// Impression tracking — batch record which posts user has seen
+const _impressionBuffer = new Set()
+let _impressionTimer = null
+
+function flushImpressions(userId) {
+  if (!userId || _impressionBuffer.size === 0) return
+  const ids = [..._impressionBuffer]
+  _impressionBuffer.clear()
+  supabase.rpc('record_post_impressions', {
+    p_user_id: userId,
+    p_post_ids: ids,
+  }).catch(err => console.warn('Failed to record impressions:', err))
+}
+
+export function recordImpression(postId, userId) {
+  if (!postId || !userId) return
+  _impressionBuffer.add(postId)
+  // Flush every 15 seconds
+  if (!_impressionTimer) {
+    _impressionTimer = setInterval(() => {
+      flushImpressions(userId)
+    }, 15000)
+  }
+}
+
+// Flush impressions on page unload
+if (typeof window !== 'undefined') {
+  window.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && _impressionBuffer.size > 0) {
+      // Use sendBeacon pattern: just flush directly
+      const ids = [..._impressionBuffer]
+      _impressionBuffer.clear()
+      // navigator.sendBeacon doesn't work with Supabase, so just fire & forget
+      supabase.rpc('record_post_impressions', {
+        p_user_id: null, // will be set by current auth context
+        p_post_ids: ids,
+      }).catch(() => {})
+    }
+  })
+}
+
 const POST_SELECT = `
   *,
   author:profiles!author_id(*),
@@ -90,7 +131,7 @@ export const usePostStore = create((set, get) => ({
     })
   },
 
-  // "For You" algorithm: personalized feed with diversity enforcement (A1 + A5 + A6)
+  // "For You" algorithm: personalized feed v2 with multi-factor scoring
   fetchFeed: async (reset = false, userId = null) => {
     if (get().loading) return
 
@@ -221,7 +262,7 @@ export const usePostStore = create((set, get) => ({
     }
   },
 
-  // "Following" feed: only posts from people the user follows
+  // "Following" feed: ranked posts from followed/subscribed creators
   fetchFollowingFeed: async (userId, reset = false) => {
     if (get().loading) return
 
@@ -243,36 +284,56 @@ export const usePostStore = create((set, get) => ({
     const currentPage = reset ? 0 : get().page
     set({ loading: true })
 
+    const from = currentPage * FEED_PAGE_SIZE
+
     try {
-      // Get IDs of followed users and subscribed creators
-      const [followsRes, subsRes] = await Promise.all([
-        supabase.from('follows').select('following_id').eq('follower_id', userId),
-        supabase.from('subscriptions').select('creator_id').eq('subscriber_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString())
-      ])
+      let data, error
 
-      if (followsRes.error) throw followsRes.error
-      if (subsRes.error) throw subsRes.error
+      // Use ranked following feed RPC (engagement + affinity weighted)
+      const ranked = await supabase.rpc('following_feed_ranked', {
+        p_user_id: userId,
+        p_limit: FEED_PAGE_SIZE,
+        p_offset: from,
+      })
 
-      const followIds = followsRes.data?.map(f => f.following_id) || []
-      const subIds = subsRes.data?.map(s => s.creator_id) || []
-      
-      // Combine and deduplicate IDs
-      const targetIds = [...new Set([...followIds, ...subIds])]
+      if (!ranked.error && ranked.data?.length > 0) {
+        // RPC returns post IDs with scores — fetch full post data
+        const postIds = ranked.data.map(p => p.id)
+        const { data: fullPosts, error: fullError } = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .in('id', postIds)
 
-      if (targetIds.length === 0) {
-        set({ posts: reset ? [] : get().posts, loading: false, hasMore: false })
-        return []
+        if (fullError) throw fullError
+
+        const idOrder = new Map(postIds.map((id, i) => [id, i]))
+        data = (fullPosts || []).sort((a, b) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99))
+        error = null
+      } else {
+        // Fallback: chronological from followed creators
+        const [followsRes, subsRes] = await Promise.all([
+          supabase.from('follows').select('following_id').eq('follower_id', userId),
+          supabase.from('subscriptions').select('creator_id').eq('subscriber_id', userId).eq('status', 'active').gt('expires_at', new Date().toISOString())
+        ])
+
+        const followIds = followsRes.data?.map(f => f.following_id) || []
+        const subIds = subsRes.data?.map(s => s.creator_id) || []
+        const targetIds = [...new Set([...followIds, ...subIds])]
+
+        if (targetIds.length === 0) {
+          set({ posts: reset ? [] : get().posts, loading: false, hasMore: false })
+          return []
+        }
+
+        const fallback = await supabase
+          .from('posts')
+          .select(POST_SELECT)
+          .in('author_id', targetIds)
+          .order('created_at', { ascending: false })
+          .range(from, from + FEED_PAGE_SIZE - 1)
+        data = fallback.data
+        error = fallback.error
       }
-
-      const from = currentPage * FEED_PAGE_SIZE
-      const to = from + FEED_PAGE_SIZE - 1
-
-      const { data, error } = await supabase
-        .from('posts')
-        .select(POST_SELECT)
-        .in('author_id', targetIds)
-        .order('created_at', { ascending: false })
-        .range(from, to)
 
       if (error) throw error
 
