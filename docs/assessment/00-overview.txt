@@ -120,6 +120,21 @@ FEAT-4. CREATOR TOOLS V2 (4 New Features) + V3 (3 More Features)
       record_referral RPC on signup, referral stats dashboard tab, commission tracking
     → DB migration: creator_tools_remaining.sql (3 new tables, 7 new RPCs)
 
+FEAT-6. NOTIFICATION SYSTEM V2 (Complete Overhaul)
+    → Fixed tip notification bug (wrong column names: type/from_user_id/post_id/metadata → notification_type/actor_id/reference_id/message)
+    → Preference enforcement: should_notify() helper checks profiles.notification_preferences JSONB in all 6 trigger functions
+    → Push notifications: push_subscriptions table, Web Push API integration (VAPID/PushManager), custom service worker with push + notificationclick handlers
+    → Email notifications: email_queue table (status/attempts/scheduled_for), queue_notification_email trigger for high-value events, realtime/daily/weekly digest support
+    → Daily digest: generate_daily_digests() function with pg_cron at 9am UTC
+    → Cursor-based pagination: get_notifications_paginated RPC (cursor + type filter + priority sort + rich preview data)
+    → Rich previews: post thumbnail + text snippet via subqueries on posts table
+    → Filter tabs: All/Likes/Comments/Follows/Subscriptions/Tips/Mentions with unread count badges
+    → Infinite scroll: IntersectionObserver-based more loading
+    → Clickable notifications: navigate to relevant page based on notification type
+    → Settings: push notification toggle (subscribeToPush/unsubscribeFromPush), email toggle, digest frequency selector (instant/daily/weekly/never)
+    → Custom SW: switched from generateSW to injectManifest mode, workbox precaching + runtime caching + push event handler + notification click navigation
+    → DB migration: 20260221100000_notification_system_v2.sql (2 new tables, 3 new profile columns, 8+ functions, pagination indexes)
+
 FEAT-5. MONETIZATION SYSTEM (6 New Features)
     → Tipping: send_tip RPC ($1-$200 range, 30% platform fee, creates notification),
       TipModal component with quick amounts + custom, optional message, fee disclosure,
@@ -326,12 +341,12 @@ Content Creation                     75%       90%       95%        95%
 Feed Algorithm                       15%       60%       95%        98%
 Content Discovery                    30%       40%       85%        95%
 Messaging                            90%       80%       90%        92%
-Notifications                        70%       85%       95%        95%
+Notifications                        95%       85%       95%        95%
 Monetization                         85%       95%       60%        70%
 Content Protection                   95%       95%       N/A        N/A
 Admin/Moderation                     75%       90%       95%        95%
 Creator Tools                       100%       85%       70%        80%
-Mobile Experience                    50%       80%       95%        98%
+Mobile Experience                    55%       80%       95%        98%
 Search                               40%       50%       90%        85%
 Accessibility                        60%       50%       80%        85%
 Performance                          55%       75%       95%        95%
@@ -419,17 +434,22 @@ DETAILED MATURITY BREAKDOWN
    ❌ Missing: Video messages (recording)
    ❌ Missing: Message forwarding
 
-6. NOTIFICATIONS (70%)
-   ✅ 6 trigger types
-   ✅ Real-time subscription
+6. NOTIFICATIONS (95%)
+   ✅ 6 trigger types (with preference enforcement)
+   ✅ Real-time subscription (browser Notification API when tab hidden)
    ✅ Mark read / mark all read
    ✅ Unread count badge
-   ✅ Notification preferences
-   ❌ Missing: Notification grouping
-   ❌ Missing: Push notifications (Web Push)
-   ❌ Missing: Email notifications
-   ❌ Missing: Pagination
-   ❌ Missing: Rich previews
+   ✅ Notification preferences (per-type toggles + should_notify() in triggers)
+   ✅ Push notifications (Web Push: VAPID, PushManager, custom SW handler)
+   ✅ Email notifications (email_queue table, realtime/daily/weekly digest)
+   ✅ Cursor-based pagination (30 per page, infinite scroll)
+   ✅ Rich previews (post thumbnail + text snippet for post-related notifications)
+   ✅ Filter tabs (All, Likes, Comments, Follows, Subscriptions, Tips, Mentions)
+   ✅ Clickable notifications (navigate to relevant page based on type)
+   ✅ Type-based count badges on filter tabs
+   ✅ Settings: push toggle, email toggle, digest frequency selector
+   ❌ Missing: Notification grouping ("X and 5 others liked your post")
+   ❌ Missing: VAPID keys + push relay server (needs backend Edge Function)
 
 7. MONETIZATION (85%)
    ✅ Subscriptions (DB + UI)
@@ -481,11 +501,11 @@ DETAILED MATURITY BREAKDOWN
     ✅ Promotional pricing / discounts (create/deactivate promos, discount badge on profile, promo-aware subscribe_to_creator)
     ✅ Referral system (24h cookie on creator profile visit, record_referral on signup, referral stats dashboard, commission tracking)
 
-11. MOBILE EXPERIENCE (50%)
+11. MOBILE EXPERIENCE (55%)
     ✅ Responsive design
     ✅ Bottom navigation
     ✅ Snap-scrolling reels
-    ❌ Missing: PWA service worker
+    ✅ PWA service worker (custom SW with workbox precaching + push handler)
     ❌ Missing: Pull-to-refresh
     ❌ Missing: Swipe gestures
     ❌ Missing: Offline support
@@ -543,6 +563,13 @@ WHAT WORKS END-TO-END TODAY (78+ flows)
 95. Promoted profiles appear at top of Explore → Creators with "Promoted" badge
 96. Subscription auto-expiry and auto-renewal via cron jobs
 97. Promote button on own posts in PostCard dropdown menu
+98. Notification filter tabs with unread count badges per type
+99. Notification infinite scroll pagination (cursor-based, 30 per page)
+100. Rich notification previews (post thumbnail + text snippet)
+101. Clickable notifications navigate to relevant page (profile, post, messages)
+102. Push notification settings toggle in Settings (subscribe/unsubscribe)
+103. Email notification toggle + digest frequency selector (instant/daily/weekly/never)
+104. Service worker handles push events + notification click navigation
 
 ONE REMAINING EXISTENTIAL BLOCKER
 -----------------------------------
@@ -561,7 +588,7 @@ NEXT PRIORITIES
 2. Tier 5: Algorithm development (A1 personalization, A2 discovery, A3 trending)
 3. Testing: Vitest + Playwright setup
 4. Performance: CDN, virtual scrolling, bundle optimization
-5. Mobile: PWA service worker, pull-to-refresh
+5. Mobile: Pull-to-refresh, swipe gestures, offline support
 
 FILES IN THIS ASSESSMENT
 -------------------------

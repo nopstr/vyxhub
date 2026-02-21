@@ -879,6 +879,19 @@ function NotificationSettings() {
 
   const [prefs, setPrefs] = useState({ ...defaults, ...(profile?.notification_preferences || {}) })
   const [saving, setSaving] = useState(false)
+  const [pushEnabled, setPushEnabled] = useState(profile?.push_notifications ?? true)
+  const [emailEnabled, setEmailEnabled] = useState(profile?.email_notifications ?? true)
+  const [digestFreq, setDigestFreq] = useState(profile?.email_digest_frequency || 'daily')
+  const [pushStatus, setPushStatus] = useState(null) // 'granted', 'denied', 'default', 'unsupported'
+
+  // Check push permission on mount
+  useEffect(() => {
+    if (!('Notification' in window) || !('PushManager' in window)) {
+      setPushStatus('unsupported')
+    } else {
+      setPushStatus(Notification.permission)
+    }
+  }, [])
 
   const handleToggle = async (key, value) => {
     const updated = { ...prefs, [key]: value }
@@ -895,20 +908,119 @@ function NotificationSettings() {
     }
   }
 
+  const handlePushToggle = async (enabled) => {
+    setPushEnabled(enabled)
+    try {
+      if (enabled) {
+        const { useNotificationStore } = await import('../../stores/notificationStore')
+        const result = await useNotificationStore.getState().subscribeToPush(profile.id)
+        if (result.error) {
+          setPushEnabled(false)
+          return toast.error(result.error)
+        }
+        setPushStatus('granted')
+        toast.success('Push notifications enabled')
+      } else {
+        const { useNotificationStore } = await import('../../stores/notificationStore')
+        await useNotificationStore.getState().unsubscribeFromPush(profile.id)
+        toast.success('Push notifications disabled')
+      }
+      await updateProfile({ push_notifications: enabled })
+    } catch (err) {
+      setPushEnabled(!enabled)
+      toast.error('Failed to update push notification settings')
+    }
+  }
+
+  const handleEmailToggle = async (enabled) => {
+    setEmailEnabled(enabled)
+    try {
+      await updateProfile({ email_notifications: enabled })
+    } catch {
+      setEmailEnabled(!enabled)
+    }
+  }
+
+  const handleDigestChange = async (freq) => {
+    setDigestFreq(freq)
+    try {
+      await updateProfile({ email_digest_frequency: freq })
+      toast.success('Digest frequency updated')
+    } catch {
+      setDigestFreq(profile?.email_digest_frequency || 'daily')
+    }
+  }
+
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        {Object.entries(prefs).map(([key, value]) => (
+    <div className="space-y-6">
+      {/* Push Notifications */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-zinc-200">Push Notifications</h3>
+        {pushStatus === 'unsupported' ? (
+          <p className="text-xs text-zinc-500">Push notifications are not supported in this browser.</p>
+        ) : pushStatus === 'denied' ? (
+          <p className="text-xs text-red-400">Push notifications are blocked. Please enable them in your browser settings.</p>
+        ) : (
           <Toggle
-            key={key}
-            checked={value}
-            onChange={(v) => handleToggle(key, v)}
-            label={key.charAt(0).toUpperCase() + key.slice(1)}
+            checked={pushEnabled}
+            onChange={handlePushToggle}
+            label="Enable push notifications"
+            description="Receive push notifications even when the app is closed"
           />
-        ))}
+        )}
       </div>
 
+      {/* Email Notifications */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-zinc-200">Email Notifications</h3>
+        <Toggle
+          checked={emailEnabled}
+          onChange={handleEmailToggle}
+          label="Enable email notifications"
+          description="Receive email alerts for important events"
+        />
+        {emailEnabled && (
+          <div>
+            <label className="block text-xs font-medium text-zinc-400 mb-1.5">Digest Frequency</label>
+            <div className="flex gap-2">
+              {[
+                { value: 'realtime', label: 'Instant' },
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'never', label: 'Never' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleDigestChange(opt.value)}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+                    digestFreq === opt.value
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
+      {/* In-App Notification Types */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-bold text-zinc-200">Notification Types</h3>
+        <div className="space-y-2">
+          {Object.entries(prefs).map(([key, value]) => (
+            <Toggle
+              key={key}
+              checked={value}
+              onChange={(v) => handleToggle(key, v)}
+              label={key.charAt(0).toUpperCase() + key.slice(1)}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
