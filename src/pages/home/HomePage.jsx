@@ -8,6 +8,8 @@ import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import { SkeletonPost } from '../../components/ui/Spinner'
 import { useInView } from 'react-intersection-observer'
 import EmptyState from '../../components/ui/EmptyState'
+import PullToRefresh from '../../components/ui/PullToRefresh'
+import useSwipeGesture from '../../components/ui/useSwipeGesture'
 import { Compass, Users } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Button from '../../components/ui/Button'
@@ -62,8 +64,29 @@ export default function HomePage() {
     setTab(newTab)
   }
 
+  // Pull-to-refresh handler
+  const handlePullRefresh = useCallback(async () => {
+    initialLoadDone.current = false
+    if (tab === 'following' && user) {
+      await fetchFollowingFeed(user.id, true)
+    } else {
+      await fetchFeed(true, user?.id || null)
+    }
+    initialLoadDone.current = true
+  }, [tab, user, fetchFeed, fetchFollowingFeed])
+
+  // Swipe between tabs on mobile
+  const swipeRef = useSwipeGesture({
+    onSwipeLeft: useCallback(() => {
+      if (tab === 'foryou' && user) setTab('following')
+    }, [tab, user]),
+    onSwipeRight: useCallback(() => {
+      if (tab === 'following') setTab('foryou')
+    }, [tab]),
+  })
+
   return (
-    <div>
+    <PullToRefresh onRefresh={handlePullRefresh} disabled={loading}>
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50">
         <div className="flex">
@@ -96,7 +119,7 @@ export default function HomePage() {
       {user && profile?.is_creator && <CreatePost />}
 
       {/* Posts Feed */}
-      <div>
+      <div ref={swipeRef}>
         {!loading && posts.length === 0 ? (
           <EmptyState
             icon={tab === 'foryou' ? Compass : Users}
@@ -128,6 +151,6 @@ export default function HomePage() {
         {/* Infinite scroll trigger */}
         {hasMore && <div ref={ref} className="h-10" />}
       </div>
-    </div>
+    </PullToRefresh>
   )
 }

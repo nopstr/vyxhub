@@ -8,6 +8,7 @@ import { PageLoader } from './components/ui/Spinner'
 import AgeGate from './components/AgeGate'
 import ContentProtection from './components/ContentProtection'
 import CookieConsent from './components/CookieConsent'
+import OfflineIndicator from './components/ui/OfflineIndicator'
 
 // Lazy-loaded pages for code splitting
 const AuthPage = lazy(() => import('./pages/AuthPage'))
@@ -179,6 +180,7 @@ export default function App() {
             },
           }}
         />
+        <OfflineIndicator />
       </BrowserRouter>
     </ContentProtection>
     </AgeGate>

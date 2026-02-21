@@ -11,6 +11,7 @@ import { SkeletonPost } from '../../components/ui/Spinner'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { debounce, formatNumber, cn } from '../../lib/utils'
 import SearchOverlay from '../../components/ui/SearchOverlay'
+import PullToRefresh from '../../components/ui/PullToRefresh'
 
 const CATEGORIES = [
   { key: null, label: 'All' },
@@ -332,8 +333,18 @@ export default function ExplorePage() {
     return count > 99 ? '99+' : count
   }
 
+  // Pull-to-refresh handler
+  const handlePullRefresh = useCallback(async () => {
+    if (isSearchMode) {
+      const q = urlQuery || urlTag ? `#${urlTag}` : search.trim()
+      if (q) await performSearch(q, user?.id, true)
+    } else {
+      await fetchContent()
+    }
+  }, [isSearchMode, urlQuery, urlTag, search, user, performSearch, fetchContent])
+
   return (
-    <div>
+    <PullToRefresh onRefresh={handlePullRefresh} disabled={loading || searchLoading}>
       {/* Search Overlay */}
       <SearchOverlay
         open={showSearchOverlay}
@@ -676,6 +687,6 @@ export default function ExplorePage() {
           </div>
         )}
       </div>
-    </div>
+    </PullToRefresh>
   )
 }

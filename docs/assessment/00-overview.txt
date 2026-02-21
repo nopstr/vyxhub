@@ -1,7 +1,7 @@
 ================================================================================
 VYXHUB PRODUCTION READINESS ASSESSMENT v2
 Date: February 21, 2026
-Overall Readiness: ~98% (up from ~97%)
+Overall Readiness: ~98.5% (up from ~98%)
 ================================================================================
 
 CURRENT STATE
@@ -134,6 +134,32 @@ FEAT-7. SEARCH SYSTEM V2 (Complete Overhaul)
       advanced filter panel (sort, media type, date range, verified only), infinite scroll
     → RightPanel: replaced inline search with SearchOverlay trigger button showing ⌘K hint
     → DB migration: 20260221200000_search_system_v2.sql (1 new table, 4 RPCs, 3 trigram indexes)
+
+FEAT-8. MOBILE EXPERIENCE V2 (Complete Overhaul)
+    → Pull-to-refresh: custom PullToRefresh component using touch events (no external library)
+      - Detects touchstart/touchmove/touchend with threshold (80px), resistance factor (0.45)
+      - Visual indicator: spinning RefreshCw icon, "Pull to refresh" / "Release to refresh" text
+      - Integrated on HomePage, ExplorePage, and NotificationsPage
+      - Disabled during active loading to prevent double-fetch
+    → Swipe gestures: custom useSwipeGesture hook with velocity + distance detection
+      - Horizontal swipe between For You ↔ Following on HomePage
+      - Horizontal swipe between notification filter tabs (All/Likes/Comments/Follows/etc.)
+      - Configurable thresholds (50px distance or 0.3px/ms velocity)
+      - Ignores vertical scrolling (max 75px vertical tolerance)
+    → Offline support: comprehensive offline-first architecture
+      - Offline fallback page (public/offline.html) with branded "You're Offline" UI
+      - Auto-reload on reconnection (online event listener)
+      - Service worker NavigationRoute with NetworkFirst strategy (3s timeout)
+      - Supabase REST API caching: NetworkFirst with 24h cache (50 entries)
+      - Supabase RPC caching: NetworkFirst with 12h cache (30 entries)
+      - OfflineIndicator component: global banner with WifiOff icon when offline,
+        animated pulse, auto-dismiss "Back online" message on reconnection
+    → CSS improvements: overscroll-behavior-y: contain (browser pull-to-refresh prevention),
+      safe-area-inset-top utility class, PWA standalone mode text selection control
+    → PWA manifest fix: replaced stale Vite SVG icon with proper 192x192 + 512x512 PNGs,
+      added maskable icon, categories, app shortcuts (Explore, Messages)
+    → Files: PullToRefresh.jsx, useSwipeGesture.js, OfflineIndicator.jsx, offline.html
+    → Modified: sw.js, index.css, App.jsx, HomePage.jsx, ExplorePage.jsx, NotificationsPage.jsx, manifest.json
 
 FEAT-6. NOTIFICATION SYSTEM V2 (Complete Overhaul)
     → Fixed tip notification bug (wrong column names: type/from_user_id/post_id/metadata → notification_type/actor_id/reference_id/message)
@@ -361,7 +387,7 @@ Monetization                         85%       95%       60%        70%
 Content Protection                   95%       95%       N/A        N/A
 Admin/Moderation                     75%       90%       95%        95%
 Creator Tools                       100%       85%       70%        80%
-Mobile Experience                    55%       80%       95%        98%
+Mobile Experience                    92%       80%       95%        98%
 Search                               90%       50%       90%        85%
 Accessibility                        60%       50%       80%        85%
 Performance                          55%       75%       95%        95%
@@ -385,6 +411,7 @@ DETAILED MATURITY BREAKDOWN
    ❌ Missing: Login history/alerts
    ❌ Missing: Social OAuth (Twitter, Apple, Google)
    ❌ Missing: Username change
+   ❌ Missing: Confirm Password on signup/pw change
 
 2. CONTENT CREATION (75%)
    ✅ Text posts with visibility control
@@ -516,14 +543,18 @@ DETAILED MATURITY BREAKDOWN
     ✅ Promotional pricing / discounts (create/deactivate promos, discount badge on profile, promo-aware subscribe_to_creator)
     ✅ Referral system (24h cookie on creator profile visit, record_referral on signup, referral stats dashboard, commission tracking)
 
-11. MOBILE EXPERIENCE (55%)
+11. MOBILE EXPERIENCE (92%)
     ✅ Responsive design
     ✅ Bottom navigation
     ✅ Snap-scrolling reels
     ✅ PWA service worker (custom SW with workbox precaching + push handler)
-    ❌ Missing: Pull-to-refresh
-    ❌ Missing: Swipe gestures
-    ❌ Missing: Offline support
+    ✅ Pull-to-refresh (custom PullToRefresh component on Home, Explore, Notifications)
+    ✅ Swipe gestures (useSwipeGesture hook: swipe between tabs on Home + Notifications)
+    ✅ Offline support (offline fallback page, API caching, OfflineIndicator banner)
+    ✅ overscroll-behavior: contain (prevents browser pull-to-refresh conflict)
+    ✅ PWA manifest with proper icons, maskable, shortcuts
+    ❌ Missing: Haptic feedback (Web Vibration API)
+    ❌ Missing: Background sync for failed mutations
 
 12. SEARCH (90%)
     ✅ Full-text post search (tsvector + GIN)
@@ -555,7 +586,7 @@ DETAILED MATURITY BREAKDOWN
     ✅ Missing: Likes working, show all reactions all the time, when clicked they should be colored, if possible add little color fill animation
 
 ================================================================================
-WHAT WORKS END-TO-END TODAY (78+ flows)
+WHAT WORKS END-TO-END TODAY (120+ flows)
 ================================================================================
 
 1-72. [All previous flows — see v1 for full list]
@@ -599,6 +630,16 @@ WHAT WORKS END-TO-END TODAY (78+ flows)
 110. Unified search results with tabs (All/Creators/Posts/Hashtags) and count badges
 111. Search overlay shows recent searches when empty, autocomplete when typing
 112. Infinite scroll pagination on search results
+113. Pull-to-refresh on Home feed (swipe down at top → spinner → refresh)
+114. Pull-to-refresh on Explore page (swipe down → refetch trending/search)
+115. Pull-to-refresh on Notifications page (swipe down → refetch notifications + counts)
+116. Swipe left/right between For You ↔ Following tabs on HomePage
+117. Swipe left/right between notification filter tabs
+118. Offline fallback page shows when navigating offline ("You're Offline" UI)
+119. Offline indicator banner appears globally when connection is lost
+120. "Back online" banner auto-shows and auto-dismisses on reconnection
+121. API responses cached for offline access (NetworkFirst with fallback)
+122. PWA install prompt with proper icons (192x192, 512x512, maskable)
 
 ONE REMAINING EXISTENTIAL BLOCKER
 -----------------------------------
@@ -617,7 +658,7 @@ NEXT PRIORITIES
 2. Tier 5: Algorithm development (A1 personalization, A2 discovery, A3 trending)
 3. Testing: Vitest + Playwright setup
 4. Performance: CDN, virtual scrolling, bundle optimization
-5. Mobile: Pull-to-refresh, swipe gestures, offline support
+5. Mobile: Haptic feedback, background sync
 
 FILES IN THIS ASSESSMENT
 -------------------------

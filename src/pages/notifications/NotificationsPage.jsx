@@ -11,6 +11,8 @@ import Button from '../../components/ui/Button'
 import { PageLoader } from '../../components/ui/Spinner'
 import EmptyState from '../../components/ui/EmptyState'
 import { formatRelativeTime, cn } from '../../lib/utils'
+import PullToRefresh from '../../components/ui/PullToRefresh'
+import useSwipeGesture from '../../components/ui/useSwipeGesture'
 
 const notifIcons = {
   like: { icon: Heart, color: 'text-rose-500', bg: 'bg-rose-500/10' },
@@ -254,10 +256,29 @@ export default function NotificationsPage() {
     if (node) observerRef.current.observe(node)
   }, [loading, hasMore, user])
 
+  // Pull-to-refresh handler
+  const handlePullRefresh = useCallback(async () => {
+    await fetchNotifications(user.id, true)
+    await fetchTypeCounts(user.id)
+  }, [user, fetchNotifications, fetchTypeCounts])
+
+  // Swipe between filter tabs
+  const filterKeys = FILTER_TABS.map(t => t.key)
+  const swipeRef = useSwipeGesture({
+    onSwipeLeft: useCallback(() => {
+      const idx = filterKeys.indexOf(activeFilter)
+      if (idx < filterKeys.length - 1) setFilter(filterKeys[idx + 1])
+    }, [activeFilter, setFilter]),
+    onSwipeRight: useCallback(() => {
+      const idx = filterKeys.indexOf(activeFilter)
+      if (idx > 0) setFilter(filterKeys[idx - 1])
+    }, [activeFilter, setFilter]),
+  })
+
   if (loading && groupedNotifications.length === 0) return <PageLoader />
 
   return (
-    <div>
+    <PullToRefresh onRefresh={handlePullRefresh} disabled={loading}>
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50">
         <div className="px-5 py-4 flex items-center justify-between">
@@ -301,7 +322,7 @@ export default function NotificationsPage() {
       </header>
 
       {groupedNotifications.length > 0 ? (
-        <div>
+        <div ref={swipeRef}>
           {groupedNotifications.map((notif, i) => (
             <div
               key={notif.id}
@@ -334,6 +355,6 @@ export default function NotificationsPage() {
             : "When someone interacts with you, it'll show up here."}
         />
       )}
-    </div>
+    </PullToRefresh>
   )
 }
