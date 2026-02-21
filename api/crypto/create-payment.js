@@ -6,15 +6,15 @@
  * Auth: Bearer token (Supabase access token)
  * 
  * Environment variables required:
- *   SUPABASE_URL (or VITE_SUPABASE_URL)
- *   SUPABASE_SERVICE_ROLE_KEY
+ *   SUPABASE_URL
+ *   SUPABASE_SERVICE_KEY (service role key)
  *   NOWPAYMENTS_API_KEY
  */
 
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://agoekmugbrswrdjscwek.supabase.co'
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY
 const NOWPAYMENTS_BASE = 'https://api.nowpayments.io/v1'
 const APP_URL = process.env.APP_URL || 'https://vyxhub.vercel.app'

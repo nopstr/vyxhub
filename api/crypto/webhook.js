@@ -5,16 +5,16 @@
  * business logic processing when payment is confirmed.
  * 
  * Environment variables required:
- *   SUPABASE_URL (or VITE_SUPABASE_URL)
- *   SUPABASE_SERVICE_ROLE_KEY
+ *   SUPABASE_URL
+ *   SUPABASE_SERVICE_KEY (service role key)
  *   NOWPAYMENTS_IPN_SECRET
  */
 
 import { createClient } from '@supabase/supabase-js'
 import { createHmac } from 'node:crypto'
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://agoekmugbrswrdjscwek.supabase.co'
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET
 
 /**
