@@ -4,7 +4,8 @@ import {
   ArrowUpRight, ArrowDownRight, Calendar, BarChart3, Send, Download,
   Clock, CheckCircle, XCircle, ChevronDown, Filter, FileText,
   Megaphone, ClipboardList, ArrowLeft, Loader2, Star, Package,
-  Tag, Link2, Trash2, Percent, CalendarClock, Gift
+  Tag, Link2, Trash2, Percent, CalendarClock, Gift, Wallet, AlertTriangle,
+  Banknote, ShieldCheck, Lock
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -1616,6 +1617,284 @@ function AdsManagerTab({ userId }) {
   )
 }
 
+// ─── Wallet Tab ─────────────────────────────────────────────────────────────
+
+function WalletTab({ userId }) {
+  const { profile } = useAuthStore()
+  const [walletInfo, setWalletInfo] = useState(null)
+  const [transactions, setTransactions] = useState([])
+  const [payoutHistory, setPayoutHistory] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [requesting, setRequesting] = useState(false)
+  const [txPage, setTxPage] = useState(0)
+  const [txTotal, setTxTotal] = useState(0)
+  const PAGE_SIZE = 20
+
+  const loadWalletData = useCallback(async () => {
+    setLoading(true)
+    try {
+      const [walletRes, txRes, payoutRes] = await Promise.all([
+        supabase.rpc('get_wallet_info', { p_creator_id: userId }),
+        supabase.rpc('get_wallet_transactions', { p_creator_id: userId, p_limit: PAGE_SIZE, p_offset: 0 }),
+        supabase.rpc('get_payout_history', { p_creator_id: userId }),
+      ])
+      if (walletRes.data) setWalletInfo(walletRes.data)
+      if (txRes.data) {
+        setTransactions(txRes.data.transactions || [])
+        setTxTotal(txRes.data.total || 0)
+      }
+      if (payoutRes.data) setPayoutHistory(payoutRes.data)
+    } catch (err) {
+      toast.error('Failed to load wallet data')
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  useEffect(() => { loadWalletData() }, [loadWalletData])
+
+  const loadMoreTx = async () => {
+    const nextPage = txPage + 1
+    const { data } = await supabase.rpc('get_wallet_transactions', {
+      p_creator_id: userId,
+      p_limit: PAGE_SIZE,
+      p_offset: nextPage * PAGE_SIZE,
+    })
+    if (data?.transactions?.length) {
+      setTransactions(prev => [...prev, ...data.transactions])
+      setTxPage(nextPage)
+    }
+  }
+
+  const handleRequestPayout = async () => {
+    if (!walletInfo?.can_request_payout) return
+    if (!profile?.payout_method || !profile?.payout_email) {
+      return toast.error('Configure your payout method in Settings first')
+    }
+    if (!confirm(`Request payout of ${formatCurrency(walletInfo.withdrawable)} via ${profile.payout_method}?`)) return
+    setRequesting(true)
+    try {
+      const { data, error } = await supabase.rpc('request_payout', {
+        p_creator_id: userId,
+      })
+      if (error) throw error
+      toast.success(`Payout of ${formatCurrency(data.amount)} requested!`)
+      loadWalletData()
+    } catch (err) {
+      toast.error(err.message || 'Failed to request payout')
+    } finally {
+      setRequesting(false)
+    }
+  }
+
+  if (loading && !walletInfo) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-zinc-600" size={24} /></div>
+
+  const w = walletInfo || {}
+  const payoutCooldownActive = w.last_payout_at && new Date(w.next_payout_available) > new Date()
+  const hasPendingPayout = !!w.pending_payout
+
+  const txTypeLabels = {
+    subscription: 'Subscription',
+    tip: 'Tip',
+    ppv_post: 'PPV Post',
+    message_unlock: 'Message Unlock',
+    payment_request: 'Payment Request',
+    custom_request: 'Custom Request',
+  }
+  const txTypeColors = {
+    subscription: 'text-indigo-400 bg-indigo-500/10',
+    tip: 'text-emerald-400 bg-emerald-500/10',
+    ppv_post: 'text-amber-400 bg-amber-500/10',
+    message_unlock: 'text-pink-400 bg-pink-500/10',
+    payment_request: 'text-purple-400 bg-purple-500/10',
+    custom_request: 'text-cyan-400 bg-cyan-500/10',
+  }
+
+  const payoutStatusColors = {
+    pending: 'text-amber-400 bg-amber-500/10',
+    processing: 'text-blue-400 bg-blue-500/10',
+    completed: 'text-emerald-400 bg-emerald-500/10',
+    rejected: 'text-red-400 bg-red-500/10',
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Balance Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-zinc-900/30 border border-white/5 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-zinc-500">Total Balance</span>
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400"><Wallet size={16} /></div>
+          </div>
+          <p className="text-2xl font-bold text-white">{formatCurrency(w.balance || 0)}</p>
+          <p className="text-xs text-zinc-500 mt-1">Lifetime: {formatCurrency(w.total_earned || 0)}</p>
+        </div>
+
+        <div className="bg-zinc-900/30 border border-white/5 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-zinc-500">Withdrawable</span>
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400"><Banknote size={16} /></div>
+          </div>
+          <p className="text-2xl font-bold text-emerald-400">{formatCurrency(w.withdrawable || 0)}</p>
+          <p className="text-xs text-zinc-500 mt-1">Cleared for withdrawal</p>
+        </div>
+
+        <div className="bg-zinc-900/30 border border-white/5 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs text-zinc-500">On Hold</span>
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400"><Lock size={16} /></div>
+          </div>
+          <p className="text-2xl font-bold text-amber-400">{formatCurrency(w.held || 0)}</p>
+          <p className="text-xs text-zinc-500 mt-1">30-day chargeback window</p>
+        </div>
+      </div>
+
+      {/* Payout Section */}
+      <SectionCard title="Request Payout" icon={DollarSign}>
+        <div className="space-y-4">
+          {/* Payout info */}
+          <div className="flex items-start gap-3 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+            <ShieldCheck size={16} className="text-zinc-400 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-zinc-400 space-y-1">
+              <p>Payments are held for <strong className="text-zinc-300">30 days</strong> to protect against chargebacks before becoming withdrawable.</p>
+              <p>Payouts can be requested <strong className="text-zinc-300">once per month</strong>.</p>
+              {profile?.payout_method && (
+                <p>Payout method: <strong className="text-zinc-300">{profile.payout_method.replace('_', ' ')}</strong> ({profile.payout_email})</p>
+              )}
+            </div>
+          </div>
+
+          {/* Pending payout */}
+          {hasPendingPayout && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <Clock size={16} className="text-amber-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-300">Payout Pending</p>
+                <p className="text-xs text-amber-400/70">
+                  {formatCurrency(w.pending_payout.amount)} — submitted {new Date(w.pending_payout.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Cooldown warning */}
+          {!hasPendingPayout && payoutCooldownActive && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+              <CalendarClock size={16} className="text-zinc-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-zinc-300">Payout cooldown active</p>
+                <p className="text-xs text-zinc-500">
+                  Next payout available: {new Date(w.next_payout_available).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* No payout email */}
+          {(!profile?.payout_method || !profile?.payout_email) && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+              <AlertTriangle size={16} className="text-red-400 flex-shrink-0" />
+              <p className="text-sm text-red-300">Configure your payout method and email in <strong>Settings → Creator</strong> before requesting a payout.</p>
+            </div>
+          )}
+
+          {/* Payout button */}
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleRequestPayout}
+              loading={requesting}
+              disabled={!w.can_request_payout || hasPendingPayout || !profile?.payout_email}
+              className="flex-1"
+            >
+              <Banknote size={16} />
+              {w.withdrawable > 0
+                ? `Withdraw ${formatCurrency(w.withdrawable)}`
+                : 'No funds available'
+              }
+            </Button>
+          </div>
+
+          {/* Withdrawn total */}
+          {w.total_withdrawn > 0 && (
+            <p className="text-xs text-zinc-600 text-center">
+              Total withdrawn to date: {formatCurrency(w.total_withdrawn)}
+            </p>
+          )}
+        </div>
+      </SectionCard>
+
+      {/* Transaction History */}
+      <SectionCard title="Wallet Transactions" icon={FileText}>
+        {transactions.length === 0 ? (
+          <p className="text-sm text-zinc-500 text-center py-6">No transactions yet</p>
+        ) : (
+          <div className="space-y-1">
+            {transactions.map(tx => (
+              <div key={tx.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-800/30 transition-colors">
+                <div className={cn('px-2 py-1 rounded-lg text-[10px] font-bold uppercase', txTypeColors[tx.transaction_type] || 'text-zinc-400 bg-zinc-800')}>
+                  {txTypeLabels[tx.transaction_type] || tx.transaction_type}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-zinc-300">
+                    {tx.from_display_name || tx.from_username || 'Unknown'}
+                  </p>
+                  <p className="text-[11px] text-zinc-600">
+                    {new Date(tx.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {tx.status === 'held' && (
+                      <span className="ml-2 text-amber-500">
+                        · Held until {new Date(tx.withdrawable_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-sm font-semibold text-emerald-400">+{formatCurrency(tx.net_amount)}</p>
+                  <p className="text-[10px] text-zinc-600">
+                    {formatCurrency(tx.gross_amount)} − {(tx.fee_rate * 100).toFixed(0)}% fee
+                  </p>
+                </div>
+              </div>
+            ))}
+            {transactions.length < txTotal && (
+              <button
+                onClick={loadMoreTx}
+                className="w-full text-center py-3 text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+              >
+                Load more ({txTotal - transactions.length} remaining)
+              </button>
+            )}
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Payout History */}
+      {payoutHistory.length > 0 && (
+        <SectionCard title="Payout History" icon={Download}>
+          <div className="space-y-2">
+            {payoutHistory.map(p => (
+              <div key={p.id} className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/30 border border-zinc-800/50">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn('px-2 py-0.5 rounded text-[10px] font-bold uppercase', payoutStatusColors[p.status])}>
+                      {p.status}
+                    </span>
+                    <span className="text-sm font-semibold text-white">{formatCurrency(p.amount)}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    via {p.payout_method?.replace('_', ' ')} · {new Date(p.created_at).toLocaleDateString()}
+                    {p.processed_at && ` · Processed ${new Date(p.processed_at).toLocaleDateString()}`}
+                  </p>
+                  {p.admin_note && <p className="text-xs text-zinc-400 mt-0.5 italic">{p.admin_note}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Dashboard Page ────────────────────────────────────────────────────
 
 export default function CreatorDashboardPage() {
@@ -1682,6 +1961,7 @@ export default function CreatorDashboardPage() {
       <div className="px-5 py-3 border-b border-zinc-800/50 overflow-x-auto">
         <div className="flex items-center gap-1 min-w-max">
           <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={BarChart3} label="Overview" />
+          <TabButton active={activeTab === 'wallet'} onClick={() => setActiveTab('wallet')} icon={Wallet} label="Wallet" />
           <TabButton active={activeTab === 'mass-message'} onClick={() => setActiveTab('mass-message')} icon={Megaphone} label="Mass Message" />
           <TabButton active={activeTab === 'promotions'} onClick={() => setActiveTab('promotions')} icon={Tag} label="Promotions" />
           <TabButton active={activeTab === 'referrals'} onClick={() => setActiveTab('referrals')} icon={Gift} label="Referrals" />
@@ -1696,6 +1976,7 @@ export default function CreatorDashboardPage() {
           loading && !analytics ? <PageLoader /> : <OverviewTab analytics={analytics} period={period} setPeriod={setPeriod} />
         )}
         {activeTab === 'mass-message' && <MassMessageTab userId={user.id} />}
+        {activeTab === 'wallet' && <WalletTab userId={user.id} />}
         {activeTab === 'promotions' && <PromotionsTab userId={user.id} />}
         {activeTab === 'referrals' && <ReferralsTab userId={user.id} />}
         {activeTab === 'requests' && <CustomRequestsTab userId={user.id} />}

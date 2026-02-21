@@ -3,7 +3,6 @@ import { X, Zap, Check, DollarSign, Tag, Loader2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { useSubscriptionCache } from '../stores/subscriptionCache'
-import { PLATFORM_FEE_PERCENT } from '../lib/constants'
 import Avatar from './ui/Avatar'
 import Badge from './ui/Badge'
 import { toast } from 'sonner'
@@ -90,22 +89,7 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
         })
       }
 
-      const paidPrice = parseFloat(subResult?.price_paid) || amount
       addSubscription(creator.id)
-
-      // Record transaction
-      if (paidPrice > 0) {
-        const fee = +(paidPrice * PLATFORM_FEE_PERCENT / 100).toFixed(2)
-        await supabase.from('transactions').insert({
-          from_user_id: user.id,
-          to_user_id: creator.id,
-          transaction_type: 'subscription',
-          amount: paidPrice,
-          platform_fee: fee,
-          net_amount: +(paidPrice - fee).toFixed(2),
-          status: 'completed',
-        }).catch(() => {})
-      }
 
       // Auto-follow
       await supabase.from('follows').insert({

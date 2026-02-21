@@ -451,7 +451,7 @@ Feed Algorithm                       92%       60%       95%        98%
 Content Discovery                    70%       40%       85%        95%
 Messaging                            90%       80%       90%        92%
 Notifications                        95%       85%       95%        95%
-Monetization                         85%       95%       60%        70%
+Monetization                         95%       95%       60%        70%
 Content Protection                   95%       95%       N/A        N/A
 Admin/Moderation                     75%       90%       95%        95%
 Creator Tools                       100%       85%       70%        80%
@@ -576,12 +576,19 @@ DETAILED MATURITY BREAKDOWN
    ❌ Missing: Notification grouping ("X and 5 others liked your post")
    ❌ Missing: VAPID keys + push relay server (needs backend Edge Function)
 
-7. MONETIZATION (85%)
+7. MONETIZATION (95%)
    ✅ Subscriptions (DB + UI)
-   ✅ PPV content
-   ✅ Transaction recording
+   ✅ PPV content (server-side purchase_ppv_post RPC)
+   ✅ Transaction recording (all server-side, no client-side inserts)
    ✅ Revenue dashboard
-   ✅ Revenue split management
+   ✅ Revenue split management (per-creator fee rates: admin override > managed split > default 30%)
+   ✅ Creator Wallet (wallets, wallet_transactions tables, credit_wallet helper)
+   ✅ Wallet UI (balance, withdrawable, held breakdown, transaction history, payout requests)
+   ✅ 30-day chargeback hold (payments held for 30 days before becoming withdrawable)
+   ✅ Payout system (monthly payout requests, admin approve/reject, auto-deduction)
+   ✅ Payout history tracking
+   ✅ Wallet auto-creation (trigger on is_creator flag)
+   ✅ Historical transaction backfill into wallets
    ❌ Missing: Payment processor (BLOCKER)
    ✅ Tipping (send_tip RPC, TipModal, quick amounts + custom, platform fee disclosure)
    ✅ Promo codes/discounts (create_promo_code/validate/redeem RPCs, dashboard management, profile redemption flow)

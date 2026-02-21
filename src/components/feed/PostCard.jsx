@@ -23,7 +23,6 @@ import EditPostModal from './EditPostModal'
 import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
-import { PLATFORM_FEE_PERCENT } from '../../lib/constants'
 
 const REACTION_TYPES = [
   { type: 'heart', icon: Heart, label: 'Love', color: 'text-rose-500', bg: 'bg-rose-500/10', fill: true },
@@ -385,31 +384,12 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
     if (!user) return toast.error('Sign in to purchase')
     setLoading(true)
     try {
-      const { error } = await supabase
-        .from('purchases')
-        .insert({
-          buyer_id: user.id,
-          post_id: post.id,
-          amount: post.price,
-        })
+      const { data, error } = await supabase.rpc('purchase_ppv_post', {
+        p_buyer_id: user.id,
+        p_post_id: post.id,
+      })
       if (error) throw error
       addPurchase(post.id)
-      // Record transaction for financial tracking
-      const amount = parseFloat(post.price) || 0
-      if (amount > 0) {
-        // Look up post author for the to_user_id
-        const fee = +(amount * PLATFORM_FEE_PERCENT / 100).toFixed(2)
-        await supabase.from('transactions').insert({
-          from_user_id: user.id,
-          to_user_id: creator.id,
-          transaction_type: 'ppv_post',
-          amount,
-          platform_fee: fee,
-          net_amount: +(amount - fee).toFixed(2),
-          reference_id: post.id,
-          status: 'completed',
-        }).catch(() => {}) // non-blocking
-      }
       toast.success('Content unlocked!')
     } catch (err) {
       toast.error(err.message || 'Failed to purchase')
