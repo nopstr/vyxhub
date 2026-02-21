@@ -591,7 +591,7 @@ export const usePostStore = create((set, get) => ({
 
   toggleReaction: async (postId, userId, reactionType = 'heart') => {
     // Throttle: ignore rapid-fire clicks (500ms cooldown)
-    const throttleKey = `${postId}:${reactionType}`
+    const throttleKey = `${postId}:${userId}`
     const now = Date.now()
     if (_reactionThrottle.get(throttleKey) > now - THROTTLE_MS) return
     _reactionThrottle.set(throttleKey, now)
@@ -600,33 +600,52 @@ export const usePostStore = create((set, get) => ({
     const post = posts.find(p => p.id === postId)
     if (!post) return
 
-    const existingReaction = post.likes?.find(
-      l => l.user_id === userId && l.reaction_type === reactionType
-    )
+    // Single reaction per user per post
+    const existingReaction = post.likes?.find(l => l.user_id === userId)
+    const isSameReaction = existingReaction?.reaction_type === reactionType
 
     // Optimistic update first for instant UI feedback
     const optimisticPosts = posts.map(p => {
       if (p.id !== postId) return p
-      const newLikes = existingReaction
-        ? p.likes.filter(l => !(l.user_id === userId && l.reaction_type === reactionType))
-        : [...(p.likes || []), { user_id: userId, reaction_type: reactionType }]
+      let newLikes
+      if (isSameReaction) {
+        // Remove the reaction (toggle off)
+        newLikes = p.likes.filter(l => l.user_id !== userId)
+      } else if (existingReaction) {
+        // Replace existing reaction with new type
+        newLikes = p.likes.map(l => l.user_id === userId ? { ...l, reaction_type: reactionType } : l)
+      } else {
+        // Add new reaction
+        newLikes = [...(p.likes || []), { user_id: userId, reaction_type: reactionType }]
+      }
       return {
         ...p,
-        like_count: existingReaction ? Math.max(0, p.like_count - 1) : p.like_count + 1,
+        like_count: isSameReaction ? Math.max(0, p.like_count - 1) : (existingReaction ? p.like_count : p.like_count + 1),
         likes: newLikes,
       }
     })
     set({ posts: optimisticPosts })
 
     try {
-      if (existingReaction) {
+      if (isSameReaction) {
+        // Remove reaction
         const { error } = await supabase.from('likes')
           .delete()
           .eq('post_id', postId)
           .eq('user_id', userId)
-          .eq('reaction_type', reactionType)
         if (error) throw error
+      } else if (existingReaction) {
+        // Replace: delete old, insert new
+        const { error: delError } = await supabase.from('likes')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
+        if (delError) throw delError
+        const { error: insError } = await supabase.from('likes')
+          .insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
+        if (insError) throw insError
       } else {
+        // New reaction
         const { error } = await supabase.from('likes')
           .insert({ post_id: postId, user_id: userId, reaction_type: reactionType })
         if (error) throw error

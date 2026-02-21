@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
@@ -567,24 +567,75 @@ export default function PostCard({ post }) {
   // For PPV posts: subscription alone doesn't unlock — must also purchase
   const isContentUnlocked = isOwn || hasPurchased || (isSubscribed && !isPPV) || post.visibility === 'public'
 
-  // Get the user's own reactions on this post
-  const userReactions = post.likes?.filter(l => l.user_id === user?.id) || []
+  // Get the user's own reaction on this post (single reaction per user)
+  const userReaction = post.likes?.find(l => l.user_id === user?.id) || null
+  const userReactionType = userReaction?.reaction_type || null
 
-  // Count reactions by type
-  const reactionCounts = REACTION_TYPES.reduce((acc, r) => {
-    acc[r.type] = post.likes?.filter(l => l.reaction_type === r.type).length || 0
-    return acc
-  }, {})
+  // Total like count across all reaction types
+  const totalReactionCount = post.likes?.length || 0
 
   const isLocked = post.visibility === 'subscribers_only' && !isOwn
   const showPaywall = (isLocked && !isSubscribed && !hasPurchased) || (isPPV && !isOwn && !hasPurchased)
   const isBookmarked = post.bookmarks?.some(b => b.user_id === user?.id)
 
+  // Reaction picker state (long-press)
+  const [showReactionPicker, setShowReactionPicker] = useState(false)
+  const longPressTimer = useRef(null)
+  const reactionBtnRef = useRef(null)
+
   const handleReaction = (reactionType, e) => {
     e?.stopPropagation()
     if (!user) return toast.error('Sign in to react to posts')
     toggleReaction(post.id, user.id, reactionType)
+    setShowReactionPicker(false)
   }
+
+  // Tap = toggle current reaction (or heart by default)
+  const handleReactionTap = (e) => {
+    e?.stopPropagation()
+    if (!user) return toast.error('Sign in to react to posts')
+    if (userReactionType) {
+      // Remove existing reaction
+      toggleReaction(post.id, user.id, userReactionType)
+    } else {
+      // Add heart reaction
+      toggleReaction(post.id, user.id, 'heart')
+    }
+  }
+
+  // Long-press handlers
+  const handleLongPressStart = useCallback((e) => {
+    e.stopPropagation()
+    longPressTimer.current = setTimeout(() => {
+      setShowReactionPicker(true)
+    }, 400)
+  }, [])
+
+  const handleLongPressEnd = useCallback((e) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  const handleLongPressCancel = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+  }, [])
+
+  // Close picker when clicking outside
+  useEffect(() => {
+    if (!showReactionPicker) return
+    const handleClickOutside = (e) => {
+      if (reactionBtnRef.current && !reactionBtnRef.current.contains(e.target)) {
+        setShowReactionPicker(false)
+      }
+    }
+    document.addEventListener('pointerdown', handleClickOutside)
+    return () => document.removeEventListener('pointerdown', handleClickOutside)
+  }, [showReactionPicker])
 
   const handleComment = (e) => {
     e.stopPropagation()
@@ -905,40 +956,69 @@ export default function PostCard({ post }) {
 
           {/* Actions */}
           <div className="flex items-center gap-1 mt-2 -ml-2">
-            {/* Inline Reactions */}
-            <div className="flex items-center gap-1">
-              {REACTION_TYPES.map(r => {
-                const isActive = userReactions.some(ur => ur.reaction_type === r.type)
-                const count = reactionCounts[r.type] || 0
+            {/* Reaction Button — tap for heart, long-press for picker */}
+            <div className="relative" ref={reactionBtnRef}>
+              {(() => {
+                const activeReaction = userReactionType
+                  ? REACTION_TYPES.find(r => r.type === userReactionType)
+                  : null
+                const Icon = activeReaction?.icon || Heart
+                const isActive = !!activeReaction
+
                 return (
                   <button
-                    key={r.type}
-                    onClick={(e) => handleReaction(r.type, e)}
-                    title={r.label}
+                    onClick={handleReactionTap}
+                    onPointerDown={handleLongPressStart}
+                    onPointerUp={handleLongPressEnd}
+                    onPointerLeave={handleLongPressCancel}
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setShowReactionPicker(true) }}
+                    title={activeReaction?.label || 'Like'}
                     className={cn(
                       'flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all group cursor-pointer',
-                      isActive ? r.color : 'text-zinc-500 hover:bg-zinc-800/50'
+                      isActive ? (activeReaction?.color || 'text-rose-500') : 'text-zinc-500 hover:bg-zinc-800/50'
                     )}
                   >
                     <div className="relative">
-                      <r.icon
+                      <Icon
                         size={18}
-                        fill={isActive && r.fill ? 'currentColor' : 'none'}
+                        fill={isActive && (activeReaction?.fill !== false) ? 'currentColor' : 'none'}
                         className={cn(
                           "transition-transform duration-300",
                           isActive ? "scale-110" : "group-hover:scale-110"
                         )}
                       />
                       {isActive && (
-                        <div className={cn("absolute inset-0 rounded-full animate-ping opacity-0", r.bg)} />
+                        <div className={cn("absolute inset-0 rounded-full animate-ping opacity-0", activeReaction?.bg)} />
                       )}
                     </div>
-                    {count > 0 && (
-                      <span className="text-xs font-semibold">{formatNumber(count)}</span>
+                    {totalReactionCount > 0 && (
+                      <span className="text-xs font-semibold">{formatNumber(totalReactionCount)}</span>
                     )}
                   </button>
                 )
-              })}
+              })()}
+
+              {/* Reaction Picker — long-press popup */}
+              {showReactionPicker && (
+                <div className="absolute bottom-full left-0 mb-2 flex items-center gap-1 bg-zinc-900 border border-zinc-700/50 rounded-2xl p-1.5 shadow-xl shadow-black/50 z-50 animate-dropdown-in">
+                  {REACTION_TYPES.map(r => {
+                    const isSelected = userReactionType === r.type
+                    return (
+                      <button
+                        key={r.type}
+                        onClick={(e) => handleReaction(r.type, e)}
+                        title={r.label}
+                        className={cn(
+                          'p-2 rounded-xl transition-all hover:scale-125 cursor-pointer',
+                          isSelected ? cn(r.bg, r.color) : 'hover:bg-zinc-800/80 text-zinc-400 hover:text-white'
+                        )}
+                      >
+                        <r.icon size={20} fill={isSelected && r.fill ? 'currentColor' : 'none'} />
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Comment Button — subscriber-only */}

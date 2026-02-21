@@ -86,6 +86,7 @@
 /* Mobile touch behavior */
 html, body {
   overscroll-behavior-y: contain; /* Prevent browser pull-to-refresh */
+  overflow-x: hidden; /* Prevent horizontal scroll on mobile */
 }
 
 /* PWA standalone mode adjustments */
