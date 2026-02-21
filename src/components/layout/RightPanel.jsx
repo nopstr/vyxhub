@@ -210,7 +210,8 @@ export default function RightPanel() {
   }
 
   return (
-    <aside className="hidden lg:block w-80 sticky top-0 h-screen overflow-y-auto no-scrollbar py-6 pl-6 pr-4 border-l border-zinc-800/50">
+    <div className="hidden lg:block w-80 flex-shrink-0 border-l border-zinc-800/50">
+      <aside className="sticky top-0 h-screen overflow-y-auto no-scrollbar py-6 pl-6 pr-4">
       {/* Search Overlay */}
       <SearchOverlay
         open={showSearchOverlay}
@@ -246,6 +247,7 @@ export default function RightPanel() {
           <p className="mt-2">© 2026 VyxHub</p>
         </div>
       </div>
-    </aside>
+      </aside>
+    </div>
   )
 }

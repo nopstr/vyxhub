@@ -56,7 +56,8 @@ export default function Sidebar() {
   const navigate = useNavigate()
 
   return (
-    <nav className="hidden md:flex flex-col w-20 xl:w-64 sticky top-0 h-screen py-4 px-2 xl:px-4 border-r border-zinc-800/50">
+    <div className="hidden md:block w-20 xl:w-64 flex-shrink-0 border-r border-zinc-800/50">
+      <nav className="sticky top-0 h-screen flex flex-col py-4 px-2 xl:px-4">
       {/* Logo */}
       <NavLink to="/" className="flex items-center gap-3 px-4 py-3 mb-6">
         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-white/10 flex-shrink-0">
@@ -159,6 +160,7 @@ export default function Sidebar() {
           <span className="hidden xl:inline">Sign In</span>
         </NavLink>
       )}
-    </nav>
+      </nav>
+    </div>
   )
 }
