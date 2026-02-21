@@ -772,35 +772,51 @@ export default function PostCard({ post }) {
       )}
 
       <div className="flex gap-3.5 items-start">
-        <Link to={`/@${author.username}`} className="flex-shrink-0">
+        <Link to={`/@${author.username}`} className="flex-shrink-0 md:mt-0">
           <Avatar src={author.avatar_url} alt={author.display_name} size="lg" ring />
         </Link>
 
         <div className="flex-1 min-w-0">
-          {/* Header */}
+          {/* Header — responsive: stacked on mobile, inline on desktop */}
           <div className="flex items-start justify-between mb-1">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <Link to={`/@${author.username}`} className="flex items-center gap-1.5 min-w-0 hover:underline">
-                <span className="font-bold text-zinc-100 truncate">{author.display_name}</span>
-                {author.is_verified && <ShieldCheck size={15} className="text-indigo-400 fill-indigo-400/10 flex-shrink-0" />}
-              </Link>
-              <span className="text-zinc-500 text-sm flex-shrink-0">@{author.username}</span>
-              <span className="text-zinc-700 text-sm flex-shrink-0">·</span>
-              <span className="text-zinc-500 text-sm flex-shrink-0">{formatRelativeTime(post.created_at)}</span>
-              {post.visibility !== 'public' && (
-                <Badge variant={post.visibility === 'subscribers_only' ? 'premium' : 'default'} className="ml-1">
-                  {post.visibility === 'subscribers_only' ? 'VIP' : 'Followers'}
-                </Badge>
-              )}
+            <div className="min-w-0 flex-1">
+              {/* Line 1: Name + badge (mobile) / Name + badge + @user + time (desktop) */}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Link to={`/@${author.username}`} className="flex items-center gap-1.5 min-w-0 hover:underline">
+                  <span className="font-bold text-zinc-100 truncate">{author.display_name}</span>
+                  {author.is_verified && <ShieldCheck size={15} className="text-indigo-400 fill-indigo-400/10 flex-shrink-0" />}
+                </Link>
+                {/* Desktop: inline username + time */}
+                <span className="hidden md:inline text-zinc-500 text-sm flex-shrink-0">@{author.username}</span>
+                <span className="hidden md:inline text-zinc-700 text-sm flex-shrink-0">·</span>
+                <span className="hidden md:inline text-zinc-500 text-sm flex-shrink-0">{formatRelativeTime(post.created_at)}</span>
+                {post.visibility !== 'public' && (
+                  <Badge variant={post.visibility === 'subscribers_only' ? 'premium' : 'default'} className="ml-1 hidden md:inline-flex">
+                    {post.visibility === 'subscribers_only' ? 'VIP' : 'Followers'}
+                  </Badge>
+                )}
+              </div>
+              {/* Line 2 mobile: @username */}
+              <div className="md:hidden text-zinc-500 text-sm mt-0.5 flex items-center gap-1.5">
+                <span>@{author.username}</span>
+                {post.visibility !== 'public' && (
+                  <Badge variant={post.visibility === 'subscribers_only' ? 'premium' : 'default'}>
+                    {post.visibility === 'subscribers_only' ? 'VIP' : 'Followers'}
+                  </Badge>
+                )}
+              </div>
             </div>
 
-            <Dropdown
-              trigger={
-                <button className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors cursor-pointer">
-                  <MoreHorizontal size={18} />
-                </button>
-              }
-            >
+            {/* Right side: time (mobile) + 3 dots */}
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="md:hidden text-zinc-500 text-xs">{formatRelativeTime(post.created_at)}</span>
+              <Dropdown
+                trigger={
+                  <button className="p-1.5 hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors cursor-pointer">
+                    <MoreHorizontal size={18} />
+                  </button>
+                }
+              >
               {isOwn ? (
                 <>
                   {post.is_draft && (
@@ -824,8 +840,13 @@ export default function PostCard({ post }) {
                 </>
               )}
             </Dropdown>
+            </div>
           </div>
+        </div>
+      </div>
 
+      {/* Content area — full-width on mobile, avatar-indented on desktop */}
+      <div className="md:pl-[52px] mt-2 md:mt-0">
           {/* Content — gate text for subscriber-only posts */}
           {editedContent && (
             <p className="text-[15px] text-zinc-200 leading-relaxed mb-1 whitespace-pre-wrap break-words">
@@ -1086,7 +1107,6 @@ export default function PostCard({ post }) {
               <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} className="group-hover:scale-110 transition-transform" />
             </button>
           </div>
-        </div>
       </div>
 
       {/* Report Modal */}
