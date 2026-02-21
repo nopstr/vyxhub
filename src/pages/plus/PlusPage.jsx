@@ -21,7 +21,7 @@ const USER_BENEFITS = [
 ]
 
 const CREATOR_BENEFITS = [
-  { icon: Eye, title: 'No Platform Ads', description: 'Your followers see a clean, distraction-free experience' },
+  { icon: Eye, title: 'No Platform Ads', description: 'Browse your feed without any sponsored or affiliate ads' },
   { icon: TrendingUp, title: 'Algorithm Boost', description: '35% more reach in the feed — your content gets seen by more people' },
   { icon: Percent, title: `Reduced Fee (${PLUS_FEE_PERCENT}%)`, description: `Pay only ${PLUS_FEE_PERCENT}% platform fee instead of ${PLATFORM_FEE_PERCENT}% — keep more of what you earn` },
   { icon: Crown, title: 'VyxHub+ Creator Badge', description: 'Exclusive creator badge that builds trust and credibility' },
