@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react'
-import { Search, TrendingUp, Filter, ShieldCheck, FileText, Hash, Grid3x3 } from 'lucide-react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { Search, TrendingUp, Filter, ShieldCheck, FileText, Hash, Grid3x3, X, SlidersHorizontal, Calendar, Loader2, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
 import { useAuthStore } from '../../stores/authStore'
+import { useSearchStore } from '../../stores/searchStore'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
 import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import { SkeletonPost } from '../../components/ui/Spinner'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { debounce, formatNumber, cn } from '../../lib/utils'
+import SearchOverlay from '../../components/ui/SearchOverlay'
 
 const CATEGORIES = [
   { key: null, label: 'All' },
@@ -98,21 +100,48 @@ export default function ExplorePage() {
   const [trendingHashtags, setTrendingHashtags] = useState([])
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false)
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const observerRef = useRef(null)
+  const loadingMoreRef = useRef(false)
 
-  // Check URL for ?tag= parameter
+  const {
+    results: searchResults,
+    loading: searchLoading,
+    totalResults,
+    filters,
+    setFilter,
+    resetFilters,
+    search: performSearch,
+    loadMore,
+    hasMore,
+    clearResults,
+  } = useSearchStore()
+
+  // Active search mode (from URL ?q= or ?tag=)
+  const urlQuery = searchParams.get('q')
+  const urlTag = searchParams.get('tag')
+  const isSearchMode = !!(urlQuery || urlTag || search.trim())
+
+  // Handle URL params
   useEffect(() => {
-    const tagParam = searchParams.get('tag')
-    if (tagParam) {
-      setSearch(`#${tagParam}`)
+    if (urlTag) {
+      const hashQuery = `#${urlTag}`
+      setSearch(hashQuery)
       setTab('posts')
-      handleHashtagSearch(tagParam)
+      handleHashtagSearch(urlTag)
+    } else if (urlQuery) {
+      setSearch(urlQuery)
+      setTab('all')
+      performSearch(urlQuery, user?.id, true)
     }
-  }, [searchParams])
+  }, [urlQuery, urlTag])
 
   useEffect(() => {
-    if (!searchParams.get('tag')) {
+    if (!urlQuery && !urlTag) {
       fetchContent()
     }
   }, [tab, selectedCategory])
@@ -122,6 +151,22 @@ export default function ExplorePage() {
     fetchTrendingHashtags()
   }, [])
 
+  // Infinite scroll for search results
+  const lastItemRef = useCallback((node) => {
+    if (searchLoading) return
+    if (observerRef.current) observerRef.current.disconnect()
+    observerRef.current = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !loadingMoreRef.current) {
+        loadingMoreRef.current = true
+        const q = urlQuery || search.trim()
+        if (q) {
+          loadMore(q, user?.id).finally(() => { loadingMoreRef.current = false })
+        }
+      }
+    })
+    if (node) observerRef.current.observe(node)
+  }, [searchLoading, hasMore, urlQuery, search, user])
+
   const fetchTrendingHashtags = async () => {
     const { data } = await supabase.rpc('trending_hashtags', { p_limit: 8 })
     setTrendingHashtags(data || [])
@@ -130,7 +175,6 @@ export default function ExplorePage() {
   const handleHashtagSearch = async (tag) => {
     setLoading(true)
     try {
-      // A2: Use explore_posts RPC with hashtag filter
       const { data: exploreData } = await supabase.rpc('explore_posts', {
         p_user_id: user?.id || null,
         p_hashtag: tag.toLowerCase(),
@@ -192,7 +236,7 @@ export default function ExplorePage() {
         console.warn('Failed to fetch promoted profiles:', e)
       }
 
-      // A2: Use explore_posts RPC for trending/latest/top with category filter
+      // Use explore_posts RPC for trending/latest with category filter
       if (tab === 'trending' || tab === 'latest') {
         const { data: exploreData } = await supabase.rpc('explore_posts', {
           p_user_id: user?.id || null,
@@ -213,7 +257,6 @@ export default function ExplorePage() {
           const idOrder = new Map(postIds.map((id, i) => [id, i]))
           setPosts((fullPosts || []).sort((a, b) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99)))
         } else {
-          // Fallback to direct query
           let postQuery = supabase
             .from('posts')
             .select(POST_SELECT)
@@ -239,83 +282,217 @@ export default function ExplorePage() {
     }
   }
 
-  const handleSearch = debounce(async (query) => {
+  const handleSearchInput = debounce(async (query) => {
     if (!query.trim()) {
+      clearResults()
+      setTab('trending')
       fetchContent()
+      // Clear URL params
+      if (urlQuery || urlTag) navigate('/explore', { replace: true })
       return
     }
 
-    // Check if searching for a hashtag
     if (query.startsWith('#') && query.length > 1) {
       setTab('posts')
       handleHashtagSearch(query.slice(1))
       return
     }
 
-    setLoading(true)
-
-    // Search profiles
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-      .limit(20)
-
-    setCreators(profileData || [])
-
-    // Search posts using full-text search (tsvector)
-    const tsQuery = query.trim().split(/\s+/).join(' & ')
-    const { data: postData } = await supabase
-      .from('posts')
-      .select(POST_SELECT)
-      .textSearch('search_vector', tsQuery, { type: 'plain' })
-      .eq('visibility', 'public')
-      .order('created_at', { ascending: false })
-      .limit(20)
-
-    if (postData?.length) await resolvePostMediaUrls(postData)
-    setPosts(postData || [])
-
-    setLoading(false)
+    setTab('all')
+    performSearch(query, user?.id, true)
   }, 300)
+
+  const handleFilterSearch = () => {
+    const q = urlQuery || search.trim()
+    if (q) performSearch(q, user?.id, true)
+  }
+
+  // Determine which tabs to show
+  const searchTabs = isSearchMode && !urlTag
+    ? ['all', 'creators', 'posts', 'hashtags']
+    : ['trending', 'creators', 'latest', ...(search.trim() || urlTag ? ['posts'] : [])]
+
+  const handleTabChange = (newTab) => {
+    setTab(newTab)
+    const q = urlQuery || search.trim()
+    if (isSearchMode && !urlTag && q && !q.startsWith('#')) {
+      // For unified search tabs, set filter and re-search
+      const typeMap = { all: 'all', creators: 'creators', posts: 'posts', hashtags: 'hashtags' }
+      setFilter('type', typeMap[newTab] || 'all')
+      performSearch(q, user?.id, true)
+    }
+  }
+
+  // Counts for tab badges in search mode
+  const getTabBadge = (tabName) => {
+    if (!isSearchMode || urlTag) return null
+    const map = { creators: totalResults.creators, posts: totalResults.posts, hashtags: totalResults.hashtags }
+    const count = map[tabName]
+    if (!count) return null
+    return count > 99 ? '99+' : count
+  }
 
   return (
     <div>
+      {/* Search Overlay */}
+      <SearchOverlay
+        open={showSearchOverlay}
+        onClose={() => setShowSearchOverlay(false)}
+        initialQuery={search}
+      />
+
       {/* Header */}
       <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50 px-5 py-4">
-        <div className="relative">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); handleSearch(e.target.value) }}
-            placeholder="Search creators, posts, #hashtags..."
-            className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); handleSearchInput(e.target.value) }}
+              onFocus={() => setShowSearchOverlay(true)}
+              placeholder="Search creators, posts, #hashtags..."
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors"
+              readOnly
+            />
+          </div>
+          {isSearchMode && !urlTag && (
+            <button
+              onClick={() => setShowFilters(f => !f)}
+              className={cn(
+                'p-3 rounded-2xl border transition-colors cursor-pointer',
+                showFilters ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-400' : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white'
+              )}
+            >
+              <SlidersHorizontal size={18} />
+            </button>
+          )}
         </div>
       </header>
 
+      {/* Advanced Filters Panel */}
+      {showFilters && isSearchMode && !urlTag && (
+        <div className="border-b border-zinc-800/50 bg-zinc-900/30 px-5 py-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-zinc-300 flex items-center gap-1.5">
+              <SlidersHorizontal size={14} />
+              Search Filters
+            </h3>
+            <button onClick={() => { resetFilters(); handleFilterSearch() }} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer">Reset all</button>
+          </div>
+
+          {/* Sort */}
+          <div>
+            <label className="text-xs text-zinc-500 font-medium mb-1.5 block">Sort by</label>
+            <div className="flex gap-2">
+              {[
+                { value: 'relevance', label: 'Relevance' },
+                { value: 'latest', label: 'Latest' },
+                { value: 'popular', label: 'Popular' },
+              ].map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => { setFilter('sort', opt.value); setTimeout(handleFilterSearch, 50) }}
+                  className={cn(
+                    'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+                    filters.sort === opt.value
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Media type (only when searching posts) */}
+          {(filters.type === 'all' || filters.type === 'posts') && (
+            <div>
+              <label className="text-xs text-zinc-500 font-medium mb-1.5 block">Media type</label>
+              <div className="flex gap-2">
+                {[
+                  { value: null, label: 'Any' },
+                  { value: 'image', label: 'Photos' },
+                  { value: 'video', label: 'Videos' },
+                  { value: 'set', label: 'Sets' },
+                ].map(opt => (
+                  <button
+                    key={opt.value || 'any'}
+                    onClick={() => { setFilter('mediaType', opt.value); setTimeout(handleFilterSearch, 50) }}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+                      filters.mediaType === opt.value
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Date range */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <label className="text-xs text-zinc-500 font-medium mb-1.5 block">From</label>
+              <input
+                type="date"
+                value={filters.dateFrom ? filters.dateFrom.split('T')[0] : ''}
+                onChange={(e) => { setFilter('dateFrom', e.target.value ? new Date(e.target.value).toISOString() : null); setTimeout(handleFilterSearch, 50) }}
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-xs text-zinc-300 outline-none focus:border-indigo-500/50"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-zinc-500 font-medium mb-1.5 block">To</label>
+              <input
+                type="date"
+                value={filters.dateTo ? filters.dateTo.split('T')[0] : ''}
+                onChange={(e) => { setFilter('dateTo', e.target.value ? new Date(e.target.value).toISOString() : null); setTimeout(handleFilterSearch, 50) }}
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-xs text-zinc-300 outline-none focus:border-indigo-500/50"
+              />
+            </div>
+          </div>
+
+          {/* Verified only */}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={filters.verifiedOnly}
+              onChange={(e) => { setFilter('verifiedOnly', e.target.checked); setTimeout(handleFilterSearch, 50) }}
+              className="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-indigo-600 focus:ring-indigo-500/50"
+            />
+            <span className="text-xs text-zinc-400">Verified only</span>
+          </label>
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex border-b border-zinc-800/50">
-        {['trending', 'creators', 'latest', ...(search.trim() ? ['posts'] : [])].map(t => (
+        {searchTabs.map(t => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            onClick={() => handleTabChange(t)}
             className={`flex-1 py-3 text-sm font-semibold transition-colors relative capitalize cursor-pointer ${
               tab === t ? 'text-white' : 'text-zinc-500 hover:text-zinc-300'
             }`}
           >
-            {t === 'posts' ? (
-              <span className="flex items-center justify-center gap-1">
-                <FileText size={14} /> Posts
-              </span>
-            ) : t}
+            <span className="flex items-center justify-center gap-1">
+              {t === 'posts' ? <><FileText size={14} /> Posts</> : t === 'hashtags' ? <><Hash size={14} /> Tags</> : t}
+              {getTabBadge(t) && (
+                <span className="ml-1 text-[10px] bg-indigo-600/20 text-indigo-400 px-1.5 py-0.5 rounded-full font-bold">
+                  {getTabBadge(t)}
+                </span>
+              )}
+            </span>
             {tab === t && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />}
           </button>
         ))}
       </div>
 
-      {/* A2: Category filter bar (for trending/latest tabs) */}
+      {/* Category filter bar (for trending/latest tabs) */}
       {(tab === 'trending' || tab === 'latest') && (
         <div className="flex gap-2 px-5 py-3 overflow-x-auto no-scrollbar border-b border-zinc-800/30">
           {CATEGORIES.map(cat => (
@@ -335,7 +512,7 @@ export default function ExplorePage() {
         </div>
       )}
 
-      {/* A2: Trending hashtags bar (on trending tab) */}
+      {/* Trending hashtags bar (on trending tab) */}
       {tab === 'trending' && trendingHashtags.length > 0 && (
         <div className="flex gap-2 px-5 py-3 overflow-x-auto no-scrollbar">
           {trendingHashtags.map(tag => (
@@ -354,7 +531,105 @@ export default function ExplorePage() {
 
       {/* Content */}
       <div className="p-5">
-        {tab === 'creators' && (
+        {/* ── Unified search results ─── */}
+        {isSearchMode && !urlTag && tab !== 'trending' && tab !== 'latest' && (
+          <div className="space-y-6">
+            {/* Hashtag results */}
+            {(tab === 'all' || tab === 'hashtags') && searchResults.hashtags.length > 0 && (
+              <div>
+                {tab === 'all' && <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Hashtags</h3>}
+                <div className="flex flex-wrap gap-2">
+                  {searchResults.hashtags.map(ht => (
+                    <Link
+                      key={ht.id}
+                      to={`/explore?tag=${ht.name}`}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-semibold hover:bg-indigo-500/20 transition-colors"
+                    >
+                      <Hash size={14} />
+                      {ht.name}
+                      <span className="text-indigo-500/50 text-xs ml-1">{formatNumber(ht.post_count)} posts</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Creator results */}
+            {(tab === 'all' || tab === 'creators') && searchResults.creators.length > 0 && (
+              <div>
+                {tab === 'all' && <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Creators</h3>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {searchResults.creators.map(creator => (
+                    <CreatorCard key={creator.id} profile={creator} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Post results (lightweight cards since we don't have full post data with media) */}
+            {(tab === 'all' || tab === 'posts') && searchResults.posts.length > 0 && (
+              <div>
+                {tab === 'all' && <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-3">Posts</h3>}
+                <div className="space-y-3">
+                  {searchResults.posts.map((post, idx) => (
+                    <Link
+                      key={post.id}
+                      to={`/post/${post.id}`}
+                      ref={idx === searchResults.posts.length - 1 ? lastItemRef : null}
+                      className="block bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4 hover:border-zinc-700/50 transition-all"
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Avatar src={post.author?.avatar_url} alt={post.author?.display_name} size="sm" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1">
+                            <span className="text-sm font-bold text-white truncate">{post.author?.display_name}</span>
+                            {post.author?.is_verified && <ShieldCheck size={12} className="text-indigo-400" />}
+                          </div>
+                          <span className="text-xs text-zinc-500">@{post.author?.username}</span>
+                        </div>
+                        <div className="ml-auto flex items-center gap-2 text-xs text-zinc-600">
+                          {post.post_type && (
+                            <span className="bg-zinc-800/50 px-2 py-0.5 rounded-md capitalize">{post.post_type}</span>
+                          )}
+                          {post.media_count > 0 && (
+                            <span className="bg-zinc-800/50 px-2 py-0.5 rounded-md">{post.media_count} media</span>
+                          )}
+                        </div>
+                      </div>
+                      {post.content && (
+                        <p className="text-sm text-zinc-400 line-clamp-3 leading-relaxed">{post.content}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-3 text-xs text-zinc-600">
+                        <span>{formatNumber(post.like_count || 0)} likes</span>
+                        <span>{formatNumber(post.comment_count || 0)} comments</span>
+                        <span className="ml-auto">{new Date(post.created_at).toLocaleDateString()}</span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Loading more indicator */}
+            {searchLoading && (
+              <div className="flex justify-center py-6">
+                <Loader2 size={24} className="text-indigo-500 animate-spin" />
+              </div>
+            )}
+
+            {/* No results */}
+            {!searchLoading && searchResults.creators.length === 0 && searchResults.posts.length === 0 && searchResults.hashtags.length === 0 && (
+              <div className="text-center py-16">
+                <Search size={48} className="text-zinc-700 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-zinc-400">No results found</h3>
+                <p className="text-sm text-zinc-600 mt-1">Try different keywords or check your spelling</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Default browse views ─── */}
+        {tab === 'creators' && !isSearchMode && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {creators.map(creator => (
               <CreatorCard key={creator.id} profile={creator} />
@@ -381,8 +656,8 @@ export default function ExplorePage() {
           </div>
         )}
 
-        {/* Post search results */}
-        {tab === 'posts' && (
+        {/* Hashtag search results (from ?tag= URL) */}
+        {tab === 'posts' && urlTag && (
           <div>
             {loading ? (
               <>

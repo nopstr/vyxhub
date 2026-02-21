@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
-import { Search, Flame, ShieldCheck, Hash, TrendingUp } from 'lucide-react'
+import { Search, Flame, ShieldCheck, Hash, TrendingUp, Command } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
+import SearchOverlay from '../ui/SearchOverlay'
 import { debounce, formatNumber } from '../../lib/utils'
 
 function TrendingSection() {
@@ -189,78 +190,44 @@ function SuggestedCreators() {
 export default function RightPanel() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [searchQuery, setSearchQuery] = useState('')
-  const [searchResults, setSearchResults] = useState([])
-  const [showResults, setShowResults] = useState(false)
+  const [showSearchOverlay, setShowSearchOverlay] = useState(false)
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const performSearch = useCallback(
-    debounce(async (query) => {
-      if (!query || query.length < 2) {
-        setSearchResults([])
-        setShowResults(false)
-        return
+  // Global Ctrl+K / Cmd+K keyboard shortcut
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowSearchOverlay(true)
       }
-      const { data } = await supabase
-        .from('profiles')
-        .select('id, username, display_name, avatar_url, is_verified, is_creator')
-        .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
-        .limit(5)
-
-      setSearchResults(data || [])
-      setShowResults(true)
-    }, 300),
-    []
-  )
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   // Hide on certain pages
   if (['/messages', '/settings'].some(p => location.pathname.startsWith(p))) {
     return null
   }
 
-  const handleSearch = (e) => {
-    const q = e.target.value
-    setSearchQuery(q)
-    performSearch(q)
-  }
-
   return (
     <aside className="hidden lg:block w-80 sticky top-0 h-screen overflow-y-auto no-scrollbar py-6 pl-6 pr-4 border-l border-zinc-800/50">
-      {/* Search */}
-      <div className="relative mb-8">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={handleSearch}
-          onFocus={() => searchResults.length > 0 && setShowResults(true)}
-          onBlur={() => setTimeout(() => setShowResults(false), 200)}
-          placeholder="Search VyxHub..."
-          className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl pl-10 pr-4 py-2.5 text-sm text-zinc-300 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors"
-        />
+      {/* Search Overlay */}
+      <SearchOverlay
+        open={showSearchOverlay}
+        onClose={() => setShowSearchOverlay(false)}
+      />
 
-        {/* Search results dropdown */}
-        {showResults && searchResults.length > 0 && (
-          <div className="absolute top-full mt-2 left-0 right-0 bg-zinc-900 border border-zinc-800 rounded-2xl shadow-xl z-50 py-2 max-h-64 overflow-y-auto">
-            {searchResults.map(user => (
-              <button
-                key={user.id}
-                onMouseDown={() => { navigate(`/@${user.username}`); setShowResults(false); setSearchQuery('') }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-zinc-800/50 transition-colors cursor-pointer"
-              >
-                <Avatar src={user.avatar_url} alt={user.display_name} size="sm" />
-                <div className="text-left min-w-0">
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-bold text-white truncate">{user.display_name}</span>
-                    {user.is_verified && <ShieldCheck size={12} className="text-indigo-400" />}
-                  </div>
-                  <span className="text-xs text-zinc-500">@{user.username}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Search trigger */}
+      <button
+        onClick={() => setShowSearchOverlay(true)}
+        className="w-full flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-2.5 mb-8 text-sm text-zinc-600 hover:border-zinc-700 transition-colors cursor-pointer"
+      >
+        <Search size={16} className="text-zinc-500" />
+        <span className="flex-1 text-left">Search VyxHub...</span>
+        <kbd className="hidden md:inline-flex items-center gap-0.5 text-[10px] text-zinc-600 bg-zinc-800/50 px-1.5 py-0.5 rounded">
+          <Command size={10} />K
+        </kbd>
+      </button>
 
       <div className="space-y-8">
         <TrendingSection />

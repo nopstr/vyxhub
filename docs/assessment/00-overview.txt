@@ -25,7 +25,7 @@ ARCHITECTURE SUMMARY
 - React 19 + Vite 7 (SPA, lazy-loaded routes, ~500KB bundle)
 - Tailwind CSS 4 (dark theme, responsive 3-column layout)
 - Supabase (PostgreSQL + Auth + Private Storage + Realtime)
-- Zustand 5 (6 stores: auth, post, comment, message, notification, subscriptionCache)
+- Zustand 5 (7 stores: auth, post, comment, message, notification, search, subscriptionCache)
 - Vercel (hosting, CSP/HSTS/security headers, SPA rewrites)
 - 26 DB tables, 10 enums, ~40 functions, ~24 triggers, 1 view
 - 70+ RLS policies (including storage), 40+ indexes
@@ -119,6 +119,21 @@ FEAT-4. CREATOR TOOLS V2 (4 New Features) + V3 (3 More Features)
     → Referral system: 24h cookie on creator profile visit (non-logged-in users),
       record_referral RPC on signup, referral stats dashboard tab, commission tracking
     → DB migration: creator_tools_remaining.sql (3 new tables, 7 new RPCs)
+
+FEAT-7. SEARCH SYSTEM V2 (Complete Overhaul)
+    → pg_trgm extension enabled for fuzzy/typo-tolerant search
+    → Trigram indexes on profiles (username, display_name) and hashtags (name)
+    → search_history table with RLS (save/delete/clear, max 20 per user)
+    → search_autocomplete RPC: mixed results (creators + hashtags + recent searches) with fuzzy matching
+    → unified_search RPC: full search with filters (type, sort, media type, date range, verified only)
+    → popular_searches RPC: anonymized trending searches for suggestions
+    → SearchStore (Zustand): autocomplete, full search, filters, pagination, search history management
+    → SearchOverlay component: full-screen overlay with autocomplete dropdown, keyboard navigation (↑↓ Enter Esc), recent searches with delete
+    → Ctrl+K / Cmd+K global keyboard shortcut to open search from anywhere
+    → ExplorePage upgraded: unified search tabs (All/Creators/Posts/Hashtags) with count badges,
+      advanced filter panel (sort, media type, date range, verified only), infinite scroll
+    → RightPanel: replaced inline search with SearchOverlay trigger button showing ⌘K hint
+    → DB migration: 20260221200000_search_system_v2.sql (1 new table, 4 RPCs, 3 trigram indexes)
 
 FEAT-6. NOTIFICATION SYSTEM V2 (Complete Overhaul)
     → Fixed tip notification bug (wrong column names: type/from_user_id/post_id/metadata → notification_type/actor_id/reference_id/message)
@@ -347,7 +362,7 @@ Content Protection                   95%       95%       N/A        N/A
 Admin/Moderation                     75%       90%       95%        95%
 Creator Tools                       100%       85%       70%        80%
 Mobile Experience                    55%       80%       95%        98%
-Search                               40%       50%       90%        85%
+Search                               90%       50%       90%        85%
 Accessibility                        60%       50%       80%        85%
 Performance                          55%       75%       95%        95%
 Testing/QA                            0%       90%       99%        99%
@@ -510,14 +525,20 @@ DETAILED MATURITY BREAKDOWN
     ❌ Missing: Swipe gestures
     ❌ Missing: Offline support
 
-12. SEARCH (40%)
-    ✅ Full-text post search
-    ✅ Profile search
-    ❌ Missing: Hashtags
-    ❌ Missing: Search filters
-    ❌ Missing: Search history
-    ❌ Missing: Autocomplete
-    ❌ Missing: Fuzzy search
+12. SEARCH (90%)
+    ✅ Full-text post search (tsvector + GIN)
+    ✅ Profile search (ILIKE + pg_trgm fuzzy)
+    ✅ Hashtag search (prefix # triggers hashtag-specific search)
+    ✅ Search filters (sort by relevance/latest/popular, media type, date range, verified only)
+    ✅ Search history (search_history table, save/delete/clear, max 20 per user)
+    ✅ Autocomplete (search_autocomplete RPC: mixed creators + hashtags + recent, fuzzy matching)
+    ✅ Fuzzy search (pg_trgm extension, trigram indexes on profiles + hashtags)
+    ✅ Unified search (unified_search RPC: creators + posts + hashtags in one query)
+    ✅ Search overlay (Ctrl+K / Cmd+K shortcut, keyboard navigation, recent searches)
+    ✅ Infinite scroll pagination on search results
+    ✅ Tab-based result filtering (All, Creators, Posts, Hashtags) with count badges
+    ❌ Missing: Search history suggestions for non-logged-in users
+    ❌ Missing: Saved searches / search alerts
 
 13. PERFORMANCE (100%)
     ✅ Batch operations (views, signed URLs)
@@ -570,6 +591,14 @@ WHAT WORKS END-TO-END TODAY (78+ flows)
 102. Push notification settings toggle in Settings (subscribe/unsubscribe)
 103. Email notification toggle + digest frequency selector (instant/daily/weekly/never)
 104. Service worker handles push events + notification click navigation
+105. Fuzzy search: typo-tolerant search for creators and hashtags (pg_trgm)
+106. Search autocomplete: mixed results (creators + hashtags + recent) as you type
+107. Search history: saves recent searches, delete individual or clear all
+108. Ctrl+K / Cmd+K opens global search overlay with keyboard navigation
+109. Advanced search filters: sort (relevance/latest/popular), media type, date range, verified only
+110. Unified search results with tabs (All/Creators/Posts/Hashtags) and count badges
+111. Search overlay shows recent searches when empty, autocomplete when typing
+112. Infinite scroll pagination on search results
 
 ONE REMAINING EXISTENTIAL BLOCKER
 -----------------------------------
