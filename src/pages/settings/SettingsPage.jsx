@@ -413,7 +413,7 @@ function ProfileSettings() {
 }
 
 function AccountSettings() {
-  const { user, signOut } = useAuthStore()
+  const { user, profile, signOut } = useAuthStore()
   const navigate = useNavigate()
   const [newEmail, setNewEmail] = useState('')
   const [emailSaving, setEmailSaving] = useState(false)
@@ -434,6 +434,10 @@ function AccountSettings() {
   const [mfaVerifyCode, setMfaVerifyCode] = useState('')
   const [mfaVerifying, setMfaVerifying] = useState(false)
   const [mfaDisabling, setMfaDisabling] = useState(false)
+  // Appeal state
+  const [appealReason, setAppealReason] = useState('')
+  const [appealSubmitting, setAppealSubmitting] = useState(false)
+  const [existingAppeal, setExistingAppeal] = useState(null)
 
   // Load login history, sessions, and MFA factors
   useEffect(() => {
@@ -599,6 +603,42 @@ function AccountSettings() {
       toast.error(err.message || 'Failed to disable 2FA')
     } finally {
       setMfaDisabling(false)
+    }
+  }
+
+  // Appeal: check for existing pending appeal
+  useEffect(() => {
+    if (profile?.is_suspended || profile?.is_banned) {
+      supabase
+        .from('appeals')
+        .select('*')
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'under_review'])
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .then(({ data }) => {
+          if (data?.length) setExistingAppeal(data[0])
+        })
+    }
+  }, [profile?.is_suspended, profile?.is_banned])
+
+  const handleSubmitAppeal = async () => {
+    if (!appealReason.trim()) return toast.error('Please provide a reason for your appeal')
+    setAppealSubmitting(true)
+    try {
+      const appealType = profile?.is_banned ? 'ban' : 'suspension'
+      const { data, error } = await supabase.rpc('submit_appeal', {
+        p_appeal_type: appealType,
+        p_reason: appealReason.trim(),
+      })
+      if (error) throw error
+      toast.success('Appeal submitted successfully')
+      setAppealReason('')
+      setExistingAppeal({ id: data, status: 'pending', appeal_type: appealType, reason: appealReason.trim(), created_at: new Date().toISOString() })
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit appeal')
+    } finally {
+      setAppealSubmitting(false)
     }
   }
 
@@ -815,6 +855,58 @@ function AccountSettings() {
           Sign Out
         </Button>
       </div>
+
+      {/* Appeal Section (shown when suspended/banned) */}
+      {(profile?.is_suspended || profile?.is_banned) && (
+        <div className="pt-4 border-t border-zinc-800">
+          <div className={cn(
+            'border rounded-2xl p-5',
+            profile?.is_banned ? 'bg-red-500/5 border-red-500/20' : 'bg-amber-500/5 border-amber-500/20'
+          )}>
+            <h4 className={cn('flex items-center gap-2 text-sm font-bold mb-2', profile?.is_banned ? 'text-red-400' : 'text-amber-400')}>
+              <AlertTriangle size={16} />
+              {profile?.is_banned ? 'Your account has been banned' : 'Your account has been suspended'}
+            </h4>
+            {profile?.suspension_reason && (
+              <p className="text-xs text-zinc-400 mb-3">Reason: {profile.suspension_reason}</p>
+            )}
+
+            {existingAppeal ? (
+              <div className="space-y-2">
+                <div className={cn(
+                  'text-xs px-3 py-2 rounded-xl',
+                  existingAppeal.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                  existingAppeal.status === 'under_review' ? 'bg-blue-500/10 text-blue-400' :
+                  'bg-zinc-800 text-zinc-400'
+                )}>
+                  <span className="font-medium">Appeal {existingAppeal.status.replace('_', ' ')}</span>
+                  <span className="text-zinc-500 ml-2">
+                    submitted {new Date(existingAppeal.created_at).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500">
+                  Your appeal is being reviewed. You will receive a notification when a decision is made.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-zinc-500">
+                  If you believe this action was taken in error, you can submit an appeal for review.
+                </p>
+                <Textarea
+                  value={appealReason}
+                  onChange={(e) => setAppealReason(e.target.value)}
+                  placeholder="Explain why you believe this action should be reversed..."
+                  rows={3}
+                />
+                <Button size="sm" onClick={handleSubmitAppeal} loading={appealSubmitting} disabled={!appealReason.trim()}>
+                  Submit Appeal
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete Account */}
       <div className="pt-4 border-t border-zinc-800">

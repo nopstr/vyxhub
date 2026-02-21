@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../../components/ui/Avatar'
@@ -10,15 +10,19 @@ import { cn, formatRelativeTime } from '../../lib/utils'
 import {
   Search, ShieldCheck, ShieldAlert, AlertTriangle, Ban,
   CheckCircle, XCircle, Eye, UserX, RotateCcw, Filter,
-  Flag, Clock, ChevronDown, ChevronUp, ExternalLink
+  Flag, Clock, ChevronDown, ChevronUp, ExternalLink,
+  Bot, Globe, Gavel, Plus, Trash2, Power, PowerOff,
+  CheckSquare, Square, MinusSquare, Scale
 } from 'lucide-react'
 
-// ─── Report Queue ───────────────────────────────────────────────────
+// ─── Report Queue (with Bulk Actions) ──────────────────────────────
 function ReportQueue() {
   const [reports, setReports] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('pending')
   const [expandedId, setExpandedId] = useState(null)
+  const [selected, setSelected] = useState(new Set())
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const fetchReports = async () => {
     setLoading(true)
@@ -39,6 +43,7 @@ function ReportQueue() {
 
     const { data, error } = await query
     if (!error) setReports(data || [])
+    setSelected(new Set())
     setLoading(false)
   }
 
@@ -55,6 +60,44 @@ function ReportQueue() {
       fetchReports()
     } catch (err) {
       toast.error(err.message || 'Failed')
+    }
+  }
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selected.size === reports.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(reports.map(r => r.id)))
+    }
+  }
+
+  const handleBulkAction = async (status) => {
+    if (selected.size === 0) return
+    const label = status === 'dismissed' ? 'dismiss' : 'resolve'
+    if (!confirm(`${label} ${selected.size} report(s)?`)) return
+
+    setBulkLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('staff_bulk_resolve_reports', {
+        p_report_ids: Array.from(selected),
+        p_status: status,
+      })
+      if (error) throw error
+      toast.success(`${data} report(s) ${status}`)
+      fetchReports()
+    } catch (err) {
+      toast.error(err.message || 'Bulk action failed')
+    } finally {
+      setBulkLoading(false)
     }
   }
 
@@ -84,6 +127,29 @@ function ReportQueue() {
         ))}
       </div>
 
+      {/* Bulk action bar */}
+      {reports.length > 0 && filter === 'pending' && (
+        <div className="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
+          <button onClick={toggleSelectAll} className="text-zinc-400 hover:text-white cursor-pointer">
+            {selected.size === reports.length ? <CheckSquare size={18} /> :
+             selected.size > 0 ? <MinusSquare size={18} /> : <Square size={18} />}
+          </button>
+          <span className="text-xs text-zinc-500">
+            {selected.size > 0 ? `${selected.size} selected` : 'Select reports'}
+          </span>
+          {selected.size > 0 && (
+            <>
+              <Button size="sm" variant="danger" onClick={() => handleBulkAction('actioned')} loading={bulkLoading}>
+                <CheckCircle size={13} /> Bulk Action
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => handleBulkAction('dismissed')} loading={bulkLoading}>
+                <XCircle size={13} /> Bulk Dismiss
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <div className="py-12 text-center text-zinc-500 text-sm">Loading reports...</div>
       ) : reports.length === 0 ? (
@@ -93,43 +159,59 @@ function ReportQueue() {
           {reports.map(report => (
             <div
               key={report.id}
-              className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl overflow-hidden"
+              className={cn(
+                'bg-zinc-900/30 border rounded-2xl overflow-hidden',
+                selected.has(report.id) ? 'border-indigo-500/50' : 'border-zinc-800/50'
+              )}
             >
-              <button
-                onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
-                className="w-full flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-zinc-900/50 transition-colors"
-              >
-                <Flag size={16} className={cn(
-                  report.status === 'pending' ? 'text-amber-400' :
-                  report.status === 'actioned' ? 'text-red-400' :
-                  report.status === 'dismissed' ? 'text-zinc-500' : 'text-blue-400'
-                )} />
+              <div className="flex items-center gap-2">
+                {filter === 'pending' && (
+                  <button
+                    onClick={() => toggleSelect(report.id)}
+                    className="pl-4 text-zinc-400 hover:text-white cursor-pointer"
+                  >
+                    {selected.has(report.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </button>
+                )}
+                <button
+                  onClick={() => setExpandedId(expandedId === report.id ? null : report.id)}
+                  className={cn(
+                    'flex-1 flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-zinc-900/50 transition-colors',
+                    filter === 'pending' && 'pl-2'
+                  )}
+                >
+                  <Flag size={16} className={cn(
+                    report.status === 'pending' ? 'text-amber-400' :
+                    report.status === 'actioned' ? 'text-red-400' :
+                    report.status === 'dismissed' ? 'text-zinc-500' : 'text-blue-400'
+                  )} />
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white truncate">
-                      {report.reason?.replace(/_/g, ' ')}
-                    </span>
-                    <span className={cn(
-                      'text-[10px] px-2 py-0.5 rounded-full font-medium',
-                      report.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
-                      report.status === 'actioned' ? 'bg-red-500/10 text-red-400' :
-                      report.status === 'dismissed' ? 'bg-zinc-500/10 text-zinc-500' : 'bg-blue-500/10 text-blue-400'
-                    )}>
-                      {report.status}
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-white truncate">
+                        {report.reason?.replace(/_/g, ' ')}
+                      </span>
+                      <span className={cn(
+                        'text-[10px] px-2 py-0.5 rounded-full font-medium',
+                        report.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                        report.status === 'actioned' ? 'bg-red-500/10 text-red-400' :
+                        report.status === 'dismissed' ? 'bg-zinc-500/10 text-zinc-500' : 'bg-blue-500/10 text-blue-400'
+                      )}>
+                        {report.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
+                      <span>by @{report.reporter?.username}</span>
+                      <span>→</span>
+                      <span>@{report.reported_user?.username || 'unknown'}</span>
+                      <span>·</span>
+                      <span>{formatRelativeTime(report.created_at)}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
-                    <span>by @{report.reporter?.username}</span>
-                    <span>→</span>
-                    <span>@{report.reported_user?.username || 'unknown'}</span>
-                    <span>·</span>
-                    <span>{formatRelativeTime(report.created_at)}</span>
-                  </div>
-                </div>
 
-                {expandedId === report.id ? <ChevronUp size={16} className="text-zinc-500" /> : <ChevronDown size={16} className="text-zinc-500" />}
-              </button>
+                  {expandedId === report.id ? <ChevronUp size={16} className="text-zinc-500" /> : <ChevronDown size={16} className="text-zinc-500" />}
+                </button>
+              </div>
 
               {expandedId === report.id && (
                 <div className="px-4 pb-4 border-t border-zinc-800/50 pt-3 space-y-3">
@@ -191,12 +273,14 @@ function ReportQueue() {
   )
 }
 
-// ─── User Lookup & Moderation ─────────────────────────────────────
+// ─── User Lookup & Moderation (with Bulk Actions) ──────────────────
 function UserModeration() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [actionLoading, setActionLoading] = useState(null)
+  const [selected, setSelected] = useState(new Set())
+  const [bulkLoading, setBulkLoading] = useState(false)
 
   const handleSearch = async () => {
     const q = query.trim()
@@ -208,6 +292,7 @@ function UserModeration() {
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .limit(20)
     setResults(data || [])
+    setSelected(new Set())
     setSearching(false)
   }
 
@@ -220,7 +305,7 @@ function UserModeration() {
       })
       if (error) throw error
       toast.success(verify ? 'Profile verified' : 'Verification removed')
-      handleSearch() // refresh
+      handleSearch()
     } catch (err) {
       toast.error(err.message || 'Failed')
     } finally {
@@ -269,6 +354,68 @@ function UserModeration() {
     }
   }
 
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const nonStaffResults = results.filter(u => !u.system_role)
+
+  const toggleSelectAll = () => {
+    if (selected.size === nonStaffResults.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(nonStaffResults.map(u => u.id)))
+    }
+  }
+
+  const handleBulkSuspend = async () => {
+    if (selected.size === 0) return
+    const reason = prompt(`Reason for suspending ${selected.size} user(s):`)
+    if (!reason) return
+    setBulkLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('staff_bulk_suspend', {
+        p_user_ids: Array.from(selected),
+        p_suspend: true,
+        p_reason: reason,
+      })
+      if (error) throw error
+      toast.success(`${data} user(s) suspended`)
+      handleSearch()
+    } catch (err) {
+      toast.error(err.message || 'Bulk suspend failed')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const handleBulkBan = async () => {
+    if (selected.size === 0) return
+    const reason = prompt(`Reason for banning ${selected.size} user(s):`)
+    if (!reason) return
+    if (!confirm(`Are you sure you want to BAN ${selected.size} user(s)?`)) return
+    setBulkLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('staff_bulk_ban', {
+        p_user_ids: Array.from(selected),
+        p_ban: true,
+        p_reason: reason,
+      })
+      if (error) throw error
+      toast.success(`${data} user(s) banned`)
+      handleSearch()
+    } catch (err) {
+      toast.error(err.message || 'Bulk ban failed')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
@@ -282,11 +429,42 @@ function UserModeration() {
         <Button onClick={handleSearch} loading={searching}>Search</Button>
       </div>
 
+      {/* Bulk action bar */}
+      {results.length > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
+          <button onClick={toggleSelectAll} className="text-zinc-400 hover:text-white cursor-pointer">
+            {selected.size === nonStaffResults.length && nonStaffResults.length > 0 ? <CheckSquare size={18} /> :
+             selected.size > 0 ? <MinusSquare size={18} /> : <Square size={18} />}
+          </button>
+          <span className="text-xs text-zinc-500">
+            {selected.size > 0 ? `${selected.size} selected` : 'Select users'}
+          </span>
+          {selected.size > 0 && (
+            <>
+              <Button size="sm" variant="outline" onClick={handleBulkSuspend} loading={bulkLoading}>
+                <UserX size={13} /> Bulk Suspend
+              </Button>
+              <Button size="sm" variant="danger" onClick={handleBulkBan} loading={bulkLoading}>
+                <Ban size={13} /> Bulk Ban
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+
       {results.length > 0 && (
         <div className="space-y-2">
           {results.map(user => (
-            <div key={user.id} className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4">
+            <div key={user.id} className={cn(
+              'bg-zinc-900/30 border rounded-2xl p-4',
+              selected.has(user.id) ? 'border-indigo-500/50' : 'border-zinc-800/50'
+            )}>
               <div className="flex items-start gap-3">
+                {!user.system_role && (
+                  <button onClick={() => toggleSelect(user.id)} className="mt-1 text-zinc-400 hover:text-white cursor-pointer">
+                    {selected.has(user.id) ? <CheckSquare size={16} /> : <Square size={16} />}
+                  </button>
+                )}
                 <Avatar src={user.avatar_url} alt={user.display_name} size="lg" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -368,6 +546,717 @@ function UserModeration() {
   )
 }
 
+// ─── Auto-Moderation Rules ─────────────────────────────────────────
+function AutoModeration() {
+  const [rules, setRules] = useState([])
+  const [log, setLog] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [viewMode, setViewMode] = useState('rules') // 'rules' | 'log'
+  const [form, setForm] = useState({
+    name: '', description: '', rule_type: 'keyword', pattern: '',
+    action: 'flag', severity: 'medium', applies_to: 'posts'
+  })
+  const [saving, setSaving] = useState(false)
+
+  const fetchRules = async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('auto_moderation_rules')
+      .select('*')
+      .order('created_at', { ascending: false })
+    setRules(data || [])
+    setLoading(false)
+  }
+
+  const fetchLog = async () => {
+    const { data } = await supabase
+      .from('auto_moderation_log')
+      .select(`
+        *,
+        target_user:profiles!target_user_id(username, display_name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(100)
+    setLog(data || [])
+  }
+
+  useEffect(() => {
+    fetchRules()
+    fetchLog()
+  }, [])
+
+  const handleCreate = async () => {
+    if (!form.name || !form.pattern) {
+      toast.error('Name and pattern are required')
+      return
+    }
+    setSaving(true)
+    try {
+      const { error } = await supabase.rpc('create_auto_mod_rule', {
+        p_name: form.name,
+        p_description: form.description || null,
+        p_rule_type: form.rule_type,
+        p_pattern: form.pattern,
+        p_action: form.action,
+        p_severity: form.severity,
+        p_applies_to: form.applies_to,
+      })
+      if (error) throw error
+      toast.success('Rule created')
+      setShowForm(false)
+      setForm({ name: '', description: '', rule_type: 'keyword', pattern: '', action: 'flag', severity: 'medium', applies_to: 'posts' })
+      fetchRules()
+    } catch (err) {
+      toast.error(err.message || 'Failed to create rule')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleToggle = async (rule) => {
+    try {
+      const { error } = await supabase.rpc('update_auto_mod_rule', {
+        p_rule_id: rule.id,
+        p_is_active: !rule.is_active,
+      })
+      if (error) throw error
+      toast.success(rule.is_active ? 'Rule disabled' : 'Rule enabled')
+      fetchRules()
+    } catch (err) {
+      toast.error(err.message || 'Failed')
+    }
+  }
+
+  const handleDelete = async (ruleId) => {
+    if (!confirm('Delete this rule? This cannot be undone.')) return
+    try {
+      const { error } = await supabase.rpc('delete_auto_mod_rule', { p_rule_id: ruleId })
+      if (error) throw error
+      toast.success('Rule deleted')
+      fetchRules()
+    } catch (err) {
+      toast.error(err.message || 'Failed')
+    }
+  }
+
+  const handleMarkFalsePositive = async (logId) => {
+    try {
+      const { error } = await supabase
+        .from('auto_moderation_log')
+        .update({ is_false_positive: true, reviewed_by: (await supabase.auth.getUser()).data.user?.id, reviewed_at: new Date().toISOString() })
+        .eq('id', logId)
+      if (error) throw error
+      toast.success('Marked as false positive')
+      fetchLog()
+    } catch (err) {
+      toast.error(err.message || 'Failed')
+    }
+  }
+
+  const severityColors = { low: 'text-zinc-400', medium: 'text-amber-400', high: 'text-orange-400', critical: 'text-red-400' }
+  const actionColors = { flag: 'text-amber-400', hide: 'text-orange-400', suspend_author: 'text-red-400' }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => setViewMode('rules')}
+            className={cn(
+              'px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition-colors',
+              viewMode === 'rules' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+            )}
+          >
+            Rules ({rules.length})
+          </button>
+          <button
+            onClick={() => setViewMode('log')}
+            className={cn(
+              'px-3 py-1 rounded-lg text-xs font-medium cursor-pointer transition-colors',
+              viewMode === 'log' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'
+            )}
+          >
+            Activity Log ({log.length})
+          </button>
+        </div>
+        {viewMode === 'rules' && (
+          <Button size="sm" onClick={() => setShowForm(!showForm)}>
+            <Plus size={14} /> New Rule
+          </Button>
+        )}
+      </div>
+
+      {/* Create Rule Form */}
+      {showForm && (
+        <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4 space-y-3">
+          <h3 className="text-sm font-medium text-white">New Auto-Moderation Rule</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              placeholder="Rule name"
+            />
+            <select
+              value={form.rule_type}
+              onChange={e => setForm(f => ({ ...f, rule_type: e.target.value }))}
+              className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white"
+            >
+              <option value="keyword">Keyword Match</option>
+              <option value="regex">Regex Pattern</option>
+              <option value="spam_link">Spam Link</option>
+              <option value="duplicate">Duplicate Content</option>
+            </select>
+          </div>
+          <Input
+            value={form.pattern}
+            onChange={e => setForm(f => ({ ...f, pattern: e.target.value }))}
+            placeholder={form.rule_type === 'keyword' ? 'word1, word2, word3 (comma-separated)' :
+                         form.rule_type === 'regex' ? 'Regular expression pattern' :
+                         form.rule_type === 'spam_link' ? 'suspicious-domain.com, scam-site.net' :
+                         'Content will be checked for duplicates'}
+          />
+          <Input
+            value={form.description}
+            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            placeholder="Description (optional)"
+          />
+          <div className="grid grid-cols-3 gap-3">
+            <select
+              value={form.action}
+              onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
+              className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white"
+            >
+              <option value="flag">Flag (auto-report)</option>
+              <option value="hide">Hide post</option>
+              <option value="suspend_author">Suspend author</option>
+            </select>
+            <select
+              value={form.severity}
+              onChange={e => setForm(f => ({ ...f, severity: e.target.value }))}
+              className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white"
+            >
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+            <select
+              value={form.applies_to}
+              onChange={e => setForm(f => ({ ...f, applies_to: e.target.value }))}
+              className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white"
+            >
+              <option value="posts">Posts only</option>
+              <option value="comments">Comments only</option>
+              <option value="both">Both</option>
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleCreate} loading={saving}>Create Rule</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-12 text-center text-zinc-500 text-sm">Loading...</div>
+      ) : viewMode === 'rules' ? (
+        /* Rules list */
+        rules.length === 0 ? (
+          <div className="py-12 text-center text-zinc-500 text-sm">No auto-moderation rules yet</div>
+        ) : (
+          <div className="space-y-2">
+            {rules.map(rule => (
+              <div key={rule.id} className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium text-white">{rule.name}</span>
+                      <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium uppercase',
+                        rule.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-500/10 text-zinc-500'
+                      )}>
+                        {rule.is_active ? 'Active' : 'Disabled'}
+                      </span>
+                      <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', `bg-zinc-800 ${severityColors[rule.severity]}`)}>
+                        {rule.severity}
+                      </span>
+                      <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', `bg-zinc-800 ${actionColors[rule.action]}`)}>
+                        {rule.action.replace('_', ' ')}
+                      </span>
+                    </div>
+                    {rule.description && (
+                      <p className="text-xs text-zinc-500 mt-1">{rule.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1.5 text-xs text-zinc-600">
+                      <span className="bg-zinc-800/50 px-2 py-0.5 rounded">{rule.rule_type}</span>
+                      <span className="truncate max-w-[200px] text-zinc-500 font-mono text-[11px]">{rule.pattern}</span>
+                      <span>·</span>
+                      <span>{rule.applies_to}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <button
+                      onClick={() => handleToggle(rule)}
+                      className={cn('p-1.5 rounded-lg cursor-pointer transition-colors',
+                        rule.is_active ? 'text-emerald-400 hover:bg-emerald-500/10' : 'text-zinc-500 hover:bg-zinc-800'
+                      )}
+                      title={rule.is_active ? 'Disable' : 'Enable'}
+                    >
+                      {rule.is_active ? <Power size={14} /> : <PowerOff size={14} />}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(rule.id)}
+                      className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 cursor-pointer transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        /* Activity Log */
+        log.length === 0 ? (
+          <div className="py-12 text-center text-zinc-500 text-sm">No auto-moderation activity yet</div>
+        ) : (
+          <div className="space-y-2">
+            {log.map(entry => (
+              <div key={entry.id} className={cn(
+                'flex items-center gap-3 p-3 rounded-xl border',
+                entry.is_false_positive ? 'bg-zinc-900/20 border-zinc-800/30 opacity-60' : 'bg-zinc-900/30 border-zinc-800/50'
+              )}>
+                <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                  entry.action_taken === 'flag' ? 'bg-amber-500/10' :
+                  entry.action_taken === 'hide' ? 'bg-orange-500/10' : 'bg-red-500/10'
+                )}>
+                  <Bot size={14} className={actionColors[entry.action_taken] || 'text-zinc-400'} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-zinc-200">
+                    <span className="font-medium">{entry.rule_name}</span>
+                    <span className="text-zinc-500"> {entry.action_taken.replace('_', ' ')} </span>
+                    {entry.target_user && <span className="font-medium">@{entry.target_user.username}</span>}
+                  </div>
+                  {entry.matched_content && (
+                    <p className="text-xs text-zinc-500 mt-0.5 truncate">&ldquo;{entry.matched_content}&rdquo;</p>
+                  )}
+                  {entry.is_false_positive && (
+                    <span className="text-[10px] text-amber-400">False positive</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {!entry.is_false_positive && (
+                    <button
+                      onClick={() => handleMarkFalsePositive(entry.id)}
+                      className="text-xs text-zinc-500 hover:text-amber-400 cursor-pointer"
+                      title="Mark as false positive"
+                    >
+                      <XCircle size={14} />
+                    </button>
+                  )}
+                  <span className="text-[10px] text-zinc-600">{formatRelativeTime(entry.created_at)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+    </div>
+  )
+}
+
+// ─── Appeals Queue ─────────────────────────────────────────────────
+function AppealsQueue() {
+  const [appeals, setAppeals] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('pending')
+  const [actionLoading, setActionLoading] = useState(null)
+
+  const fetchAppeals = async () => {
+    setLoading(true)
+    let query = supabase
+      .from('appeals')
+      .select(`
+        *,
+        user:profiles!user_id(id, username, display_name, avatar_url, is_suspended, is_banned),
+        reviewer:profiles!reviewed_by(username, display_name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(100)
+
+    if (filter !== 'all') {
+      query = query.eq('status', filter)
+    }
+
+    const { data, error } = await query
+    if (!error) setAppeals(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchAppeals() }, [filter])
+
+  const handleResolve = async (appealId, status) => {
+    const notes = prompt(`${status === 'approved' ? 'Approval' : status === 'denied' ? 'Denial' : 'Review'} notes (optional):`)
+    setActionLoading(appealId)
+    try {
+      const { error } = await supabase.rpc('staff_resolve_appeal', {
+        p_appeal_id: appealId,
+        p_status: status,
+        p_reviewer_notes: notes || null,
+      })
+      if (error) throw error
+      toast.success(`Appeal ${status}`)
+      fetchAppeals()
+    } catch (err) {
+      toast.error(err.message || 'Failed')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const statusFilters = [
+    { value: 'pending', label: 'Pending', color: 'text-amber-400' },
+    { value: 'under_review', label: 'Under Review', color: 'text-blue-400' },
+    { value: 'approved', label: 'Approved', color: 'text-emerald-400' },
+    { value: 'denied', label: 'Denied', color: 'text-red-400' },
+    { value: 'all', label: 'All', color: 'text-zinc-300' },
+  ]
+
+  const typeIcons = {
+    suspension: <AlertTriangle size={14} className="text-amber-400" />,
+    ban: <Ban size={14} className="text-red-400" />,
+    post_removal: <XCircle size={14} className="text-orange-400" />,
+    other: <Scale size={14} className="text-zinc-400" />,
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Filter size={14} className="text-zinc-500" />
+        {statusFilters.map(f => (
+          <button
+            key={f.value}
+            onClick={() => setFilter(f.value)}
+            className={cn(
+              'px-3 py-1 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+              filter === f.value ? cn(f.color, 'bg-zinc-800') : 'text-zinc-500 hover:text-zinc-300'
+            )}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="py-12 text-center text-zinc-500 text-sm">Loading appeals...</div>
+      ) : appeals.length === 0 ? (
+        <div className="py-12 text-center text-zinc-500 text-sm">No {filter} appeals</div>
+      ) : (
+        <div className="space-y-2">
+          {appeals.map(appeal => (
+            <div key={appeal.id} className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                {typeIcons[appeal.appeal_type]}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium text-white capitalize">
+                      {appeal.appeal_type.replace('_', ' ')} Appeal
+                    </span>
+                    <span className={cn(
+                      'text-[10px] px-2 py-0.5 rounded-full font-medium',
+                      appeal.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
+                      appeal.status === 'under_review' ? 'bg-blue-500/10 text-blue-400' :
+                      appeal.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
+                      'bg-red-500/10 text-red-400'
+                    )}>
+                      {appeal.status.replace('_', ' ')}
+                    </span>
+                    <span className="text-[10px] text-zinc-600">{formatRelativeTime(appeal.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Avatar src={appeal.user?.avatar_url} alt={appeal.user?.display_name} size="sm" />
+                <div>
+                  <span className="text-sm font-medium text-white">{appeal.user?.display_name}</span>
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+                    <span>@{appeal.user?.username}</span>
+                    {appeal.user?.is_suspended && <span className="text-amber-400">Suspended</span>}
+                    {appeal.user?.is_banned && <span className="text-red-400">Banned</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-zinc-800/30 rounded-xl p-3">
+                <span className="text-xs text-zinc-500">Appeal Reason</span>
+                <p className="text-sm text-zinc-300 mt-0.5">{appeal.reason}</p>
+              </div>
+
+              {appeal.evidence_urls?.length > 0 && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-zinc-500">Evidence:</span>
+                  {appeal.evidence_urls.map((url, i) => (
+                    <a key={i} href={url} target="_blank" rel="noopener" className="text-xs text-indigo-400 hover:underline flex items-center gap-1">
+                      Link {i + 1} <ExternalLink size={10} />
+                    </a>
+                  ))}
+                </div>
+              )}
+
+              {appeal.reviewer_notes && (
+                <div className="bg-zinc-800/30 rounded-xl p-3">
+                  <span className="text-xs text-zinc-500">Staff Notes</span>
+                  <p className="text-sm text-zinc-300 mt-0.5">{appeal.reviewer_notes}</p>
+                  {appeal.reviewer && (
+                    <span className="text-xs text-zinc-600 mt-1 block">— {appeal.reviewer.display_name}</span>
+                  )}
+                </div>
+              )}
+
+              {(appeal.status === 'pending' || appeal.status === 'under_review') && (
+                <div className="flex items-center gap-2 pt-2 border-t border-zinc-800/50">
+                  <Button size="sm" onClick={() => handleResolve(appeal.id, 'approved')} loading={actionLoading === appeal.id}>
+                    <CheckCircle size={14} /> Approve
+                  </Button>
+                  <Button size="sm" variant="danger" onClick={() => handleResolve(appeal.id, 'denied')} loading={actionLoading === appeal.id}>
+                    <XCircle size={14} /> Deny
+                  </Button>
+                  {appeal.status === 'pending' && (
+                    <Button size="sm" variant="outline" onClick={() => handleResolve(appeal.id, 'under_review')} loading={actionLoading === appeal.id}>
+                      <Eye size={14} /> Under Review
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── IP Ban Management ────────────────────────────────────────────
+function IPBanManagement() {
+  const [bans, setBans] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ ip_address: '', reason: '', expires_at: '' })
+  const [saving, setSaving] = useState(false)
+  const [userIpLookup, setUserIpLookup] = useState('')
+  const [userIps, setUserIps] = useState([])
+  const [lookingUp, setLookingUp] = useState(false)
+
+  const fetchBans = async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('banned_ips')
+      .select(`
+        *,
+        banned_by_user:profiles!banned_by(username, display_name),
+        associated_user:profiles!associated_user_id(username, display_name)
+      `)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+    setBans(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchBans() }, [])
+
+  const handleBan = async () => {
+    if (!form.ip_address) {
+      toast.error('IP address is required')
+      return
+    }
+    setSaving(true)
+    try {
+      const { error } = await supabase.rpc('staff_ban_ip', {
+        p_ip_address: form.ip_address,
+        p_reason: form.reason || null,
+        p_expires_at: form.expires_at || null,
+      })
+      if (error) throw error
+      toast.success('IP banned')
+      setShowForm(false)
+      setForm({ ip_address: '', reason: '', expires_at: '' })
+      fetchBans()
+    } catch (err) {
+      toast.error(err.message || 'Failed to ban IP')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUnban = async (banId) => {
+    if (!confirm('Unban this IP address?')) return
+    try {
+      const { error } = await supabase.rpc('staff_unban_ip', { p_ban_id: banId })
+      if (error) throw error
+      toast.success('IP unbanned')
+      fetchBans()
+    } catch (err) {
+      toast.error(err.message || 'Failed')
+    }
+  }
+
+  const lookupUserIps = async () => {
+    const q = userIpLookup.trim()
+    if (q.length < 2) return
+    setLookingUp(true)
+    try {
+      const { data: users } = await supabase
+        .from('profiles')
+        .select('id, username, display_name')
+        .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+        .limit(1)
+
+      if (!users?.length) {
+        toast.error('User not found')
+        setUserIps([])
+        setLookingUp(false)
+        return
+      }
+
+      const { data, error } = await supabase.rpc('get_user_ips', { p_user_id: users[0].id })
+      if (error) throw error
+      setUserIps((data || []).map(d => ({ ...d, user: users[0] })))
+    } catch (err) {
+      toast.error(err.message || 'Failed to look up IPs')
+    } finally {
+      setLookingUp(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-zinc-400">{bans.length} active IP ban{bans.length !== 1 ? 's' : ''}</h3>
+        <Button size="sm" onClick={() => setShowForm(!showForm)}>
+          <Plus size={14} /> Ban IP
+        </Button>
+      </div>
+
+      {/* Ban IP form */}
+      {showForm && (
+        <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4 space-y-3">
+          <h3 className="text-sm font-medium text-white">Ban IP Address</h3>
+          <Input
+            value={form.ip_address}
+            onChange={e => setForm(f => ({ ...f, ip_address: e.target.value }))}
+            placeholder="IP address (e.g. 192.168.1.1)"
+          />
+          <Input
+            value={form.reason}
+            onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+            placeholder="Reason (optional)"
+          />
+          <div>
+            <label className="text-xs text-zinc-500 mb-1 block">Expires (leave empty for permanent)</label>
+            <input
+              type="datetime-local"
+              value={form.expires_at}
+              onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2 text-sm text-white"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="danger" onClick={handleBan} loading={saving}>Ban IP</Button>
+            <Button size="sm" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* User IP Lookup */}
+      <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4 space-y-3">
+        <h3 className="text-sm font-medium text-zinc-400">Look Up User IPs</h3>
+        <div className="flex gap-2">
+          <Input
+            value={userIpLookup}
+            onChange={(e) => setUserIpLookup(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && lookupUserIps()}
+            placeholder="Search username..."
+            icon={Search}
+          />
+          <Button size="sm" onClick={lookupUserIps} loading={lookingUp}>Lookup</Button>
+        </div>
+        {userIps.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-xs text-zinc-500">IPs for @{userIps[0]?.user?.username}:</span>
+            {userIps.map((ip, i) => (
+              <div key={i} className="flex items-center justify-between p-2 bg-zinc-800/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Globe size={13} className="text-zinc-500" />
+                  <span className="text-sm text-white font-mono">{ip.ip_address}</span>
+                  <span className="text-xs text-zinc-500">{ip.login_count} login{ip.login_count > 1 ? 's' : ''}</span>
+                  <span className="text-xs text-zinc-600">last {formatRelativeTime(ip.last_seen)}</span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => {
+                    setForm(f => ({ ...f, ip_address: ip.ip_address }))
+                    setShowForm(true)
+                  }}
+                >
+                  <Ban size={12} /> Ban
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Active bans list */}
+      {loading ? (
+        <div className="py-12 text-center text-zinc-500 text-sm">Loading...</div>
+      ) : bans.length === 0 ? (
+        <div className="py-12 text-center text-zinc-500 text-sm">No active IP bans</div>
+      ) : (
+        <div className="space-y-2">
+          {bans.map(ban => (
+            <div key={ban.id} className="flex items-center gap-3 p-3 bg-zinc-900/30 rounded-xl border border-zinc-800/50">
+              <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <Globe size={14} className="text-red-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-mono text-white">{ban.ip_address}</span>
+                  {ban.expires_at ? (
+                    <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full">
+                      Expires {formatRelativeTime(ban.expires_at)}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Permanent</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-zinc-500 mt-0.5">
+                  {ban.reason && <span>{ban.reason}</span>}
+                  {ban.associated_user && <span>→ @{ban.associated_user.username}</span>}
+                  <span>by {ban.banned_by_user?.display_name}</span>
+                  <span>·</span>
+                  <span>{formatRelativeTime(ban.created_at)}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => handleUnban(ban.id)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 cursor-pointer transition-colors"
+                title="Unban"
+              >
+                <RotateCcw size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Moderation Log ────────────────────────────────────────────────
 function ModerationLog() {
   const [actions, setActions] = useState([])
@@ -404,16 +1293,22 @@ function ModerationLog() {
               action.action_type.includes('ban') ? 'bg-red-500/10' :
               action.action_type.includes('suspend') ? 'bg-amber-500/10' :
               action.action_type.includes('verify') ? 'bg-indigo-500/10' :
+              action.action_type.includes('auto_') ? 'bg-orange-500/10' :
+              action.action_type.includes('appeal') ? 'bg-purple-500/10' :
+              action.action_type.includes('ip') ? 'bg-red-500/10' :
               'bg-zinc-800/50'
             )}>
               {action.action_type.includes('ban') ? <Ban size={14} className="text-red-400" /> :
                action.action_type.includes('suspend') ? <AlertTriangle size={14} className="text-amber-400" /> :
                action.action_type.includes('verify') ? <ShieldCheck size={14} className="text-indigo-400" /> :
+               action.action_type.includes('auto_') ? <Bot size={14} className="text-orange-400" /> :
+               action.action_type.includes('appeal') ? <Scale size={14} className="text-purple-400" /> :
+               action.action_type.includes('ip') ? <Globe size={14} className="text-red-400" /> :
                <Clock size={14} className="text-zinc-400" />}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm text-zinc-200">
-                <span className="font-medium">{action.moderator?.display_name}</span>
+                <span className="font-medium">{action.moderator?.display_name || 'System'}</span>
                 <span className="text-zinc-500"> {action.action_type.replace(/_/g, ' ')} </span>
                 {action.target_user && (
                   <span className="font-medium">@{action.target_user.username}</span>
@@ -435,6 +1330,9 @@ function ModerationLog() {
 const supportTabs = [
   { id: 'reports', label: 'Reports', icon: Flag },
   { id: 'users', label: 'Users', icon: Search },
+  { id: 'automod', label: 'Auto-Mod', icon: Bot },
+  { id: 'appeals', label: 'Appeals', icon: Scale },
+  { id: 'ipbans', label: 'IP Bans', icon: Globe },
   { id: 'log', label: 'Mod Log', icon: Clock },
 ]
 
@@ -454,13 +1352,13 @@ export default function SupportPage() {
 
       <div className="px-5 py-4">
         {/* Tabs */}
-        <div className="flex gap-1.5 mb-6">
+        <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
           {supportTabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer',
+                'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer whitespace-nowrap',
                 tab === t.id
                   ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                   : 'text-zinc-500 hover:text-zinc-300 bg-zinc-900/30 border border-zinc-800/50'
@@ -474,6 +1372,9 @@ export default function SupportPage() {
 
         {tab === 'reports' && <ReportQueue />}
         {tab === 'users' && <UserModeration />}
+        {tab === 'automod' && <AutoModeration />}
+        {tab === 'appeals' && <AppealsQueue />}
+        {tab === 'ipbans' && <IPBanManagement />}
         {tab === 'log' && <ModerationLog />}
       </div>
     </div>
