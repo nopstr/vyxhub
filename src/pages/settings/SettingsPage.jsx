@@ -407,6 +407,8 @@ function CreatorSettings() {
     payout_method: profile?.payout_method || 'bank_transfer',
     payout_email: profile?.payout_email || '',
     amazon_wishlist_url: profile?.amazon_wishlist_url || '',
+    subscription_benefits: profile?.subscription_benefits || [],
+    newBenefit: '',
   })
 
   const handleBecomeCreator = async () => {
@@ -449,6 +451,7 @@ function CreatorSettings() {
         payout_method: form.payout_method,
         payout_email: form.payout_email,
         amazon_wishlist_url: form.amazon_wishlist_url,
+        subscription_benefits: form.subscription_benefits,
       })
       toast.success('Creator settings saved!')
     } catch (err) {
@@ -635,6 +638,60 @@ function CreatorSettings() {
               />
             </div>
             <p className="text-xs text-zinc-500 mt-1">Monthly price fans pay to access your exclusive content</p>
+          </div>
+
+          {/* Subscription Benefits */}
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Subscription Benefits</label>
+            <p className="text-xs text-zinc-500 mb-3">List what subscribers get — shown in the subscribe popup</p>
+            <div className="space-y-2">
+              {form.subscription_benefits.map((benefit, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <div className="flex-1 bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-200 flex items-center gap-2">
+                    <CheckCircle size={14} className="text-emerald-400 shrink-0" />
+                    {benefit}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, subscription_benefits: f.subscription_benefits.filter((_, idx) => idx !== i) }))}
+                    className="text-zinc-500 hover:text-red-400 transition-colors p-1 cursor-pointer"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                </div>
+              ))}
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={form.newBenefit}
+                  onChange={e => setForm(f => ({ ...f, newBenefit: e.target.value }))}
+                  placeholder="e.g. Behind-the-scenes content"
+                  maxLength={100}
+                  className="flex-1 bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && form.newBenefit.trim()) {
+                      e.preventDefault()
+                      setForm(f => ({ ...f, subscription_benefits: [...f.subscription_benefits, f.newBenefit.trim()], newBenefit: '' }))
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={!form.newBenefit.trim() || form.subscription_benefits.length >= 8}
+                  onClick={() => {
+                    if (form.newBenefit.trim()) {
+                      setForm(f => ({ ...f, subscription_benefits: [...f.subscription_benefits, f.newBenefit.trim()], newBenefit: '' }))
+                    }
+                  }}
+                  className="px-3 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              {form.subscription_benefits.length >= 8 && (
+                <p className="text-xs text-amber-400">Maximum 8 benefits</p>
+              )}
+            </div>
           </div>
 
           <Toggle

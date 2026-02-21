@@ -18,6 +18,7 @@ import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
 import ReportModal from '../ReportModal'
 import TipModal from '../TipModal'
+import SubscribeModal from '../SubscribeModal'
 import EditPostModal from './EditPostModal'
 import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
 import { toast } from 'sonner'
@@ -369,49 +370,15 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
   const { user } = useAuthStore()
   const { addSubscription, addPurchase } = useSubscriptionCache()
   const [loading, setLoading] = useState(false)
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false)
 
   // Get blur preview from first media item
   const firstMedia = post?.media?.[0]
   const blurSrc = firstMedia ? getBlurPreviewUrl(firstMedia.signedUrl || firstMedia.url) : null
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = () => {
     if (!user) return toast.error('Sign in to subscribe')
-    setLoading(true)
-    try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .insert({
-          subscriber_id: user.id,
-          creator_id: creator.id,
-          status: 'active',
-          price_paid: creator.subscription_price,
-          starts_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        })
-      if (error) throw error
-      addSubscription(creator.id)
-      // Record transaction for financial tracking
-      const amount = parseFloat(creator.subscription_price) || 0
-      if (amount > 0) {
-        const fee = +(amount * PLATFORM_FEE_PERCENT / 100).toFixed(2)
-        await supabase.from('transactions').insert({
-          from_user_id: user.id,
-          to_user_id: creator.id,
-          transaction_type: 'subscription',
-          amount,
-          platform_fee: fee,
-          net_amount: +(amount - fee).toFixed(2),
-          status: 'completed',
-        }).catch(() => {}) // non-blocking
-      }
-      // Auto-follow
-      await supabase.from('follows').insert({ follower_id: user.id, following_id: creator.id }).catch(() => {})
-      toast.success(`Subscribed to @${creator.username}!`)
-    } catch (err) {
-      toast.error(err.message || 'Failed to subscribe')
-    } finally {
-      setLoading(false)
-    }
+    setShowSubscribeModal(true)
   }
 
   const handlePurchase = async () => {
@@ -537,6 +504,18 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
           </button>
         )}
       </div>
+
+      {/* Subscribe Modal */}
+      {showSubscribeModal && (
+        <SubscribeModal
+          open={showSubscribeModal}
+          onClose={() => setShowSubscribeModal(false)}
+          creator={creator}
+          onSubscribed={() => {
+            addSubscription(creator.id)
+          }}
+        />
+      )}
     </div>
   )
 }

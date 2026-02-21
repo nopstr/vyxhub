@@ -8,7 +8,6 @@ import {
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
 import { useAuthStore } from '../../stores/authStore'
-import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import { useMessageStore } from '../../stores/messageStore'
 import Avatar from '../../components/ui/Avatar'
 import Button from '../../components/ui/Button'
@@ -17,11 +16,11 @@ import ProtectedImage from '../../components/ui/ProtectedImage'
 import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import ReportModal from '../../components/ReportModal'
 import TipModal from '../../components/TipModal'
+import SubscribeModal from '../../components/SubscribeModal'
 import Dropdown, { DropdownItem, DropdownDivider } from '../../components/ui/Dropdown'
 import { SkeletonProfile, SkeletonPost } from '../../components/ui/Spinner'
 import { formatNumber, formatRelativeTime, cn } from '../../lib/utils'
 import { toast } from 'sonner'
-import { PLATFORM_FEE_PERCENT } from '../../lib/constants'
 
 export default function ProfilePage() {
   const { username } = useParams()
@@ -36,15 +35,11 @@ export default function ProfilePage() {
   const [followLoading, setFollowLoading] = useState(false)
   const [subLoading, setSubLoading] = useState(false)
   const [msgLoading, setMsgLoading] = useState(false)
-  const { addSubscription } = useSubscriptionCache()
   const { startConversation } = useMessageStore()
   const [showReportModal, setShowReportModal] = useState(false)
   const [showCustomRequestModal, setShowCustomRequestModal] = useState(false)
   const [showTipModal, setShowTipModal] = useState(false)
-  const [activePromo, setActivePromo] = useState(null)
-  const [promoCode, setPromoCode] = useState('')
-  const [promoCodeResult, setPromoCodeResult] = useState(null)
-  const [validatingCode, setValidatingCode] = useState(false)
+  const [showSubscribeModal, setShowSubscribeModal] = useState(false)
 
   const cleanUsername = username?.replace('@', '')
   const isOwnProfile = myProfile?.username === cleanUsername
@@ -72,11 +67,6 @@ export default function ProfilePage() {
       setProfile(profileData)
 
       // Fetch active promotion for this creator
-      if (profileData.is_creator) {
-        supabase.rpc('get_active_promotion', { p_creator_id: profileData.id })
-          .then(({ data }) => setActivePromo(data))
-      }
-
       // Check follow status
       if (user && !isOwnProfile) {
         const { data: followData } = await supabase
@@ -155,63 +145,6 @@ export default function ProfilePage() {
       toast.error('Failed to update follow')
     } finally {
       setFollowLoading(false)
-    }
-  }
-
-  const handleSubscribe = async () => {
-    if (!user) return toast.error('Sign in to subscribe')
-    setSubLoading(true)
-    try {
-      const basePrice = parseFloat(profile.subscription_price) || 0
-      let amount = activePromo ? parseFloat(activePromo.promo_price) : basePrice
-      // Promo code takes priority over active promotion
-      if (promoCodeResult) {
-        amount = +(basePrice * (100 - promoCodeResult.discount_percent) / 100).toFixed(2)
-      }
-      const { data: subResult, error } = await supabase.rpc('subscribe_to_creator', {
-        p_subscriber_id: user.id,
-        p_creator_id: profile.id,
-        p_price: amount,
-      })
-      if (error) throw error
-      // Redeem promo code if used
-      if (promoCodeResult?.code_id) {
-        await supabase.rpc('redeem_promo_code', {
-          p_code_id: promoCodeResult.code_id,
-          p_original_amount: basePrice,
-          p_discount_amount: +(basePrice - amount).toFixed(2),
-        })
-      }
-      const paidPrice = parseFloat(subResult?.price_paid) || amount
-      setIsSubscribed(true)
-      addSubscription(profile.id)
-      setProfile(p => ({ ...p, subscriber_count: (p.subscriber_count || 0) + 1 }))
-      // Record transaction for financial tracking
-      if (paidPrice > 0) {
-        const fee = +(paidPrice * PLATFORM_FEE_PERCENT / 100).toFixed(2)
-        await supabase.from('transactions').insert({
-          from_user_id: user.id,
-          to_user_id: profile.id,
-          transaction_type: 'subscription',
-          amount: paidPrice,
-          platform_fee: fee,
-          net_amount: +(paidPrice - fee).toFixed(2),
-          status: 'completed',
-        }) // non-blocking, ignore error
-      }
-      // Also auto-follow if not already
-      if (!isFollowing) {
-        await supabase.from('follows').insert({ follower_id: user.id, following_id: profile.id })
-        setIsFollowing(true)
-        setProfile(p => ({ ...p, follower_count: p.follower_count + 1 }))
-      }
-      toast.success(`Subscribed to @${profile.username}!`)
-      // Re-fetch posts to show subscribers_only content
-      fetchProfile()
-    } catch (err) {
-      toast.error(err.message || 'Failed to subscribe')
-    } finally {
-      setSubLoading(false)
     }
   }
 
@@ -375,29 +308,13 @@ export default function ProfilePage() {
                   </Button>
                 )}
                 {profile.is_creator && profile.subscription_price > 0 && !isSubscribed && (
-                  <div className="relative">
-                    {(activePromo || promoCodeResult) && (
-                      <div className="absolute -top-2.5 -right-1 bg-gradient-to-r from-pink-500 to-orange-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10 shadow-lg">
-                        {promoCodeResult ? promoCodeResult.discount_percent : activePromo.discount_percent}% OFF
-                      </div>
-                    )}
-                    <Button variant="premium" size="sm" onClick={handleSubscribe} loading={subLoading}>
-                      <Zap size={14} className="fill-current" />
-                      {promoCodeResult ? (
-                        <>
-                          <span className="line-through opacity-60 text-xs">${profile.subscription_price}</span>
-                          {' '}${(profile.subscription_price * (100 - promoCodeResult.discount_percent) / 100).toFixed(2)}/mo
-                        </>
-                      ) : activePromo ? (
-                        <>
-                          <span className="line-through opacity-60 text-xs">${profile.subscription_price}</span>
-                          {' '}${activePromo.promo_price}/mo
-                        </>
-                      ) : (
-                        <>Subscribe ${profile.subscription_price}/mo</>
-                      )}
-                    </Button>
-                  </div>
+                  <Button variant="premium" size="sm" onClick={() => {
+                    if (!user) return toast.error('Sign in to subscribe')
+                    setShowSubscribeModal(true)
+                  }}>
+                    <Zap size={14} className="fill-current" />
+                    Subscribe ${profile.subscription_price}/mo
+                  </Button>
                 )}
                 {isSubscribed && (
                   <Button
@@ -431,63 +348,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Promo Code Input */}
-        {!isOwnProfile && profile.is_creator && profile.subscription_price > 0 && !isSubscribed && (
-          <div className="mb-4">
-            {!promoCodeResult ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={promoCode}
-                  onChange={e => setPromoCode(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase())}
-                  placeholder="Promo code"
-                  maxLength={20}
-                  className="px-3 py-1.5 rounded-lg bg-zinc-800/50 border border-zinc-700 text-xs text-white placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 w-32"
-                />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={!promoCode.trim()}
-                  loading={validatingCode}
-                  onClick={async () => {
-                    if (!promoCode.trim()) return
-                    setValidatingCode(true)
-                    try {
-                      const { data, error } = await supabase.rpc('validate_promo_code', {
-                        p_code: promoCode.trim(),
-                        p_creator_id: profile.id,
-                      })
-                      if (error) throw error
-                      if (data?.valid) {
-                        setPromoCodeResult(data)
-                        toast.success(`${data.discount_percent}% discount applied!`)
-                      } else {
-                        toast.error(data?.error || 'Invalid promo code')
-                      }
-                    } catch (err) {
-                      toast.error(err.message || 'Failed to validate code')
-                    } finally {
-                      setValidatingCode(false)
-                    }
-                  }}
-                  className="text-xs"
-                >
-                  Apply
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-emerald-400 font-medium">✓ Code "{promoCode}" — {promoCodeResult.discount_percent}% off</span>
-                <button
-                  onClick={() => { setPromoCodeResult(null); setPromoCode('') }}
-                  className="text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            )}
-          </div>
-        )}
+
 
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-1">
@@ -628,6 +489,24 @@ export default function ProfilePage() {
           open={showTipModal}
           onClose={() => setShowTipModal(false)}
           creator={profile}
+        />
+      )}
+
+      {/* Subscribe Modal */}
+      {showSubscribeModal && (
+        <SubscribeModal
+          open={showSubscribeModal}
+          onClose={() => setShowSubscribeModal(false)}
+          creator={profile}
+          onSubscribed={() => {
+            setIsSubscribed(true)
+            setProfile(p => ({ ...p, subscriber_count: (p.subscriber_count || 0) + 1 }))
+            if (!isFollowing) {
+              setIsFollowing(true)
+              setProfile(p => ({ ...p, follower_count: p.follower_count + 1 }))
+            }
+            fetchProfile()
+          }}
         />
       )}
     </div>
