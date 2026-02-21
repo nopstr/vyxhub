@@ -77,6 +77,7 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
         p_subscriber_id: user.id,
         p_creator_id: creator.id,
         p_price: amount,
+        p_referrer_id: null,
       })
       if (error) throw error
 
