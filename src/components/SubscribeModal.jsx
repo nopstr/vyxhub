@@ -73,7 +73,7 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
     try {
       const amount = effectivePrice
 
-      const { data: subResult, error } = await supabase.rpc('subscribe_to_creator', {
+      const { data: subResult, error } = await supabase.rpc('process_subscription', {
         p_subscriber_id: user.id,
         p_creator_id: creator.id,
         p_price: amount,
