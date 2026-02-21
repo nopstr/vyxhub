@@ -55,9 +55,9 @@ export function SidebarAd({ ad }) {
       className="w-full text-left group cursor-pointer block"
     >
       <div className="rounded-2xl overflow-hidden border border-zinc-800/50 bg-zinc-900/30 hover:border-zinc-700/50 transition-colors">
-        {ad.image_url && (
+        {(ad.sidebar_image_url || ad.image_url) && (
           <img
-            src={ad.image_url}
+            src={ad.sidebar_image_url || ad.image_url}
             alt={ad.title}
             className="w-full h-auto object-cover"
             loading="lazy"

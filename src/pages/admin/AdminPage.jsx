@@ -404,7 +404,7 @@ function AffiliateAdsManager() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingAd, setEditingAd] = useState(null)
-  const [form, setForm] = useState({ title: '', description: '', image_url: '', link_url: '', placement: 'both' })
+  const [form, setForm] = useState({ title: '', description: '', image_url: '', sidebar_image_url: '', link_url: '', placement: 'both' })
   const [saving, setSaving] = useState(false)
 
   const fetchAds = async () => {
@@ -417,13 +417,13 @@ function AffiliateAdsManager() {
   useEffect(() => { fetchAds() }, [])
 
   const resetForm = () => {
-    setForm({ title: '', description: '', image_url: '', link_url: '', placement: 'both' })
+    setForm({ title: '', description: '', image_url: '', sidebar_image_url: '', link_url: '', placement: 'both' })
     setEditingAd(null)
     setShowForm(false)
   }
 
   const handleEdit = (ad) => {
-    setForm({ title: ad.title, description: ad.description || '', image_url: ad.image_url, link_url: ad.link_url, placement: ad.placement })
+    setForm({ title: ad.title, description: ad.description || '', image_url: ad.image_url, sidebar_image_url: ad.sidebar_image_url || '', link_url: ad.link_url, placement: ad.placement })
     setEditingAd(ad)
     setShowForm(true)
   }
@@ -480,7 +480,8 @@ function AffiliateAdsManager() {
           <h4 className="font-bold text-white">{editingAd ? 'Edit Ad' : 'Create Ad'}</h4>
           <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
           <textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 resize-none" />
-          <Input placeholder="Image URL (feed: 600x400, sidebar: 300x250)" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
+          <Input placeholder="Feed Image URL (600×400)" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
+          <Input placeholder="Sidebar Image URL (300×250, optional)" value={form.sidebar_image_url} onChange={e => setForm(f => ({ ...f, sidebar_image_url: e.target.value }))} />
           <Input placeholder="Link URL (affiliate link)" value={form.link_url} onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))} />
           <div>
             <label className="text-sm text-zinc-400 mb-1 block">Placement</label>
@@ -494,9 +495,24 @@ function AffiliateAdsManager() {
               <option value="sidebar">Sidebar Only</option>
             </select>
           </div>
-          {form.image_url && (
-            <div className="rounded-xl overflow-hidden border border-zinc-800/50">
-              <img src={form.image_url} alt="Preview" className="w-full max-h-48 object-cover" />
+          {(form.image_url || form.sidebar_image_url) && (
+            <div className="grid grid-cols-2 gap-3">
+              {form.image_url && (
+                <div>
+                  <p className="text-[11px] text-zinc-500 mb-1">Feed Preview</p>
+                  <div className="rounded-xl overflow-hidden border border-zinc-800/50">
+                    <img src={form.image_url} alt="Feed preview" className="w-full max-h-40 object-cover" />
+                  </div>
+                </div>
+              )}
+              {form.sidebar_image_url && (
+                <div>
+                  <p className="text-[11px] text-zinc-500 mb-1">Sidebar Preview</p>
+                  <div className="rounded-xl overflow-hidden border border-zinc-800/50">
+                    <img src={form.sidebar_image_url} alt="Sidebar preview" className="w-full max-h-40 object-cover" />
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className="flex gap-3">
