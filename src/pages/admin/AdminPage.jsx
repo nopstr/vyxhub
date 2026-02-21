@@ -9,7 +9,8 @@ import { cn, formatCurrency } from '../../lib/utils'
 import {
   ShieldAlert, DollarSign, Users, TrendingUp, BarChart3,
   Search, Save, Crown, Percent, UserCheck, Eye, CreditCard,
-  ChevronLeft, ChevronRight, ShieldCheck, Settings
+  ChevronLeft, ChevronRight, ShieldCheck, Settings, Megaphone,
+  Plus, Trash2, ExternalLink, Image as ImageIcon, Link2, ToggleLeft, ToggleRight
 } from 'lucide-react'
 
 // ─── Revenue Dashboard ──────────────────────────────────────────────
@@ -397,11 +398,219 @@ function RoleManager() {
   )
 }
 
+// ─── Affiliate Ads Manager ──────────────────────────────────────────
+function AffiliateAdsManager() {
+  const [ads, setAds] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingAd, setEditingAd] = useState(null)
+  const [form, setForm] = useState({ title: '', description: '', image_url: '', link_url: '', placement: 'both' })
+  const [saving, setSaving] = useState(false)
+
+  const fetchAds = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('affiliate_ads').select('*').order('created_at', { ascending: false })
+    setAds(data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => { fetchAds() }, [])
+
+  const resetForm = () => {
+    setForm({ title: '', description: '', image_url: '', link_url: '', placement: 'both' })
+    setEditingAd(null)
+    setShowForm(false)
+  }
+
+  const handleEdit = (ad) => {
+    setForm({ title: ad.title, description: ad.description || '', image_url: ad.image_url, link_url: ad.link_url, placement: ad.placement })
+    setEditingAd(ad)
+    setShowForm(true)
+  }
+
+  const handleSave = async () => {
+    if (!form.title || !form.image_url || !form.link_url) {
+      toast.error('Title, image URL, and link URL are required')
+      return
+    }
+    setSaving(true)
+    try {
+      if (editingAd) {
+        const { error } = await supabase.from('affiliate_ads').update({ ...form, updated_at: new Date().toISOString() }).eq('id', editingAd.id)
+        if (error) throw error
+        toast.success('Ad updated')
+      } else {
+        const { error } = await supabase.from('affiliate_ads').insert([form])
+        if (error) throw error
+        toast.success('Ad created')
+      }
+      resetForm()
+      fetchAds()
+    } catch (err) {
+      toast.error(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const toggleActive = async (ad) => {
+    const { error } = await supabase.from('affiliate_ads').update({ is_active: !ad.is_active, updated_at: new Date().toISOString() }).eq('id', ad.id)
+    if (error) toast.error(error.message)
+    else fetchAds()
+  }
+
+  const handleDelete = async (ad) => {
+    if (!confirm(`Delete ad "${ad.title}"?`)) return
+    const { error } = await supabase.from('affiliate_ads').delete().eq('id', ad.id)
+    if (error) toast.error(error.message)
+    else { toast.success('Ad deleted'); fetchAds() }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-zinc-400">Manage affiliate ads shown in feed and sidebar</p>
+        <Button onClick={() => { resetForm(); setShowForm(true) }} className="!py-2 !px-4 text-sm">
+          <Plus size={15} className="mr-1.5" /> New Ad
+        </Button>
+      </div>
+
+      {showForm && (
+        <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 space-y-4">
+          <h4 className="font-bold text-white">{editingAd ? 'Edit Ad' : 'Create Ad'}</h4>
+          <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+          <textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 resize-none" />
+          <Input placeholder="Image URL (feed: 600x400, sidebar: 300x250)" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
+          <Input placeholder="Link URL (affiliate link)" value={form.link_url} onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))} />
+          <div>
+            <label className="text-sm text-zinc-400 mb-1 block">Placement</label>
+            <select
+              value={form.placement}
+              onChange={e => setForm(f => ({ ...f, placement: e.target.value }))}
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 cursor-pointer"
+            >
+              <option value="both">Feed + Sidebar</option>
+              <option value="feed">Feed Only</option>
+              <option value="sidebar">Sidebar Only</option>
+            </select>
+          </div>
+          {form.image_url && (
+            <div className="rounded-xl overflow-hidden border border-zinc-800/50">
+              <img src={form.image_url} alt="Preview" className="w-full max-h-48 object-cover" />
+            </div>
+          )}
+          <div className="flex gap-3">
+            <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+            <Button variant="ghost" onClick={resetForm}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-8 text-zinc-500">Loading ads...</div>
+      ) : ads.length === 0 ? (
+        <div className="text-center py-12 text-zinc-500">
+          <Megaphone size={32} className="mx-auto mb-3 opacity-40" />
+          <p>No affiliate ads yet</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {ads.map(ad => (
+            <div key={ad.id} className={cn(
+              'p-4 rounded-2xl border transition-colors',
+              ad.is_active ? 'bg-zinc-900/50 border-zinc-800/50' : 'bg-zinc-900/20 border-zinc-800/30 opacity-60'
+            )}>
+              <div className="flex gap-4">
+                {ad.image_url && (
+                  <img src={ad.image_url} alt={ad.title} className="w-20 h-14 object-cover rounded-lg flex-shrink-0" />
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-bold text-white text-sm truncate">{ad.title}</h4>
+                    <span className={cn(
+                      'px-2 py-0.5 rounded-full text-[10px] font-bold',
+                      ad.is_active ? 'bg-green-500/10 text-green-400' : 'bg-zinc-700/30 text-zinc-500'
+                    )}>
+                      {ad.is_active ? 'ACTIVE' : 'PAUSED'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-zinc-800/50 text-zinc-400 text-[10px] font-medium">
+                      {ad.placement}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-zinc-500">
+                    <span className="flex items-center gap-1"><Eye size={12} /> {ad.impressions || 0} views</span>
+                    <span className="flex items-center gap-1"><ExternalLink size={12} /> {ad.clicks || 0} clicks</span>
+                    <span>{ad.impressions > 0 ? ((ad.clicks / ad.impressions * 100).toFixed(1) + '% CTR') : '—'}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button onClick={() => toggleActive(ad)} className="p-2 rounded-lg hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-colors cursor-pointer" title={ad.is_active ? 'Pause' : 'Activate'}>
+                    {ad.is_active ? <ToggleRight size={18} className="text-green-400" /> : <ToggleLeft size={18} />}
+                  </button>
+                  <button onClick={() => handleEdit(ad)} className="p-2 rounded-lg hover:bg-zinc-800/50 text-zinc-400 hover:text-white transition-colors cursor-pointer" title="Edit">
+                    <Settings size={16} />
+                  </button>
+                  <button onClick={() => handleDelete(ad)} className="p-2 rounded-lg hover:bg-zinc-800/50 text-zinc-400 hover:text-red-400 transition-colors cursor-pointer" title="Delete">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── VyxHub+ Stats ──────────────────────────────────────────────────
+function PlusStats() {
+  const [stats, setStats] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.rpc('get_plus_stats')
+      setStats(data)
+      setLoading(false)
+    })()
+  }, [])
+
+  if (loading) return <div className="text-center py-8 text-zinc-500">Loading...</div>
+  if (!stats) return null
+
+  const cards = [
+    { label: 'Active Subscribers', value: stats.total_active, icon: Crown, color: 'amber' },
+    { label: 'User Tier', value: stats.user_tier, icon: Users, color: 'blue' },
+    { label: 'Creator Tier', value: stats.creator_tier, icon: Crown, color: 'purple' },
+    { label: 'Monthly Revenue', value: formatCurrency(stats.monthly_revenue), icon: DollarSign, color: 'green' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-zinc-400">VyxHub+ subscription overview</p>
+      <div className="grid grid-cols-2 gap-3">
+        {cards.map((c, i) => (
+          <div key={i} className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50">
+            <div className="flex items-center gap-2 mb-2">
+              <c.icon size={16} className={`text-${c.color}-400`} />
+              <span className="text-xs text-zinc-500">{c.label}</span>
+            </div>
+            <p className="text-2xl font-bold text-white">{c.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main Admin Page ────────────────────────────────────────────────
 const adminTabs = [
   { id: 'revenue', label: 'Revenue', icon: DollarSign },
   { id: 'splits', label: 'Splits', icon: Percent },
   { id: 'roles', label: 'Roles', icon: Settings },
+  { id: 'ads', label: 'Ads', icon: Megaphone },
+  { id: 'plus', label: 'Plus', icon: Crown },
 ]
 
 export default function AdminPage() {
@@ -441,6 +650,8 @@ export default function AdminPage() {
         {tab === 'revenue' && <RevenueDashboard />}
         {tab === 'splits' && <SplitManager />}
         {tab === 'roles' && <RoleManager />}
+        {tab === 'ads' && <AffiliateAdsManager />}
+        {tab === 'plus' && <PlusStats />}
       </div>
     </div>
   )

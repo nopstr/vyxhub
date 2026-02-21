@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Search, Bell, Mail, Unlock, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users } from 'lucide-react'
+import { Home, Search, Bell, Mail, Unlock, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users, Crown } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../ui/Avatar'
@@ -91,6 +91,9 @@ export default function Sidebar() {
                 count={item.countKey === 'notifications' ? unreadCount : 0}
               />
             ))}
+
+            {/* VyxHub+ */}
+            <SidebarLink to="/plus" icon={Crown} label="VyxHub+" />
 
             <div className="h-px bg-zinc-800/50 my-2 mx-4" />
             {profile?.is_creator ? (

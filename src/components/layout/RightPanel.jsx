@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import SearchOverlay from '../ui/SearchOverlay'
+import { SidebarAd } from '../feed/AffiliateAdCard'
 import { debounce, formatNumber } from '../../lib/utils'
 
 function TrendingSection() {
@@ -187,6 +188,35 @@ function SuggestedCreators() {
   )
 }
 
+function SidebarAds() {
+  const profile = useAuthStore((s) => s.profile)
+  const [ads, setAds] = useState([])
+
+  // VyxHub+ users don't see ads
+  const isPlus = profile?.is_plus && profile?.plus_expires_at && new Date(profile.plus_expires_at) > new Date()
+
+  useEffect(() => {
+    if (isPlus) return
+    (async () => {
+      const { data } = await supabase.rpc('get_affiliate_ads', { p_placement: 'sidebar', p_limit: 2 })
+      if (data?.length > 0) {
+        setAds(data)
+        supabase.rpc('record_affiliate_impressions', { p_ad_ids: data.map(a => a.id) }).catch(() => {})
+      }
+    })()
+  }, [isPlus])
+
+  if (isPlus || ads.length === 0) return null
+
+  return (
+    <section className="space-y-3">
+      {ads.map(ad => (
+        <SidebarAd key={ad.id} ad={ad} />
+      ))}
+    </section>
+  )
+}
+
 export default function RightPanel() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -234,6 +264,7 @@ export default function RightPanel() {
         <TrendingSection />
         <TrendingHashtags />
         <SuggestedCreators />
+        <SidebarAds />
 
         {/* Footer Links */}
         <div className="text-[11px] text-zinc-600 space-x-2 px-1 leading-relaxed">

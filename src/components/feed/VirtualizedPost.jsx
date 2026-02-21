@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { useInView } from 'react-intersection-observer'
 import PostCard from './PostCard'
+import AffiliateAdCard from './AffiliateAdCard'
 import { recordImpression } from '../../stores/postStore'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -13,10 +14,15 @@ export default function VirtualizedPost({ post }) {
 
   // Record impression when post enters viewport (feed algorithm signal)
   useEffect(() => {
-    if (inView && post?.id && user?.id) {
+    if (inView && post?.id && user?.id && !post._affiliateAd) {
       recordImpression(post.id, user.id)
     }
   }, [inView, post?.id, user?.id])
+
+  // Render affiliate ad card instead of PostCard
+  if (post._affiliateAd) {
+    return <AffiliateAdCard ad={post} />
+  }
 
   return (
     <div ref={ref}>

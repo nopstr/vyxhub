@@ -4,7 +4,7 @@ import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
-  Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet
+  Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet, Crown
 } from 'lucide-react'
 import SecureVideoPlayer from '../ui/SecureVideoPlayer'
 import ProtectedImage from '../ui/ProtectedImage'
@@ -538,6 +538,7 @@ export default function PostCard({ post }) {
   const [showReportModal, setShowReportModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showTipModal, setShowTipModal] = useState(false)
+  const [showSubscribeInline, setShowSubscribeInline] = useState(false)
   const [editedContent, setEditedContent] = useState(post.content)
 
   if (!author) return null
@@ -778,6 +779,9 @@ export default function PostCard({ post }) {
                 <Link to={`/@${author.username}`} className="flex items-center gap-1.5 min-w-0 hover:underline">
                   <span className="font-bold text-zinc-100 truncate">{author.display_name}</span>
                   {author.is_verified && <ShieldCheck size={15} className="text-indigo-400 fill-indigo-400/10 flex-shrink-0" />}
+                  {author.is_plus && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
+                    <Crown size={14} className="text-amber-400 fill-amber-400/10 flex-shrink-0" />
+                  )}
                 </Link>
                 {/* Desktop: inline username + time */}
                 <span className="hidden md:inline text-zinc-500 text-sm flex-shrink-0">@{author.username}</span>
@@ -1068,6 +1072,22 @@ export default function PostCard({ post }) {
               </button>
             )}
 
+            {/* Direct Subscribe — for VyxHub+ creators, shown to non-subscribers */}
+            {!isOwn && !isSubscribed && author.is_creator && author.is_plus && author.plus_tier === 'creator' && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!user) return toast.error('Sign in to subscribe')
+                  setShowSubscribeInline(true)
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 transition-colors group cursor-pointer"
+                title={`Subscribe to ${author.display_name}`}
+              >
+                <Crown size={16} className="group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-bold hidden sm:inline">Subscribe</span>
+              </button>
+            )}
+
             {/* Repost Button */}
             {!isOwn && (
               <button
@@ -1125,6 +1145,18 @@ export default function PostCard({ post }) {
           onClose={() => setShowTipModal(false)}
           creator={author}
           postId={post.id}
+        />
+      )}
+
+      {/* Inline Subscribe Modal (for VyxHub+ creator posts) */}
+      {showSubscribeInline && (
+        <SubscribeModal
+          open={showSubscribeInline}
+          onClose={() => setShowSubscribeInline(false)}
+          creator={author}
+          onSubscribed={() => {
+            useSubscriptionCache.getState().addSubscription(author.id)
+          }}
         />
       )}
     </article>

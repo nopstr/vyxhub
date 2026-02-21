@@ -40,6 +40,11 @@ export const VISIBILITY_OPTIONS = [
 export const MANAGED_CREATOR_SPLIT = 60 // managed creators keep 60%
 export const MANAGED_PLATFORM_CUT = 40 // platform takes 40% for managed
 
+// VyxHub+ Premium
+export const PLUS_USER_PRICE = 4.99
+export const PLUS_CREATOR_PRICE = 9.99
+export const PLUS_FEE_PERCENT = 25 // VyxHub+ creators pay 25% instead of 30%
+
 export const CEO_USERNAME = 'ceo_steve_b'
 
 export const SYSTEM_ROLES = {

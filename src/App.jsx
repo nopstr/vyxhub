@@ -38,6 +38,9 @@ const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage'))
 const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
 const CompliancePage = lazy(() => import('./pages/legal/CompliancePage'))
 
+// VyxHub+
+const PlusPage = lazy(() => import('./pages/plus/PlusPage'))
+
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuthStore()
 
@@ -121,6 +124,7 @@ export default function App() {
             <Route index element={<HomePage />} />
             <Route path="explore" element={<ExplorePage />} />
             <Route path="become-creator" element={<BecomeCreatorPage />} />
+            <Route path="plus" element={<PlusPage />} />
             <Route path="post/:postId" element={<PostDetailPage />} />
             <Route path=":username" element={<ProfilePage />} />
           </Route>

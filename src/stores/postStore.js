@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
 import { FEED_PAGE_SIZE } from '../lib/constants'
 import { validateFile, resolvePostMediaUrls, optimizeImage } from '../lib/storage'
+import { useAuthStore } from './authStore'
 
 // Throttle guards for mutations — prevents spam clicks / bot abuse
 const _reactionThrottle = new Map() // postId:reactionType → timestamp
@@ -211,9 +212,13 @@ export const usePostStore = create((set, get) => ({
       // Resolve protected media to short-lived signed URLs
       await resolvePostMediaUrls(data)
 
-      // Inject promoted posts into feed (every ~5th position on first page)
-      if (reset && currentPage === 0 && data.length > 3) {
+      // Inject promoted posts + affiliate ads for non-Plus users (every ~5th position on first page)
+      const authProfile = useAuthStore.getState().profile
+      const isPlus = authProfile?.is_plus && authProfile?.plus_expires_at && new Date(authProfile.plus_expires_at) > new Date()
+
+      if (reset && currentPage === 0 && data.length > 3 && !isPlus) {
         try {
+          // Fetch creator-promoted posts
           const { data: promoData } = await supabase.rpc('get_promoted_posts', { p_limit: 3 })
           if (promoData?.length > 0) {
             // Fetch full post data for promoted posts
@@ -234,6 +239,18 @@ export const usePostStore = create((set, get) => ({
                 data.splice(pos, 0, pp)
               })
             }
+          }
+
+          // Fetch affiliate ads and inject as ad cards
+          const { data: affiliateAds } = await supabase.rpc('get_affiliate_ads', { p_placement: 'feed', p_limit: 2 })
+          if (affiliateAds?.length > 0) {
+            // Record impressions
+            supabase.rpc('record_affiliate_impressions', { p_ad_ids: affiliateAds.map(a => a.id) }).catch(() => {})
+            // Inject at positions 6 and 12
+            affiliateAds.forEach((ad, i) => {
+              const pos = Math.min(6 + i * 6, data.length)
+              data.splice(pos, 0, { ...ad, _affiliateAd: true })
+            })
           }
         } catch (e) {
           console.warn('Failed to fetch promoted posts:', e)

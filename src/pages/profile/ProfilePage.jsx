@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import {
   Calendar, MapPin, LinkIcon, ShieldCheck, Settings, Mail,
   Grid3x3, Video, Lock, MoreHorizontal, Image, Film, Play, DollarSign, Zap,
-  Flag, UserX, VolumeX, XCircle, ClipboardList, X, Loader2
+  Flag, UserX, VolumeX, XCircle, ClipboardList, X, Loader2, Crown
 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
@@ -354,6 +354,9 @@ export default function ProfilePage() {
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-black text-white">{profile.display_name}</h1>
             {profile.is_verified && <ShieldCheck size={20} className="text-indigo-400 fill-indigo-400/10" />}
+            {profile.is_plus && profile.plus_expires_at && new Date(profile.plus_expires_at) > new Date() && (
+              <Crown size={18} className="text-amber-400 fill-amber-400/10" />
+            )}
             {profile.is_creator && <Badge variant="premium">Creator</Badge>}
           </div>
           <p className="text-zinc-500">@{profile.username}</p>
