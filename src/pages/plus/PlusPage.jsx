@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Crown, Zap, ShieldCheck, MessageSquare, TrendingUp,
+  Crown, ShieldCheck, MessageSquare, TrendingUp,
   BarChart3, Percent, Star, Eye, Sparkles, Check,
-  ChevronRight, ArrowLeft, Wallet
+  ChevronRight, ArrowLeft
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import Button from '../../components/ui/Button'
@@ -45,99 +45,46 @@ function BenefitCard({ icon: Icon, title, description }) {
   )
 }
 
-function PricingCard({ tier, price, benefits, isActive, activeTier, onSubscribe, loading }) {
-  const isCurrentTier = isActive && activeTier === tier
-  const isUpgrade = isActive && activeTier === 'user' && tier === 'creator'
-
-  return (
-    <div className={cn(
-      'relative rounded-3xl border p-6 transition-all',
-      tier === 'creator'
-        ? 'border-amber-500/30 bg-gradient-to-b from-amber-500/5 to-transparent shadow-lg shadow-amber-500/5'
-        : 'border-zinc-800/50 bg-zinc-900/30',
-      isCurrentTier && 'ring-2 ring-amber-500/50'
-    )}>
-      {tier === 'creator' && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-amber-500 to-orange-500 rounded-full text-xs font-bold text-black">
-          BEST VALUE
-        </div>
-      )}
-
-      <div className="text-center mb-6">
-        <div className={cn(
-          'w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3',
-          tier === 'creator' ? 'bg-gradient-to-br from-amber-500 to-orange-600' : 'bg-zinc-800'
-        )}>
-          {tier === 'creator' ? <Sparkles size={24} className="text-white" /> : <Crown size={24} className="text-amber-400" />}
-        </div>
-        <h3 className="text-xl font-bold text-white">
-          {tier === 'user' ? 'VyxHub+ User' : 'VyxHub+ Creator'}
-        </h3>
-        <div className="mt-2">
-          <span className="text-3xl font-black text-white">${price}</span>
-          <span className="text-zinc-500 text-sm">/month</span>
-        </div>
-      </div>
-
-      <div className="space-y-3 mb-6">
-        {benefits.map((b, i) => (
-          <div key={i} className="flex items-start gap-2.5">
-            <Check size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
-            <span className="text-sm text-zinc-300">{b}</span>
-          </div>
-        ))}
-      </div>
-
-      {isCurrentTier ? (
-        <div className="w-full py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center text-amber-400 font-bold text-sm">
-          Current Plan
-        </div>
-      ) : (
-        <Button
-          onClick={() => onSubscribe(tier)}
-          disabled={loading}
-          className={cn(
-            'w-full !rounded-2xl font-bold',
-            tier === 'creator'
-              ? '!bg-gradient-to-r !from-amber-500 !to-orange-500 hover:!from-amber-400 hover:!to-orange-400 !text-black'
-              : ''
-          )}
-        >
-          {isUpgrade ? 'Upgrade to Creator' : `Subscribe — $${price}/mo`}
-        </Button>
-      )}
-    </div>
-  )
-}
-
 export default function PlusPage() {
   const { user, profile, fetchProfile } = useAuthStore()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [showCrypto, setShowCrypto] = useState(false)
-  const [selectedTier, setSelectedTier] = useState(null)
-  const [view, setView] = useState('user') // 'user' or 'creator'
+
+  // Determine which tier to show based on user type — they ONLY see their own
+  const isCreator = profile?.is_creator === true
+  const tier = isCreator ? 'creator' : 'user'
+  const price = isCreator ? PLUS_CREATOR_PRICE : PLUS_USER_PRICE
+  const benefits = isCreator ? CREATOR_BENEFITS : USER_BENEFITS
+  const benefitsList = isCreator ? [
+    '35% algorithm boost — more reach',
+    `Only ${PLUS_FEE_PERCENT}% platform fee (save 5%)`,
+    'VyxHub+ Creator badge',
+    '30% priority in Explore trending',
+    'Advanced analytics dashboard',
+    'No platform ads in your feed',
+    'Free DM unlock with anyone',
+    'Priority support queue',
+  ] : [
+    'No platform ads in your feed',
+    'Exclusive VyxHub+ gold badge',
+    'Free DM unlock with any creator',
+    'Priority support queue',
+  ]
 
   const isPlus = profile?.is_plus && profile?.plus_expires_at && new Date(profile.plus_expires_at) > new Date()
-  const activeTier = isPlus ? profile?.plus_tier : null
 
-  const handleSubscribe = (tier) => {
+  const handleSubscribe = () => {
     if (!user) {
       navigate('/auth')
       return
     }
-    if (tier === 'creator' && !profile?.is_creator) {
-      toast.error('You need to be a creator to subscribe to the Creator tier')
-      return
-    }
-    setSelectedTier(tier)
     setShowCrypto(true)
   }
 
   const handleCryptoSuccess = async () => {
     setShowCrypto(false)
     toast.success('Welcome to VyxHub+! Your premium benefits are now active.')
-    // Refresh profile to get updated Plus status
     if (user?.id) {
       await fetchProfile(user.id)
     }
@@ -158,24 +105,6 @@ export default function PlusPage() {
     }
   }
 
-  const userBenefitsList = [
-    'No platform ads in your feed',
-    'Exclusive VyxHub+ gold badge',
-    'Free DM unlock with any creator',
-    'Priority support queue',
-  ]
-
-  const creatorBenefitsList = [
-    'Everything in User tier',
-    '35% algorithm boost — more reach',
-    `Only ${PLUS_FEE_PERCENT}% platform fee (save 5%)`,
-    'VyxHub+ Creator badge',
-    '30% priority in Explore trending',
-    'Advanced analytics dashboard',
-    'Free DM unlock with anyone',
-    'Priority support queue',
-  ]
-
   return (
     <div className="max-w-3xl mx-auto">
       {/* Header */}
@@ -190,7 +119,7 @@ export default function PlusPage() {
           <h1 className="text-xl font-bold text-white">VyxHub+</h1>
           {isPlus && (
             <span className="ml-auto px-3 py-1 bg-amber-500/10 rounded-full text-amber-400 text-xs font-bold border border-amber-500/30">
-              {activeTier === 'creator' ? 'Creator' : 'User'} Plan Active
+              Active
             </span>
           )}
         </div>
@@ -204,80 +133,82 @@ export default function PlusPage() {
 
         <div className="relative text-center py-10 px-5">
           <div className="w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-2xl shadow-amber-500/25">
-            <Crown className="text-white" size={36} />
+            {isCreator ? <Sparkles className="text-white" size={36} /> : <Crown className="text-white" size={36} />}
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-white mb-3 leading-tight">
-            Unlock the<br/>
-            <span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">full experience</span>
+            {isCreator ? (
+              <>Grow faster,<br/><span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">earn more</span></>
+            ) : (
+              <>Unlock the<br/><span className="bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent">full experience</span></>
+            )}
           </h2>
           <p className="text-zinc-400 max-w-md mx-auto">
-            Premium perks for fans and creators. No ads, more reach, lower fees, and a badge that stands out.
+            {isCreator
+              ? 'More reach, lower fees, and a creator badge that builds trust. Stand out from the crowd.'
+              : 'No ads, free DM access, and a badge that stands out. The premium VyxHub experience.'
+            }
           </p>
-        </div>
-      </div>
-
-      {/* Benefits Toggle */}
-      <div className="px-5 mb-6">
-        <div className="flex bg-zinc-900/50 rounded-2xl p-1 border border-zinc-800/50">
-          <button
-            onClick={() => setView('user')}
-            className={cn(
-              'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer',
-              view === 'user'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'text-zinc-500 hover:text-zinc-300'
-            )}
-          >
-            For Users
-          </button>
-          <button
-            onClick={() => setView('creator')}
-            className={cn(
-              'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer',
-              view === 'creator'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'text-zinc-500 hover:text-zinc-300'
-            )}
-          >
-            For Creators
-          </button>
         </div>
       </div>
 
       {/* Benefits List */}
       <div className="px-5 mb-8">
         <h3 className="text-lg font-bold text-white mb-4">
-          {view === 'user' ? 'User Benefits' : 'Creator Benefits'}
+          {isCreator ? 'Creator Benefits' : 'Your Benefits'}
         </h3>
         <div className="space-y-3">
-          {(view === 'user' ? USER_BENEFITS : CREATOR_BENEFITS).map((b, i) => (
+          {benefits.map((b, i) => (
             <BenefitCard key={i} {...b} />
           ))}
         </div>
       </div>
 
-      {/* Pricing Cards */}
+      {/* Single Pricing Card */}
       <div className="px-5 mb-8">
-        <h3 className="text-lg font-bold text-white mb-4">Choose Your Plan</h3>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <PricingCard
-            tier="user"
-            price={PLUS_USER_PRICE}
-            benefits={userBenefitsList}
-            isActive={isPlus}
-            activeTier={activeTier}
-            onSubscribe={handleSubscribe}
-            loading={loading}
-          />
-          <PricingCard
-            tier="creator"
-            price={PLUS_CREATOR_PRICE}
-            benefits={creatorBenefitsList}
-            isActive={isPlus}
-            activeTier={activeTier}
-            onSubscribe={handleSubscribe}
-            loading={loading}
-          />
+        <div className={cn(
+          'relative rounded-3xl border p-6',
+          isCreator
+            ? 'border-amber-500/30 bg-gradient-to-b from-amber-500/5 to-transparent shadow-lg shadow-amber-500/5'
+            : 'border-amber-500/20 bg-zinc-900/30'
+        )}>
+          <div className="text-center mb-6">
+            <div className={cn(
+              'w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3',
+              'bg-gradient-to-br from-amber-500 to-orange-600'
+            )}>
+              {isCreator ? <Sparkles size={24} className="text-white" /> : <Crown size={24} className="text-white" />}
+            </div>
+            <h3 className="text-xl font-bold text-white">
+              VyxHub+ {isCreator ? 'Creator' : ''}
+            </h3>
+            <div className="mt-2">
+              <span className="text-3xl font-black text-white">${price}</span>
+              <span className="text-zinc-500 text-sm">/month</span>
+            </div>
+          </div>
+
+          <div className="space-y-3 mb-6">
+            {benefitsList.map((b, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <Check size={16} className="text-amber-400 mt-0.5 flex-shrink-0" />
+                <span className="text-sm text-zinc-300">{b}</span>
+              </div>
+            ))}
+          </div>
+
+          {isPlus ? (
+            <div className="w-full py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-center text-amber-400 font-bold text-sm">
+              Current Plan
+            </div>
+          ) : (
+            <Button
+              onClick={handleSubscribe}
+              disabled={loading}
+              className="w-full !rounded-2xl font-bold !bg-gradient-to-r !from-amber-500 !to-orange-500 hover:!from-amber-400 hover:!to-orange-400 !text-black"
+            >
+              Subscribe — ${price}/mo
+            </Button>
+          )}
         </div>
       </div>
 
@@ -289,7 +220,7 @@ export default function PlusPage() {
             <div className="space-y-2 text-sm text-zinc-400">
               <div className="flex justify-between">
                 <span>Plan</span>
-                <span className="text-white font-medium">VyxHub+ {activeTier === 'creator' ? 'Creator' : 'User'}</span>
+                <span className="text-white font-medium">VyxHub+ {isCreator ? 'Creator' : ''}</span>
               </div>
               <div className="flex justify-between">
                 <span>Renews</span>
@@ -299,9 +230,7 @@ export default function PlusPage() {
               </div>
               <div className="flex justify-between">
                 <span>Price</span>
-                <span className="text-white font-medium">
-                  ${activeTier === 'creator' ? PLUS_CREATOR_PRICE : PLUS_USER_PRICE}/mo
-                </span>
+                <span className="text-white font-medium">${price}/mo</span>
               </div>
             </div>
             <button
@@ -321,9 +250,14 @@ export default function PlusPage() {
         <div className="space-y-3">
           {[
             { q: 'How do I pay?', a: 'VyxHub+ is paid via cryptocurrency. We support 10+ popular cryptos including Bitcoin, Ethereum, USDT, and more.' },
-            { q: 'Can I switch plans?', a: 'Yes! You can upgrade from User to Creator at any time. The remaining days on your current plan carry over.' },
             { q: 'What happens when I cancel?', a: 'Your premium benefits stay active until the end of your billing period. No prorated refunds.' },
-            { q: 'Do I need to be a creator for the Creator plan?', a: 'Yes, you must have an active creator account to subscribe to the Creator tier.' },
+            ...(isCreator ? [
+              { q: 'How much do I save on fees?', a: `VyxHub+ creators pay ${PLUS_FEE_PERCENT}% platform fee instead of ${PLATFORM_FEE_PERCENT}%. That\'s 5% more in your pocket on every transaction.` },
+              { q: 'How does the algorithm boost work?', a: 'Your posts get a 35% boost in the For You feed and 30% priority in Explore trending, meaning more people discover your content.' },
+            ] : [
+              { q: 'What does free DM unlock mean?', a: 'Normally, creators can set a price to message them. With VyxHub+, you can message any creator for free — no unlock fees.' },
+              { q: 'Will I see any ads?', a: 'No. VyxHub+ members get a completely ad-free experience — no sponsored posts, no banners, nothing.' },
+            ]),
           ].map((item, i) => (
             <details key={i} className="group p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50">
               <summary className="font-medium text-white cursor-pointer flex items-center justify-between">
@@ -337,13 +271,13 @@ export default function PlusPage() {
       </div>
 
       {/* Crypto Payment Modal */}
-      {showCrypto && selectedTier && (
+      {showCrypto && (
         <CryptoPaymentModal
           isOpen={showCrypto}
           onClose={() => setShowCrypto(false)}
-          amountUsd={selectedTier === 'creator' ? PLUS_CREATOR_PRICE : PLUS_USER_PRICE}
+          amountUsd={price}
           paymentType="plus_subscription"
-          metadata={{ tier: selectedTier, user_id: user?.id }}
+          metadata={{ tier, user_id: user?.id }}
           onSuccess={handleCryptoSuccess}
         />
       )}
