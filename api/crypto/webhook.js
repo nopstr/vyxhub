@@ -14,7 +14,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createHmac } from 'node:crypto'
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://agoekmugbrswrdjscwek.supabase.co'
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
 const IPN_SECRET = process.env.NOWPAYMENTS_IPN_SECRET
 
 /**
