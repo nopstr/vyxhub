@@ -117,10 +117,18 @@ export default function PlusPage() {
             <Crown size={16} className="text-white" />
           </div>
           <h1 className="text-xl font-bold text-white">VyxHub+</h1>
-          {isPlus && (
+          {isPlus ? (
             <span className="ml-auto px-3 py-1 bg-amber-500/10 rounded-full text-amber-400 text-xs font-bold border border-amber-500/30">
               Active
             </span>
+          ) : (
+            <Button
+              onClick={handleSubscribe}
+              disabled={loading}
+              className="ml-auto !rounded-full !px-4 !py-1.5 !text-xs font-bold !bg-gradient-to-r !from-amber-500 !to-orange-500 hover:!from-amber-400 hover:!to-orange-400 !text-black"
+            >
+              Subscribe — ${price}/mo
+            </Button>
           )}
         </div>
       </header>
