@@ -847,24 +847,9 @@ export default function PostCard({ post }) {
 
       {/* Content area — full-width on mobile, avatar-indented on desktop */}
       <div className="md:pl-[52px] mt-2 md:mt-0">
-          {/* Content — gate text for subscriber-only posts */}
-          {editedContent && (
-            <p className="text-[15px] text-zinc-200 leading-relaxed mb-1 whitespace-pre-wrap break-words">
-              {isContentUnlocked || post.visibility === 'public'
-                ? <RichContent text={editedContent} />
-                : editedContent.length > 60
-                  ? editedContent.slice(0, 60) + '…'
-                  : editedContent
-              }
-              {!isContentUnlocked && post.visibility !== 'public' && editedContent.length > 60 && (
-                <span className="text-indigo-400 text-sm ml-1">Subscribe to see full post</span>
-              )}
-            </p>
-          )}
-
-          {/* Post type badge */}
-          {(isSet || isVideo || post.is_draft) && (
-            <div className="flex items-center gap-2 mt-1 mb-1">
+          {/* Post type badge — far left on mobile */}
+          {(isSet || isVideo || post.is_draft || isPPV) && (
+            <div className="flex items-center gap-2 mb-1.5">
               {post.is_draft && (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-400 bg-zinc-500/10 px-2 py-0.5 rounded-md">
                   Draft
@@ -886,6 +871,21 @@ export default function PostCard({ post }) {
                 </span>
               )}
             </div>
+          )}
+
+          {/* Content — gate text for subscriber-only posts */}
+          {editedContent && (
+            <p className="text-[15px] text-zinc-200 leading-relaxed mb-1 whitespace-pre-wrap break-words">
+              {isContentUnlocked || post.visibility === 'public'
+                ? <RichContent text={editedContent} />
+                : editedContent.length > 60
+                  ? editedContent.slice(0, 60) + '…'
+                  : editedContent
+              }
+              {!isContentUnlocked && post.visibility !== 'public' && editedContent.length > 60 && (
+                <span className="text-indigo-400 text-sm ml-1">Subscribe to see full post</span>
+              )}
+            </p>
           )}
 
           {/* Media / Set / Video / Paywall */}
