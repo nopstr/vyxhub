@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { X, Zap, Check, DollarSign, Tag, Loader2 } from 'lucide-react'
+import { X, Zap, Check, DollarSign, Tag, Loader2, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { useSubscriptionCache } from '../stores/subscriptionCache'
 import Avatar from './ui/Avatar'
 import Badge from './ui/Badge'
+import CryptoPaymentModal from './CryptoPaymentModal'
 import { toast } from 'sonner'
 import { haptic } from '../lib/utils'
 
@@ -17,6 +18,7 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
   const [activePromo, setActivePromo] = useState(null)
   const [loading, setLoading] = useState(false)
   const [promoChecked, setPromoChecked] = useState(false)
+  const [showCrypto, setShowCrypto] = useState(false)
 
   // Fetch active promotion on mount
   useState(() => {
@@ -248,11 +250,43 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
             )}
           </button>
 
+          {/* Crypto payment option */}
+          <button
+            onClick={() => setShowCrypto(true)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
+          >
+            <Wallet size={14} />
+            or pay with crypto
+          </button>
+
           <p className="text-[11px] text-zinc-600 text-center">
             Cancel anytime. Payments processed securely.
           </p>
         </div>
       </div>
+
+      {/* Crypto Payment Modal */}
+      {showCrypto && (
+        <CryptoPaymentModal
+          open={showCrypto}
+          onClose={() => setShowCrypto(false)}
+          amount={effectivePrice}
+          paymentType="subscription"
+          metadata={{ creator_id: creator.id }}
+          label={`Subscribe to @${creator.username}`}
+          onSuccess={() => {
+            addSubscription(creator.id)
+            supabase.from('follows').insert({
+              follower_id: user.id,
+              following_id: creator.id
+            }).catch(() => {})
+            haptic('success')
+            toast.success(`Subscribed to @${creator.username}!`)
+            onSubscribed?.()
+            onClose()
+          }}
+        />
+      )}
     </div>
   )
 }

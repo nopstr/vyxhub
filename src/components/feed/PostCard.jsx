@@ -4,7 +4,7 @@ import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
-  Repeat2, VolumeX, Edit2, EyeOff, Megaphone
+  Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet
 } from 'lucide-react'
 import SecureVideoPlayer from '../ui/SecureVideoPlayer'
 import ProtectedImage from '../ui/ProtectedImage'
@@ -20,6 +20,7 @@ import ReportModal from '../ReportModal'
 import TipModal from '../TipModal'
 import SubscribeModal from '../SubscribeModal'
 import EditPostModal from './EditPostModal'
+import CryptoPaymentModal from '../CryptoPaymentModal'
 import { cn, formatRelativeTime, formatNumber, haptic } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
@@ -370,6 +371,7 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
   const { addSubscription, addPurchase } = useSubscriptionCache()
   const [loading, setLoading] = useState(false)
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
+  const [showCryptoModal, setShowCryptoModal] = useState(false)
 
   // Get blur preview from first media item
   const firstMedia = post?.media?.[0]
@@ -439,6 +441,7 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
           </p>
         )}
         {isPPV ? (
+          <>
           <button
             onClick={handlePurchase}
             disabled={loading}
@@ -456,6 +459,15 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
               </>
             )}
           </button>
+          {!compact && (
+            <button
+              onClick={() => { if (!user) return toast.error('Sign in to purchase'); setShowCryptoModal(true) }}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 mt-1 text-xs text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              <Wallet size={12} /> or pay with crypto
+            </button>
+          )}
+          </>
         ) : (
           <button
             onClick={handleSubscribe}
@@ -493,6 +505,23 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
           creator={creator}
           onSubscribed={() => {
             addSubscription(creator.id)
+          }}
+        />
+      )}
+
+      {/* Crypto Payment Modal (PPV) */}
+      {showCryptoModal && (
+        <CryptoPaymentModal
+          open={showCryptoModal}
+          onClose={() => setShowCryptoModal(false)}
+          amount={parseFloat(post.price)}
+          paymentType="ppv_post"
+          metadata={{ post_id: post.id, creator_id: creator?.id }}
+          label={`Unlock content`}
+          onSuccess={() => {
+            addPurchase(post.id)
+            toast.success('Content unlocked!')
+            setShowCryptoModal(false)
           }}
         />
       )}

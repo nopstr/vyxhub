@@ -31,8 +31,8 @@ ARCHITECTURE SUMMARY
 - Supabase (PostgreSQL + Auth + Private Storage + Realtime)
 - Zustand 5 (7 stores: auth, post, comment, message, notification, search, subscriptionCache)
 - Vercel (hosting, CSP/HSTS/security headers, SPA rewrites)
-- 34 DB tables, 10 enums, ~60 functions, ~28 triggers, 1 view
-- 85+ RLS policies (including storage), 50+ indexes
+- 35 DB tables, 10 enums, ~65 functions, ~28 triggers, 1 view
+- 90+ RLS policies (including storage), 55+ indexes
 - Vercel Python serverless functions (ML training pipeline)
 - Zero test framework (no Jest/Vitest/Playwright)
 - Zero TypeScript (entire codebase is JSX/JS)
@@ -499,7 +499,7 @@ Feed Algorithm                       92%       60%       95%        98%
 Content Discovery                    78%       40%       85%        95%
 Messaging                            90%       80%       90%        92%
 Notifications                        98%       85%       95%        95%
-Monetization                         95%       95%       60%        70%
+Monetization                         98%       95%       60%        70%
 Content Protection                   95%       95%       N/A        N/A
 Admin/Moderation                     95%       90%       95%        95%
 Creator Tools                       100%       85%       70%        80%
@@ -638,7 +638,12 @@ DETAILED MATURITY BREAKDOWN
    ✅ Payout history tracking
    ✅ Wallet auto-creation (trigger on is_creator flag)
    ✅ Historical transaction backfill into wallets
-   ❌ Missing: Payment processor (BLOCKER)
+   ✅ Crypto payments (NOWPayments: BTC, ETH, USDT, USDC, SOL, LTC, DOGE, BNB, XRP, TRX)
+   ✅ CoinGecko live price conversion (server-side proxy, 60s cache, USD prices on site)
+   ✅ CryptoPaymentModal (crypto selector, address + amount display, realtime status, countdown timer)
+   ✅ Crypto webhooks (IPN with HMAC-SHA512 verification, auto-process confirmed payments)
+   ✅ Network fees paid by user (is_fee_paid_by_user via NOWPayments)
+   ❌ Missing: Fiat payment processor (Stripe Connect — for non-crypto users)
    ✅ Tipping (send_tip RPC, TipModal, quick amounts + custom, platform fee disclosure)
    ✅ Promo codes/discounts (create_promo_code/validate/redeem RPCs, dashboard management, profile redemption flow)
    ✅ Subscription auto-renewal/expiry cron (process_expired_subscriptions hourly, process_subscription_renewals 6-hourly)
@@ -816,11 +821,19 @@ WHAT WORKS END-TO-END TODAY (139+ flows)
 157. IP ban management: ban/unban IPs with optional expiry, user IP audit trail
 158. Admin Support page: 6 tabs (Reports, Users, Auto-Mod, Appeals, IP Bans, Mod Log)
 159. User-facing appeal UI: suspended/banned users can submit appeals from Settings
+160. Crypto payment system: NOWPayments integration for 10 major cryptocurrencies
+161. CoinGecko price proxy: server-side cached price conversion (USD→crypto at checkout)
+162. CryptoPaymentModal: full payment flow with crypto selector, address copy, realtime status polling
+163. Crypto webhook: IPN handler with HMAC-SHA512 verification, auto-processes confirmed payments
+164. Network fee passthrough: users pay blockchain transaction fees (is_fee_paid_by_user)
+165. Crypto integrated into Subscribe, Tip, and PPV unlock flows as alternative payment method
 
-ONE REMAINING EXISTENTIAL BLOCKER
+REMAINING BLOCKERS
 -----------------------------------
-1. No money can move (no payment integration — Stripe Connect needed)
-2. set VITE_CLOUDFLARE_CUSTOMER_CODE=m033qcwkrxgt8pes in env on Vercel
+1. Crypto payments configured (set NOWPAYMENTS_API_KEY + NOWPAYMENTS_IPN_SECRET in Vercel env)
+   — BTC, ETH, USDT, USDC, SOL, LTC, DOGE, BNB, XRP, TRX accepted
+2. Fiat payments still missing (Stripe Connect needed for card/bank payments)
+3. set VITE_CLOUDFLARE_CUSTOMER_CODE=m033qcwkrxgt8pes in env on Vercel
 
 ESTIMATED TIMELINE
 ------------------

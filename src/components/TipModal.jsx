@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { X, DollarSign, Heart, Sparkles } from 'lucide-react'
+import { X, DollarSign, Heart, Sparkles, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { MIN_TIP_AMOUNT, MAX_TIP_AMOUNT, PLATFORM_FEE_PERCENT } from '../lib/constants'
 import { cn, haptic } from '../lib/utils'
 import Button from './ui/Button'
+import CryptoPaymentModal from './CryptoPaymentModal'
 import { toast } from 'sonner'
 
 const QUICK_AMOUNTS = [1, 5, 10, 25, 50, 100]
@@ -16,6 +17,7 @@ export default function TipModal({ open, onClose, creator, postId = null }) {
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
   const [isCustom, setIsCustom] = useState(false)
+  const [showCrypto, setShowCrypto] = useState(false)
 
   if (!open) return null
 
@@ -153,10 +155,42 @@ export default function TipModal({ open, onClose, creator, postId = null }) {
             Send ${isValid ? currentAmount.toFixed(2) : '0.00'} Tip
           </Button>
 
+          {/* Crypto payment option */}
+          {isValid && (
+            <button
+              onClick={() => setShowCrypto(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 mt-2 text-sm text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
+            >
+              <Wallet size={14} />
+              or tip with crypto
+            </button>
+          )}
+
           <p className="text-[11px] text-zinc-600 text-center mt-3">
             Creator receives {100 - PLATFORM_FEE_PERCENT}% · Tips are non-refundable
           </p>
         </div>
+
+        {/* Crypto Payment Modal */}
+        {showCrypto && (
+          <CryptoPaymentModal
+            open={showCrypto}
+            onClose={() => setShowCrypto(false)}
+            amount={currentAmount}
+            paymentType="tip"
+            metadata={{
+              creator_id: creator.id,
+              post_id: postId || null,
+              message: message || null,
+            }}
+            label={`Tip @${creator.username}`}
+            onSuccess={() => {
+              haptic('success')
+              toast.success(`Sent $${currentAmount.toFixed(2)} tip to @${creator.username}!`, { icon: '💸' })
+              onClose()
+            }}
+          />
+        )}
       </div>
     </div>
   )
