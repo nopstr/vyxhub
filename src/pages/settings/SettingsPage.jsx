@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   User, Mail, Shield, Bell, CreditCard, LogOut,
@@ -1123,9 +1123,9 @@ function TaxInfoSection() {
     signature: '',
   })
 
-  useState(() => {
+  useEffect(() => {
     fetchTaxInfo()
-  })
+  }, [])
 
   const fetchTaxInfo = async () => {
     setLoading(true)
