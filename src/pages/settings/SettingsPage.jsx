@@ -6,7 +6,7 @@ import {
   DollarSign, Globe, MessageCircle, Droplets, MapPin,
   Link as LinkIcon, Star, Package, ShieldCheck, Zap,
   Heart, AlertTriangle, KeyRound, Upload, Image, Film, FileText,
-  CheckCircle, XCircle, Clock
+  CheckCircle, XCircle, Clock, Loader2
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -543,6 +543,7 @@ function CreatorSettings() {
     { id: 'messaging', label: 'Messaging', icon: MessageCircle },
     { id: 'privacy', label: 'Privacy & Safety', icon: Shield },
     { id: 'payout', label: 'Payouts', icon: CreditCard },
+    { id: 'tax', label: 'Tax Info', icon: FileText },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
   ]
 
@@ -844,6 +845,11 @@ function CreatorSettings() {
         </div>
       )}
 
+      {/* Tax Info */}
+      {section === 'tax' && (
+        <TaxInfoSection />
+      )}
+
       {/* Save button - shown on all sections except danger */}
       {section !== 'danger' && (
         <div className="pt-4 border-t border-zinc-800/50">
@@ -1090,6 +1096,226 @@ export default function SettingsPage() {
           {content[tab]}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Tax Info Section (within Creator Settings) ─────────────────────────────
+
+function TaxInfoSection() {
+  const [taxInfo, setTaxInfo] = useState(null)
+  const [taxDocs, setTaxDocs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    tax_form_type: 'w9',
+    legal_name: '',
+    business_name: '',
+    tax_classification: 'individual',
+    tax_id_number: '',
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    country: 'US',
+    is_us_person: true,
+    signature: '',
+  })
+
+  useState(() => {
+    fetchTaxInfo()
+  })
+
+  const fetchTaxInfo = async () => {
+    setLoading(true)
+    try {
+      const { data: info } = await supabase.from('tax_info').select('*').maybeSingle()
+      if (info) {
+        setTaxInfo(info)
+        setForm({
+          tax_form_type: info.tax_form_type || 'w9',
+          legal_name: info.legal_name || '',
+          business_name: info.business_name || '',
+          tax_classification: info.tax_classification || 'individual',
+          tax_id_number: '', // Never show stored tax ID
+          address_line1: info.address_line1 || '',
+          address_line2: info.address_line2 || '',
+          city: info.city || '',
+          state: info.state || '',
+          zip_code: info.zip_code || '',
+          country: info.country || 'US',
+          is_us_person: info.is_us_person ?? true,
+          signature: info.signature || '',
+        })
+      }
+      const { data: docs } = await supabase.from('tax_documents').select('*').order('tax_year', { ascending: false })
+      setTaxDocs(docs || [])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.legal_name.trim()) return toast.error('Legal name is required')
+    if (!form.address_line1.trim()) return toast.error('Address is required')
+    if (!form.city.trim() || !form.zip_code.trim()) return toast.error('City and ZIP are required')
+    if (!form.signature.trim()) return toast.error('Electronic signature is required')
+
+    setSaving(true)
+    try {
+      const { data, error } = await supabase.rpc('submit_tax_info', {
+        p_form_type: form.tax_form_type,
+        p_legal_name: form.legal_name.trim(),
+        p_business_name: form.business_name.trim() || null,
+        p_tax_classification: form.tax_classification,
+        p_tax_id: form.tax_id_number.trim() || null,
+        p_address1: form.address_line1.trim(),
+        p_address2: form.address_line2.trim() || null,
+        p_city: form.city.trim(),
+        p_state: form.state.trim() || null,
+        p_zip: form.zip_code.trim(),
+        p_country: form.country,
+        p_is_us: form.is_us_person,
+        p_signature: form.signature.trim(),
+      })
+      if (error) throw error
+      toast.success('Tax information submitted successfully')
+      fetchTaxInfo()
+    } catch (err) {
+      toast.error(err.message || 'Failed to submit tax info')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-zinc-500" size={24} /></div>
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader icon={FileText} title="Tax Information" description="Required for payouts over $600/year (US)" />
+
+      {taxInfo?.status && (
+        <div className={cn(
+          'rounded-xl p-3 border text-xs font-medium',
+          taxInfo.status === 'approved' ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' :
+          taxInfo.status === 'rejected' ? 'bg-red-500/5 border-red-500/20 text-red-400' :
+          taxInfo.status === 'needs_update' ? 'bg-amber-500/5 border-amber-500/20 text-amber-400' :
+          'bg-indigo-500/5 border-indigo-500/20 text-indigo-400'
+        )}>
+          Status: {taxInfo.status === 'approved' ? '✓ Approved' : taxInfo.status === 'pending' ? '⏳ Under Review' : taxInfo.status === 'rejected' ? '✗ Rejected' : '⚠ Needs Update'}
+          {taxInfo.notes && <p className="mt-1 text-zinc-500">{taxInfo.notes}</p>}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form Type */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Tax Form Type</label>
+          <div className="flex gap-2">
+            {[
+              { value: 'w9', label: 'W-9 (US Person)' },
+              { value: 'w8ben', label: 'W-8BEN (Non-US Individual)' },
+              { value: 'w8bene', label: 'W-8BEN-E (Non-US Entity)' },
+            ].map(t => (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, tax_form_type: t.value, is_us_person: t.value === 'w9' }))}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+                  form.tax_form_type === t.value ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Classification */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-300 mb-1.5">Tax Classification</label>
+          <select
+            value={form.tax_classification}
+            onChange={e => setForm(f => ({ ...f, tax_classification: e.target.value }))}
+            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+          >
+            <option value="individual">Individual / Sole Proprietor</option>
+            <option value="sole_proprietor">Sole Proprietor</option>
+            <option value="llc">LLC</option>
+            <option value="corporation">Corporation</option>
+            <option value="partnership">Partnership</option>
+            <option value="trust">Trust / Estate</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        {/* Names */}
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Legal Name *" value={form.legal_name} onChange={e => setForm(f => ({ ...f, legal_name: e.target.value }))} placeholder="Full legal name" />
+          <Input label="Business Name" value={form.business_name} onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))} placeholder="If different" />
+        </div>
+
+        {/* Tax ID */}
+        <Input
+          label={form.is_us_person ? 'SSN / EIN' : 'Foreign Tax ID'}
+          value={form.tax_id_number}
+          onChange={e => setForm(f => ({ ...f, tax_id_number: e.target.value }))}
+          placeholder={form.is_us_person ? 'XXX-XX-XXXX or XX-XXXXXXX' : 'Foreign tax identification number'}
+          type="password"
+        />
+
+        {/* Address */}
+        <Input label="Address Line 1 *" value={form.address_line1} onChange={e => setForm(f => ({ ...f, address_line1: e.target.value }))} placeholder="Street address" />
+        <Input label="Address Line 2" value={form.address_line2} onChange={e => setForm(f => ({ ...f, address_line2: e.target.value }))} placeholder="Apt, suite, unit (optional)" />
+
+        <div className="grid grid-cols-3 gap-3">
+          <Input label="City *" value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} />
+          <Input label="State" value={form.state} onChange={e => setForm(f => ({ ...f, state: e.target.value }))} />
+          <Input label="ZIP *" value={form.zip_code} onChange={e => setForm(f => ({ ...f, zip_code: e.target.value }))} />
+        </div>
+
+        {/* Electronic Signature */}
+        <div className="bg-zinc-900/50 rounded-2xl p-4 border border-zinc-800/50 space-y-3">
+          <h4 className="text-sm font-medium text-zinc-300">Electronic Signature</h4>
+          <p className="text-xs text-zinc-500">
+            By typing your name below, you certify under penalties of perjury that the information provided is correct.
+          </p>
+          <Input
+            label="Type your full legal name"
+            value={form.signature}
+            onChange={e => setForm(f => ({ ...f, signature: e.target.value }))}
+            placeholder="Your full legal name"
+          />
+        </div>
+
+        <Button type="submit" loading={saving} className="w-full">
+          <FileText size={16} /> {taxInfo ? 'Update' : 'Submit'} Tax Information
+        </Button>
+      </form>
+
+      {/* Tax Documents */}
+      {taxDocs.length > 0 && (
+        <div className="mt-6 space-y-3">
+          <h4 className="text-sm font-medium text-zinc-300">Tax Documents</h4>
+          {taxDocs.map(doc => (
+            <div key={doc.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-zinc-800/30">
+              <div>
+                <p className="text-sm text-zinc-300">{doc.document_type.toUpperCase()} — {doc.tax_year}</p>
+                <p className="text-xs text-zinc-500">Total earnings: ${parseFloat(doc.total_earnings).toFixed(2)}</p>
+              </div>
+              <span className={cn(
+                'text-xs font-medium px-2 py-0.5 rounded-full',
+                doc.status === 'generated' || doc.status === 'sent' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'
+              )}>
+                {doc.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -914,11 +914,18 @@ function PromotionsTab({ userId }) {
   const { profile } = useAuthStore()
   const [activePromo, setActivePromo] = useState(null)
   const [promoHistory, setPromoHistory] = useState([])
+  const [promoCodes, setPromoCodes] = useState([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [deactivating, setDeactivating] = useState(false)
   const [discountPercent, setDiscountPercent] = useState(25)
   const [durationDays, setDurationDays] = useState(7)
+  // Promo code form
+  const [codeText, setCodeText] = useState('')
+  const [codeDiscount, setCodeDiscount] = useState(20)
+  const [codeDuration, setCodeDuration] = useState(30)
+  const [codeMaxUses, setCodeMaxUses] = useState('')
+  const [creatingCode, setCreatingCode] = useState(false)
 
   useEffect(() => { fetchPromos() }, [userId])
 
@@ -937,6 +944,15 @@ function PromotionsTab({ userId }) {
         .order('created_at', { ascending: false })
         .limit(10)
       setPromoHistory(all || [])
+
+      // Get promo codes
+      const { data: codes } = await supabase
+        .from('promo_codes')
+        .select('*')
+        .eq('creator_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      setPromoCodes(codes || [])
     } finally {
       setLoading(false)
     }
@@ -985,6 +1001,39 @@ function PromotionsTab({ userId }) {
 
   const subPrice = parseFloat(profile?.subscription_price) || 0
   const previewPrice = +(subPrice * (100 - discountPercent) / 100).toFixed(2)
+
+  const handleCreateCode = async () => {
+    if (!codeText.trim() || codeText.trim().length < 3) return toast.error('Code must be at least 3 characters')
+    setCreatingCode(true)
+    try {
+      const { data, error } = await supabase.rpc('create_promo_code', {
+        p_code: codeText.trim(),
+        p_discount_percent: codeDiscount,
+        p_duration_days: codeDuration,
+        p_max_uses: codeMaxUses ? parseInt(codeMaxUses) : null,
+      })
+      if (error) throw error
+      toast.success(`Promo code ${data.code} created!`)
+      setCodeText('')
+      setCodeMaxUses('')
+      fetchPromos()
+    } catch (err) {
+      toast.error(err.message || 'Failed to create promo code')
+    } finally {
+      setCreatingCode(false)
+    }
+  }
+
+  const handleDeactivateCode = async (codeId) => {
+    try {
+      const { error } = await supabase.from('promo_codes').update({ active: false }).eq('id', codeId).eq('creator_id', userId)
+      if (error) throw error
+      toast.success('Promo code deactivated')
+      fetchPromos()
+    } catch (err) {
+      toast.error('Failed to deactivate code')
+    }
+  }
 
   if (loading) return <PageLoader />
 
@@ -1076,6 +1125,101 @@ function PromotionsTab({ userId }) {
           </div>
         </SectionCard>
       )}
+
+      {/* Promo Codes */}
+      <SectionCard title="Promo Codes" icon={Gift}>
+        <div className="space-y-4">
+          <p className="text-xs text-zinc-500">
+            Create shareable discount codes fans can apply when subscribing.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Code</label>
+              <input
+                value={codeText}
+                onChange={e => setCodeText(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase())}
+                maxLength={20}
+                placeholder="e.g. SUMMER25"
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Discount %</label>
+              <input
+                type="number"
+                value={codeDiscount}
+                onChange={e => setCodeDiscount(Math.min(100, Math.max(5, parseInt(e.target.value) || 5)))}
+                min={5}
+                max={100}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white outline-none focus:border-indigo-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Duration (days)</label>
+              <input
+                type="number"
+                value={codeDuration}
+                onChange={e => setCodeDuration(Math.min(365, Math.max(1, parseInt(e.target.value) || 1)))}
+                min={1}
+                max={365}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white outline-none focus:border-indigo-500/50"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-zinc-400 mb-1">Max Uses</label>
+              <input
+                type="number"
+                value={codeMaxUses}
+                onChange={e => setCodeMaxUses(e.target.value)}
+                placeholder="Unlimited"
+                min={1}
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500/50"
+              />
+            </div>
+          </div>
+          <Button size="sm" onClick={handleCreateCode} loading={creatingCode}>
+            <Gift size={14} /> Create Code
+          </Button>
+
+          {/* Active codes list */}
+          {promoCodes.length > 0 && (
+            <div className="space-y-2 mt-3 pt-3 border-t border-zinc-800/50">
+              <p className="text-xs font-medium text-zinc-400">Your Codes</p>
+              {promoCodes.map(c => {
+                const isActive = c.active && new Date(c.valid_until) > new Date()
+                return (
+                  <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-zinc-800/30">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-sm font-bold text-indigo-400">{c.code}</span>
+                      <span className="text-xs text-zinc-500">{c.discount_percent}% off</span>
+                      <span className="text-xs text-zinc-600">
+                        {c.used_count}{c.max_uses ? `/${c.max_uses}` : ''} uses
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                        isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'
+                      )}>
+                        {isActive ? 'Active' : 'Expired'}
+                      </span>
+                      {isActive && (
+                        <button
+                          onClick={() => handleDeactivateCode(c.id)}
+                          className="text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                          title="Deactivate"
+                        >
+                          <XCircle size={14} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </SectionCard>
 
       {/* Promotion history */}
       {promoHistory.length > 0 && (
@@ -1223,6 +1367,255 @@ function ReferralsTab({ userId }) {
   )
 }
 
+// ─── Ads Manager Tab ────────────────────────────────────────────────────────
+
+function AdsManagerTab({ userId }) {
+  const [pricing, setPricing] = useState(null)
+  const [activeAds, setActiveAds] = useState([])
+  const [completedAds, setCompletedAds] = useState([])
+  const [posts, setPosts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [creating, setCreating] = useState(false)
+  // Form state
+  const [promoType, setPromoType] = useState('post')
+  const [selectedPostId, setSelectedPostId] = useState(null)
+  const [selectedDuration, setSelectedDuration] = useState(null)
+
+  useEffect(() => { fetchData() }, [userId])
+
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const [pricingRes, activeRes, completedRes, postsRes] = await Promise.all([
+        supabase.rpc('get_ad_pricing'),
+        supabase.from('content_promotions').select('*, post:post_id(id, content, post_type, media_count)')
+          .eq('creator_id', userId).eq('status', 'active').order('created_at', { ascending: false }),
+        supabase.from('content_promotions').select('*, post:post_id(id, content, post_type)')
+          .eq('creator_id', userId).in('status', ['completed', 'cancelled']).order('created_at', { ascending: false }).limit(10),
+        supabase.from('posts').select('id, content, post_type, media_count, created_at')
+          .eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+      ])
+      setPricing(pricingRes.data)
+      setActiveAds(activeRes.data || [])
+      setCompletedAds(completedRes.data || [])
+      setPosts(postsRes.data || [])
+      if (pricingRes.data?.durations?.[1]) {
+        setSelectedDuration(pricingRes.data.durations[1])
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCreate = async () => {
+    if (promoType === 'post' && !selectedPostId) return toast.error('Select a post to promote')
+    if (!selectedDuration) return toast.error('Select a duration')
+    
+    setCreating(true)
+    try {
+      const { data, error } = await supabase.rpc('create_content_promotion', {
+        p_type: promoType,
+        p_post_id: promoType === 'post' ? selectedPostId : null,
+        p_duration_hours: selectedDuration.hours,
+      })
+      if (error) throw error
+      toast.success(`Promotion created! Cost: $${parseFloat(data.cost).toFixed(2)}`)
+      setSelectedPostId(null)
+      fetchData()
+    } catch (err) {
+      toast.error(err.message || 'Failed to create promotion')
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleCancel = async (id) => {
+    if (!confirm('Cancel this promotion? No refund will be issued.')) return
+    try {
+      await supabase.from('content_promotions').update({ status: 'cancelled' }).eq('id', id).eq('creator_id', userId)
+      toast.success('Promotion cancelled')
+      fetchData()
+    } catch {
+      toast.error('Failed to cancel')
+    }
+  }
+
+  if (loading) return <PageLoader />
+
+  return (
+    <div className="space-y-5">
+      {/* Pricing Info */}
+      <SectionCard title="Ad Pricing" icon={DollarSign}>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-zinc-400">Base rate</span>
+            <span className="text-sm font-bold text-white">${pricing?.base_rate_per_hour}/hr</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-zinc-400">Current multiplier</span>
+            <span className="text-sm font-bold text-amber-400">{pricing?.multiplier}x</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-zinc-400">Active ads on platform</span>
+            <span className="text-sm font-bold text-zinc-300">{pricing?.active_ads}</span>
+          </div>
+          <p className="text-[11px] text-zinc-600">Pricing increases dynamically based on how many ads are currently running.</p>
+        </div>
+      </SectionCard>
+
+      {/* Create Promotion */}
+      <SectionCard title="Create Promotion" icon={Megaphone}>
+        <div className="space-y-4">
+          {/* Type selector */}
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">Promotion Type</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPromoType('post')}
+                className={cn(
+                  'flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition-colors cursor-pointer',
+                  promoType === 'post' ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white border border-zinc-700'
+                )}
+              >
+                Promote a Post
+              </button>
+              <button
+                onClick={() => setPromoType('profile')}
+                className={cn(
+                  'flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition-colors cursor-pointer',
+                  promoType === 'profile' ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white border border-zinc-700'
+                )}
+              >
+                Promote Profile
+              </button>
+            </div>
+            <p className="text-[11px] text-zinc-600 mt-1.5">
+              {promoType === 'post' ? 'Your post will appear in users\' feeds as a promoted post.' : 'Your profile will be featured in the Explore → Creators tab.'}
+            </p>
+          </div>
+
+          {/* Post selector */}
+          {promoType === 'post' && (
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-2">Select Post</label>
+              <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-zinc-800 p-2">
+                {posts.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedPostId(p.id)}
+                    className={cn(
+                      'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer',
+                      selectedPostId === p.id ? 'bg-indigo-600/20 border border-indigo-500/30 text-white' : 'bg-zinc-800/30 text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                    )}
+                  >
+                    <p className="truncate">{p.content?.slice(0, 80) || `[${p.post_type}]`}</p>
+                    <span className="text-[10px] text-zinc-600">
+                      {p.post_type} · {p.media_count || 0} media · {new Date(p.created_at).toLocaleDateString()}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Duration selector */}
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">Duration</label>
+            <div className="grid grid-cols-3 gap-2">
+              {pricing?.durations?.map(d => (
+                <button
+                  key={d.hours}
+                  onClick={() => setSelectedDuration(d)}
+                  className={cn(
+                    'py-2.5 rounded-xl text-center transition-all cursor-pointer',
+                    selectedDuration?.hours === d.hours
+                      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20'
+                      : 'bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700'
+                  )}
+                >
+                  <span className="text-sm font-bold block">{d.label}</span>
+                  <span className="text-xs opacity-80">${parseFloat(d.cost).toFixed(2)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Summary */}
+          {selectedDuration && (
+            <div className="bg-zinc-900/50 rounded-xl p-3 border border-zinc-800/50 flex items-center justify-between">
+              <span className="text-sm text-zinc-400">Total cost</span>
+              <span className="text-lg font-black text-white">${parseFloat(selectedDuration.cost).toFixed(2)}</span>
+            </div>
+          )}
+
+          <Button onClick={handleCreate} loading={creating} className="w-full" variant="premium">
+            <Megaphone size={16} /> {promoType === 'post' ? 'Promote Post' : 'Promote Profile'} — ${selectedDuration ? parseFloat(selectedDuration.cost).toFixed(2) : '0.00'}
+          </Button>
+        </div>
+      </SectionCard>
+
+      {/* Active Promotions */}
+      {activeAds.length > 0 && (
+        <SectionCard title="Active Promotions" icon={Star}>
+          <div className="space-y-3">
+            {activeAds.map(ad => {
+              const hoursLeft = Math.max(0, Math.ceil((new Date(ad.ends_at) - new Date()) / (1000 * 60 * 60)))
+              return (
+                <div key={ad.id} className="flex items-center justify-between py-3 px-4 rounded-xl bg-zinc-800/30 border border-zinc-800/50">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-zinc-300 truncate">
+                      {ad.promotion_type === 'profile' ? '👤 Profile Promotion' : `📄 ${ad.post?.content?.slice(0, 50) || 'Post'}...`}
+                    </p>
+                    <div className="flex items-center gap-3 text-xs text-zinc-500 mt-0.5">
+                      <span>{ad.impressions} views</span>
+                      <span>{ad.clicks} clicks</span>
+                      <span>{hoursLeft}h remaining</span>
+                      <span>${parseFloat(ad.budget).toFixed(2)} budget</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleCancel(ad.id)}
+                    className="text-zinc-500 hover:text-red-400 transition-colors ml-3 cursor-pointer"
+                    title="Cancel"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Completed Promotions */}
+      {completedAds.length > 0 && (
+        <SectionCard title="Past Promotions" icon={Clock}>
+          <div className="space-y-2">
+            {completedAds.map(ad => (
+              <div key={ad.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-zinc-800/20">
+                <div>
+                  <p className="text-sm text-zinc-400">
+                    {ad.promotion_type === 'profile' ? 'Profile' : 'Post'} · {ad.duration_hours}h · ${parseFloat(ad.budget).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-zinc-600">
+                    {ad.impressions} views · {ad.clicks} clicks · {new Date(ad.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <span className={cn(
+                  'text-[10px] font-medium px-1.5 py-0.5 rounded-full',
+                  ad.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-zinc-800 text-zinc-500'
+                )}>
+                  {ad.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Dashboard Page ────────────────────────────────────────────────────
 
 export default function CreatorDashboardPage() {
@@ -1293,6 +1686,7 @@ export default function CreatorDashboardPage() {
           <TabButton active={activeTab === 'promotions'} onClick={() => setActiveTab('promotions')} icon={Tag} label="Promotions" />
           <TabButton active={activeTab === 'referrals'} onClick={() => setActiveTab('referrals')} icon={Gift} label="Referrals" />
           <TabButton active={activeTab === 'requests'} onClick={() => setActiveTab('requests')} icon={ClipboardList} label="Requests" badge={pendingRequests} />
+          <TabButton active={activeTab === 'ads'} onClick={() => setActiveTab('ads')} icon={Megaphone} label="Ads" />
           <TabButton active={activeTab === 'export'} onClick={() => setActiveTab('export')} icon={Download} label="Export" />
         </div>
       </div>
@@ -1305,6 +1699,7 @@ export default function CreatorDashboardPage() {
         {activeTab === 'promotions' && <PromotionsTab userId={user.id} />}
         {activeTab === 'referrals' && <ReferralsTab userId={user.id} />}
         {activeTab === 'requests' && <CustomRequestsTab userId={user.id} />}
+        {activeTab === 'ads' && <AdsManagerTab userId={user.id} />}
         {activeTab === 'export' && <EarningsExportTab userId={user.id} />}
       </div>
     </div>

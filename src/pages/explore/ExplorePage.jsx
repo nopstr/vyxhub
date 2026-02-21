@@ -44,9 +44,14 @@ function CreatorCard({ profile }) {
       className="bg-zinc-900/30 border border-zinc-800/50 rounded-3xl p-5 hover:border-zinc-700/50 transition-all group"
     >
       {/* Banner */}
-      <div className="h-24 rounded-2xl bg-gradient-to-br from-indigo-900/30 to-violet-900/30 mb-4 overflow-hidden">
+      <div className="h-24 rounded-2xl bg-gradient-to-br from-indigo-900/30 to-violet-900/30 mb-4 overflow-hidden relative">
         {profile.banner_url && (
           <img src={profile.banner_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+        )}
+        {profile._promoted && (
+          <span className="absolute top-2 right-2 text-[10px] font-medium bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full backdrop-blur-sm">
+            Promoted
+          </span>
         )}
       </div>
 
@@ -166,6 +171,26 @@ export default function ExplorePage() {
         .limit(12)
 
       setCreators(creatorData || [])
+
+      // Inject promoted profiles at top of creators list
+      try {
+        const { data: promoProfiles } = await supabase.rpc('get_promoted_profiles', { p_limit: 3 })
+        if (promoProfiles?.length > 0) {
+          const promoIds = promoProfiles.map(p => p.creator_id)
+          const { data: promoCreators } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', promoIds)
+          if (promoCreators?.length > 0) {
+            const tagged = promoCreators.map(c => ({ ...c, _promoted: true }))
+            const existingIds = new Set((creatorData || []).map(c => c.id))
+            const unique = tagged.filter(c => !existingIds.has(c.id))
+            setCreators(prev => [...unique, ...prev])
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to fetch promoted profiles:', e)
+      }
 
       // A2: Use explore_posts RPC for trending/latest/top with category filter
       if (tab === 'trending' || tab === 'latest') {

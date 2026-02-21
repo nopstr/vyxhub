@@ -170,6 +170,35 @@ export const usePostStore = create((set, get) => ({
       // Resolve protected media to short-lived signed URLs
       await resolvePostMediaUrls(data)
 
+      // Inject promoted posts into feed (every ~5th position on first page)
+      if (reset && currentPage === 0 && data.length > 3) {
+        try {
+          const { data: promoData } = await supabase.rpc('get_promoted_posts', { p_limit: 3 })
+          if (promoData?.length > 0) {
+            // Fetch full post data for promoted posts
+            const promoIds = promoData.map(p => p.post_id)
+            const { data: promoPosts } = await supabase
+              .from('posts')
+              .select(POST_SELECT)
+              .in('id', promoIds)
+            if (promoPosts?.length > 0) {
+              await resolvePostMediaUrls(promoPosts)
+              // Mark as promoted and intersperse into feed
+              const tagged = promoPosts.map(p => ({ ...p, _promoted: true }))
+              const existingIds = new Set(data.map(p => p.id))
+              const unique = tagged.filter(p => !existingIds.has(p.id))
+              // Insert promoted posts at positions 4, 9, 14...
+              unique.forEach((pp, i) => {
+                const pos = Math.min(4 + i * 5, data.length)
+                data.splice(pos, 0, pp)
+              })
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to fetch promoted posts:', e)
+        }
+      }
+
       // Track views (single batch RPC instead of N individual calls)
       if (data?.length > 0) {
         const postIds = data.map(p => p.id)

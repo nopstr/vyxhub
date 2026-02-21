@@ -4,7 +4,7 @@ import {
   Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
-  Repeat2, VolumeX, Edit2, EyeOff
+  Repeat2, VolumeX, Edit2, EyeOff, Megaphone
 } from 'lucide-react'
 import SecureVideoPlayer from '../ui/SecureVideoPlayer'
 import ProtectedImage from '../ui/ProtectedImage'
@@ -17,6 +17,7 @@ import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
 import ReportModal from '../ReportModal'
+import TipModal from '../TipModal'
 import EditPostModal from './EditPostModal'
 import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
 import { toast } from 'sonner'
@@ -548,6 +549,7 @@ export default function PostCard({ post }) {
   const author = post.author
   const [showReportModal, setShowReportModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showTipModal, setShowTipModal] = useState(false)
   const [editedContent, setEditedContent] = useState(post.content)
 
   if (!author) return null
@@ -710,6 +712,14 @@ export default function PostCard({ post }) {
         </div>
       )}
 
+      {/* Promoted indicator */}
+      {post._promoted && (
+        <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2 ml-12">
+          <Megaphone size={14} className="text-amber-400" />
+          <span className="text-amber-400 font-medium">Promoted</span>
+        </div>
+      )}
+
       <div className="flex gap-3.5 items-start">
         <Link to={`/@${author.username}`} className="flex-shrink-0">
           <Avatar src={author.avatar_url} alt={author.display_name} size="lg" ring />
@@ -749,6 +759,7 @@ export default function PostCard({ post }) {
                   <DropdownItem icon={Pin} onClick={handlePin}>
                     {post.is_pinned ? 'Unpin from profile' : 'Pin to profile'}
                   </DropdownItem>
+                  <DropdownItem icon={Megaphone} onClick={() => navigate('/dashboard?tab=ads')}>Promote post</DropdownItem>
                   <DropdownDivider />
                   <DropdownItem icon={Trash2} danger onClick={handleDelete}>Delete post</DropdownItem>
                 </>
@@ -953,6 +964,21 @@ export default function PostCard({ post }) {
               <Share size={18} className="group-hover:scale-110 transition-transform" />
             </button>
 
+            {/* Tip Button */}
+            {!isOwn && author.is_creator && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (!user) return toast.error('Sign in to send tips')
+                  setShowTipModal(true)
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-500 hover:text-amber-400 transition-colors group cursor-pointer"
+                title="Send a tip"
+              >
+                <DollarSign size={18} className="group-hover:scale-110 transition-transform" />
+              </button>
+            )}
+
             {/* Repost Button */}
             {!isOwn && (
               <button
@@ -1000,6 +1026,16 @@ export default function PostCard({ post }) {
           post={{ ...post, content: editedContent }}
           onClose={() => setShowEditModal(false)}
           onUpdate={(newContent) => setEditedContent(newContent)}
+        />
+      )}
+
+      {/* Tip Modal */}
+      {showTipModal && (
+        <TipModal
+          open={showTipModal}
+          onClose={() => setShowTipModal(false)}
+          creator={author}
+          postId={post.id}
         />
       )}
     </article>
