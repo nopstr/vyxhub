@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useAuthStore } from '../../stores/authStore'
 import { usePostStore } from '../../stores/postStore'
-import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import CreatePost from '../../components/feed/CreatePost'
 
 import VirtualizedPost from '../../components/feed/VirtualizedPost'
@@ -17,15 +16,9 @@ import Button from '../../components/ui/Button'
 export default function HomePage() {
   const { user, profile } = useAuthStore()
   const { posts, loading, hasMore, fetchFeed, fetchFollowingFeed } = usePostStore()
-  const loadForUser = useSubscriptionCache((s) => s.loadForUser)
   const [tab, setTab] = useState('foryou')
   const { ref, inView } = useInView({ threshold: 0 })
   const initialLoadDone = useRef(false)
-
-  // Pre-load subscription cache once when user is available
-  useEffect(() => {
-    if (user?.id) loadForUser(user.id)
-  }, [user?.id, loadForUser])
 
   // Initial load + tab change
   useEffect(() => {

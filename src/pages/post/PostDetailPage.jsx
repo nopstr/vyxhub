@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
 import { useAuthStore } from '../../stores/authStore'
 import { useCommentStore } from '../../stores/commentStore'
+import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import PostCard from '../../components/feed/PostCard'
 import Avatar from '../../components/ui/Avatar'
 import { SkeletonPost } from '../../components/ui/Spinner'
@@ -107,11 +108,11 @@ export default function PostDetailPage() {
   const navigate = useNavigate()
   const { user, profile } = useAuthStore()
   const { fetchComments, addComment, getThreaded, loading: commentsLoading } = useCommentStore()
+  const { isSubscribedTo } = useSubscriptionCache()
   const [post, setPost] = useState(null)
   const [loading, setLoading] = useState(true)
   const [commentText, setCommentText] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [isSubscribed, setIsSubscribed] = useState(false)
   const [replyingTo, setReplyingTo] = useState(null)
   const inputRef = useRef(null)
 
@@ -155,19 +156,7 @@ export default function PostDetailPage() {
       // Fetch comments via centralized store (cached, threaded)
       await fetchComments(postId)
 
-      // Check subscription
-      if (user && user.id !== postData.author_id) {
-        const { data: subData } = await supabase
-          .from('subscriptions')
-          .select('creator_id')
-          .eq('subscriber_id', user.id)
-          .eq('creator_id', postData.author_id)
-          .eq('status', 'active')
-          .maybeSingle()
-        setIsSubscribed(!!subData)
-      } else if (user?.id === postData.author_id) {
-        setIsSubscribed(true)
-      }
+      // Subscription check is handled by useSubscriptionCache (loaded in App.jsx)
     } catch (err) {
       console.error(err)
       toast.error('Failed to load post')
@@ -182,7 +171,8 @@ export default function PostDetailPage() {
     if (!user) return toast.error('Sign in to comment')
 
     const isOwn = user.id === post?.author_id
-    if (!isOwn && !isSubscribed) {
+    const isSub = isSubscribedTo(post?.author_id)
+    if (!isOwn && !isSub) {
       return toast.error(`Subscribe to @${post.author?.username} to comment`)
     }
 
@@ -237,7 +227,8 @@ export default function PostDetailPage() {
     )
   }
 
-  const canComment = user && (user.id === post.author_id || isSubscribed)
+  const isSubscribed = user?.id === post.author_id || isSubscribedTo(post.author_id)
+  const canComment = user && isSubscribed
   const threadedComments = getThreaded(postId)
 
   return (

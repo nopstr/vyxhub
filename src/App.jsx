@@ -68,12 +68,25 @@ function StaffRoute({ children, roles }) {
   return children
 }
 
+import { useSubscriptionCache } from './stores/subscriptionCache'
+
 export default function App() {
-  const { initialize } = useAuthStore()
+  const { initialize, user } = useAuthStore()
+  const loadForUser = useSubscriptionCache((s) => s.loadForUser)
+  const clearCache = useSubscriptionCache((s) => s.clear)
 
   useEffect(() => {
     initialize()
   }, [initialize])
+
+  // Initialize subscription cache globally so all pages have access
+  useEffect(() => {
+    if (user?.id) {
+      loadForUser(user.id)
+    } else {
+      clearCache()
+    }
+  }, [user?.id, loadForUser, clearCache])
 
   return (
     <ErrorBoundary>

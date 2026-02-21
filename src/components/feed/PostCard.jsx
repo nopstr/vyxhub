@@ -801,11 +801,6 @@ export default function PostCard({ post }) {
             </Dropdown>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Content area — full-width on mobile, avatar-indented on desktop */}
-      <div className="md:pl-[52px] mt-2 md:mt-0">
           {/* Post type badge — far left on mobile */}
           {(isSet || isVideo || post.is_draft || isPPV) && (
             <div className="flex items-center gap-2 mb-1.5">
@@ -834,7 +829,7 @@ export default function PostCard({ post }) {
 
           {/* Content — gate text for subscriber-only posts */}
           {editedContent && (
-            <p className="text-[15px] text-zinc-200 leading-relaxed mb-1 whitespace-pre-wrap break-words">
+            <p className="text-[15px] text-zinc-200 leading-normal mb-1 whitespace-pre-wrap break-words">
               {isContentUnlocked || post.visibility === 'public'
                 ? <RichContent text={editedContent} />
                 : editedContent.length > 60
@@ -1066,6 +1061,7 @@ export default function PostCard({ post }) {
               <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} className="group-hover:scale-110 transition-transform" />
             </button>
           </div>
+        </div>
       </div>
 
       {/* Report Modal */}
