@@ -1628,6 +1628,8 @@ function WalletTab({ userId }) {
   const [requesting, setRequesting] = useState(false)
   const [txPage, setTxPage] = useState(0)
   const [txTotal, setTxTotal] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const sentinelRef = useRef(null)
   const PAGE_SIZE = 20
 
   const loadWalletData = useCallback(async () => {
@@ -1653,18 +1655,39 @@ function WalletTab({ userId }) {
 
   useEffect(() => { loadWalletData() }, [loadWalletData])
 
-  const loadMoreTx = async () => {
+  const loadMoreTx = useCallback(async () => {
+    if (loadingMore) return
+    setLoadingMore(true)
     const nextPage = txPage + 1
-    const { data } = await supabase.rpc('get_wallet_transactions', {
-      p_creator_id: userId,
-      p_limit: PAGE_SIZE,
-      p_offset: nextPage * PAGE_SIZE,
-    })
-    if (data?.transactions?.length) {
-      setTransactions(prev => [...prev, ...data.transactions])
-      setTxPage(nextPage)
+    try {
+      const { data } = await supabase.rpc('get_wallet_transactions', {
+        p_creator_id: userId,
+        p_limit: PAGE_SIZE,
+        p_offset: nextPage * PAGE_SIZE,
+      })
+      if (data?.transactions?.length) {
+        setTransactions(prev => [...prev, ...data.transactions])
+        setTxPage(nextPage)
+      }
+    } finally {
+      setLoadingMore(false)
     }
-  }
+  }, [userId, txPage, loadingMore])
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const hasMore = transactions.length < txTotal
+    if (!hasMore) return
+
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMoreTx() },
+      { rootMargin: '200px' }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [transactions.length, txTotal, loadMoreTx])
 
   const handleRequestPayout = async () => {
     if (!walletInfo?.can_request_payout) return
@@ -1856,12 +1879,13 @@ function WalletTab({ userId }) {
               </div>
             ))}
             {transactions.length < txTotal && (
-              <button
-                onClick={loadMoreTx}
-                className="w-full text-center py-3 text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
-              >
-                Load more ({txTotal - transactions.length} remaining)
-              </button>
+              <div ref={sentinelRef} className="flex justify-center py-4">
+                {loadingMore ? (
+                  <Loader2 size={16} className="animate-spin text-zinc-600" />
+                ) : (
+                  <span className="text-xs text-zinc-600">{txTotal - transactions.length} more</span>
+                )}
+              </div>
             )}
           </div>
         )}
