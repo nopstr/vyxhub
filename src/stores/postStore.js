@@ -441,7 +441,7 @@ export const usePostStore = create((set, get) => ({
     return scheduledPost
   },
 
-  createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl, category, isDraft, pollData, onProgress }) => {
+  createPost: async ({ content, visibility, postType, mediaFiles, userId, price, previewIndices, coverImageUrl, category, isDraft, pollData, language, country_code, onProgress }) => {
     const postInsert = {
       author_id: userId,
       content,
@@ -453,6 +453,8 @@ export const usePostStore = create((set, get) => ({
     if (price && price > 0) postInsert.price = price
     if (coverImageUrl) postInsert.cover_image_url = coverImageUrl
     if (category) postInsert.category = category
+    if (language) postInsert.language = language
+    if (country_code) postInsert.country_code = country_code
 
     const { data: post, error: postError } = await supabase
       .from('posts')

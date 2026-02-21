@@ -20,7 +20,7 @@ import ReportModal from '../ReportModal'
 import TipModal from '../TipModal'
 import SubscribeModal from '../SubscribeModal'
 import EditPostModal from './EditPostModal'
-import { cn, formatRelativeTime, formatNumber } from '../../lib/utils'
+import { cn, formatRelativeTime, formatNumber, haptic } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 
@@ -545,6 +545,7 @@ export default function PostCard({ post }) {
   const handleReaction = (reactionType, e) => {
     e?.stopPropagation()
     if (!user) return toast.error('Sign in to react to posts')
+    haptic('light')
     toggleReaction(post.id, user.id, reactionType)
     setShowReactionPicker(false)
   }
@@ -553,6 +554,7 @@ export default function PostCard({ post }) {
   const handleReactionTap = (e) => {
     e?.stopPropagation()
     if (!user) return toast.error('Sign in to react to posts')
+    haptic('light')
     if (userReactionType) {
       // Remove existing reaction
       toggleReaction(post.id, user.id, userReactionType)
@@ -566,6 +568,7 @@ export default function PostCard({ post }) {
   const handleLongPressStart = useCallback((e) => {
     e.stopPropagation()
     longPressTimer.current = setTimeout(() => {
+      haptic('medium')
       setShowReactionPicker(true)
     }, 400)
   }, [])
@@ -608,6 +611,7 @@ export default function PostCard({ post }) {
   const handleBookmark = (e) => {
     e.stopPropagation()
     if (!user) return toast.error('Sign in to bookmark posts')
+    haptic('light')
     toggleBookmark(post.id, user.id)
   }
 
@@ -622,6 +626,7 @@ export default function PostCard({ post }) {
 
   const handleShare = (e) => {
     e.stopPropagation()
+    haptic('light')
     navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`)
     toast.success('Link copied!')
   }

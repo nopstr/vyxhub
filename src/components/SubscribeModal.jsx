@@ -6,6 +6,7 @@ import { useSubscriptionCache } from '../stores/subscriptionCache'
 import Avatar from './ui/Avatar'
 import Badge from './ui/Badge'
 import { toast } from 'sonner'
+import { haptic } from '../lib/utils'
 
 export default function SubscribeModal({ open, onClose, creator, onSubscribed }) {
   const { user } = useAuthStore()
@@ -97,6 +98,7 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
         following_id: creator.id
       }).catch(() => {})
 
+      haptic('success')
       toast.success(`Subscribed to @${creator.username}!`)
       onSubscribed?.()
       onClose()

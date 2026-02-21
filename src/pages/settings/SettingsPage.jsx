@@ -91,6 +91,8 @@ function ProfileSettings() {
     bio: profile?.bio || '',
     location: profile?.location || '',
     website_url: profile?.website_url || '',
+    preferred_language: profile?.preferred_language || navigator.language?.split('-')[0] || 'en',
+    country_code: profile?.country_code || '',
   })
   const [saving, setSaving] = useState(false)
   const [nameChangePassword, setNameChangePassword] = useState('')
@@ -103,7 +105,9 @@ function ProfileSettings() {
   const nameFieldsChanged = displayNameChanged || usernameChanged
   const otherFieldsChanged = form.bio !== (profile?.bio || '') ||
     form.location !== (profile?.location || '') ||
-    form.website_url !== (profile?.website_url || '')
+    form.website_url !== (profile?.website_url || '') ||
+    form.preferred_language !== (profile?.preferred_language || 'en') ||
+    form.country_code !== (profile?.country_code || '')
 
   // Display name change rules
   const displayNameAlreadyUsedChange = profile?.display_name_changed === true
@@ -193,6 +197,8 @@ function ProfileSettings() {
       if (form.bio !== (profile?.bio || '')) otherUpdates.bio = form.bio
       if (form.location !== (profile?.location || '')) otherUpdates.location = form.location
       if (form.website_url !== (profile?.website_url || '')) otherUpdates.website_url = form.website_url
+      if (form.preferred_language !== (profile?.preferred_language || 'en')) otherUpdates.preferred_language = form.preferred_language
+      if (form.country_code !== (profile?.country_code || '')) otherUpdates.country_code = form.country_code || null
 
       if (Object.keys(otherUpdates).length > 0) {
         await updateProfile(otherUpdates)
@@ -337,6 +343,49 @@ function ProfileSettings() {
         maxLength={200}
       />
 
+      {/* Language & Region */}
+      <div className="pt-4 border-t border-zinc-800">
+        <SectionHeader icon={Globe} title="Language & Region" description="Helps surface content in your preferred language and region" />
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-1.5">Preferred Language</label>
+            <select
+              value={form.preferred_language}
+              onChange={(e) => setForm(f => ({ ...f, preferred_language: e.target.value }))}
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
+            >
+              <option value="en">English</option>
+              <option value="es">Español</option>
+              <option value="fr">Français</option>
+              <option value="de">Deutsch</option>
+              <option value="pt">Português</option>
+              <option value="it">Italiano</option>
+              <option value="nl">Nederlands</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+              <option value="zh">中文</option>
+              <option value="ru">Русский</option>
+              <option value="ar">العربية</option>
+              <option value="hi">हिन्दी</option>
+              <option value="tr">Türkçe</option>
+              <option value="sv">Svenska</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-1.5">Country</label>
+            <select
+              value={form.country_code}
+              onChange={(e) => setForm(f => ({ ...f, country_code: e.target.value }))}
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
+            >
+              <option value="">Auto-detect</option>
+              {GEO_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+            <p className="text-xs text-zinc-500 mt-1">Used for content recommendations, not displayed publicly.</p>
+          </div>
+        </div>
+      </div>
+
       {/* Password required for name changes */}
       {nameFieldsChanged && (
         <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-3">
@@ -378,18 +427,27 @@ function AccountSettings() {
   const [sessions, setSessions] = useState([])
   const [loadingSessions, setLoadingSessions] = useState(true)
   const [revokingAll, setRevokingAll] = useState(false)
+  // 2FA state
+  const [mfaFactors, setMfaFactors] = useState([])
+  const [mfaEnrolling, setMfaEnrolling] = useState(false)
+  const [mfaEnrollData, setMfaEnrollData] = useState(null)
+  const [mfaVerifyCode, setMfaVerifyCode] = useState('')
+  const [mfaVerifying, setMfaVerifying] = useState(false)
+  const [mfaDisabling, setMfaDisabling] = useState(false)
 
-  // Load login history and sessions
+  // Load login history, sessions, and MFA factors
   useEffect(() => {
     const loadSecurityData = async () => {
       setLoadingSessions(true)
       try {
-        const [historyRes, sessionsRes] = await Promise.all([
+        const [historyRes, sessionsRes, factorsRes] = await Promise.all([
           supabase.from('login_history').select('*').eq('user_id', user.id).order('login_at', { ascending: false }).limit(20),
           supabase.from('user_sessions').select('*').eq('user_id', user.id).order('last_active', { ascending: false }),
+          supabase.auth.mfa.listFactors(),
         ])
         if (historyRes.data) setLoginHistory(historyRes.data)
         if (sessionsRes.data) setSessions(sessionsRes.data)
+        if (factorsRes.data?.totp) setMfaFactors(factorsRes.data.totp.filter(f => f.status === 'verified'))
       } catch {} finally {
         setLoadingSessions(false)
       }
@@ -497,6 +555,53 @@ function AccountSettings() {
     }
   }
 
+  // 2FA handlers
+  const handleEnrollMfa = async () => {
+    setMfaEnrolling(true)
+    try {
+      const { enrollMfa } = useAuthStore.getState()
+      const data = await enrollMfa()
+      setMfaEnrollData(data)
+    } catch (err) {
+      toast.error(err.message || 'Failed to start 2FA setup')
+    } finally {
+      setMfaEnrolling(false)
+    }
+  }
+
+  const handleVerifyMfaEnroll = async () => {
+    if (!mfaVerifyCode || mfaVerifyCode.length !== 6) return toast.error('Enter a 6-digit code')
+    setMfaVerifying(true)
+    try {
+      const { verifyMfa, updateProfile } = useAuthStore.getState()
+      await verifyMfa(mfaEnrollData.id, mfaVerifyCode)
+      await updateProfile({ mfa_enabled: true })
+      setMfaFactors(prev => [...prev, { id: mfaEnrollData.id, status: 'verified' }])
+      setMfaEnrollData(null)
+      setMfaVerifyCode('')
+      toast.success('Two-factor authentication enabled!')
+    } catch (err) {
+      toast.error(err.message || 'Invalid code, try again')
+    } finally {
+      setMfaVerifying(false)
+    }
+  }
+
+  const handleDisableMfa = async (factorId) => {
+    if (!confirm('Disable two-factor authentication? This will make your account less secure.')) return
+    setMfaDisabling(true)
+    try {
+      const { unenrollMfa } = useAuthStore.getState()
+      await unenrollMfa(factorId)
+      setMfaFactors(prev => prev.filter(f => f.id !== factorId))
+      toast.success('Two-factor authentication disabled')
+    } catch (err) {
+      toast.error(err.message || 'Failed to disable 2FA')
+    } finally {
+      setMfaDisabling(false)
+    }
+  }
+
   return (
     <div className="space-y-8">
       {/* Current Email */}
@@ -556,6 +661,72 @@ function AccountSettings() {
             Update Password
           </Button>
         </div>
+      </div>
+
+      {/* Two-Factor Authentication */}
+      <div className="pt-4 border-t border-zinc-800">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+          <ShieldCheck size={16} className="text-indigo-400" /> Two-Factor Authentication
+        </h3>
+        {mfaFactors.length > 0 ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+              <CheckCircle size={18} className="text-emerald-400 flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-emerald-300 font-medium">2FA is enabled</p>
+                <p className="text-xs text-zinc-500 mt-0.5">Your account is protected with an authenticator app.</p>
+              </div>
+              <button
+                onClick={() => handleDisableMfa(mfaFactors[0].id)}
+                disabled={mfaDisabling}
+                className="text-xs text-red-400 hover:text-red-300 font-medium cursor-pointer disabled:opacity-50"
+              >
+                {mfaDisabling ? 'Disabling...' : 'Disable'}
+              </button>
+            </div>
+          </div>
+        ) : mfaEnrollData ? (
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50">
+              <p className="text-sm text-zinc-300 mb-3">Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.):</p>
+              <div className="flex justify-center mb-4">
+                <img
+                  src={mfaEnrollData.totp.qr_code}
+                  alt="2FA QR Code"
+                  className="w-48 h-48 rounded-xl bg-white p-2"
+                />
+              </div>
+              <p className="text-xs text-zinc-500 text-center mb-1">Or enter this secret manually:</p>
+              <code className="block text-xs text-indigo-400 text-center font-mono break-all bg-zinc-900 rounded-lg p-2">{mfaEnrollData.totp.secret}</code>
+            </div>
+            <Input
+              label="Enter 6-digit verification code"
+              value={mfaVerifyCode}
+              onChange={(e) => setMfaVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="000000"
+              maxLength={6}
+              className="text-center tracking-[0.3em] font-mono"
+            />
+            <div className="flex gap-2">
+              <Button size="sm" onClick={handleVerifyMfaEnroll} loading={mfaVerifying}>
+                Verify & Enable 2FA
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => { setMfaEnrollData(null); setMfaVerifyCode('') }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-zinc-500">
+              Add an extra layer of security to your account by requiring a verification code from your authenticator app when signing in.
+            </p>
+            <Button size="sm" variant="secondary" onClick={handleEnrollMfa} loading={mfaEnrolling}>
+              <ShieldCheck size={14} />
+              Enable 2FA
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Active Sessions */}

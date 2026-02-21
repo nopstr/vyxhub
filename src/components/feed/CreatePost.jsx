@@ -405,6 +405,8 @@ export default function CreatePost({ onSuccess }) {
           category: category || null,
           isDraft,
           pollData,
+          language: profile?.preferred_language || navigator.language?.split('-')[0] || 'en',
+          country_code: profile?.country_code || null,
           onProgress: (progress) => setUploadProgress(progress)
         })
         toast.success(

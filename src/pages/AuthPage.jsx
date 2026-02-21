@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Zap, Mail, Lock, User, AtSign, Eye, EyeOff, Star, ChevronRight } from 'lucide-react'
+import { Zap, Mail, Lock, User, AtSign, Eye, EyeOff, Star, ChevronRight, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -29,10 +29,30 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [agreedAge, setAgreedAge] = useState(false)
-  const { signIn, signUp, resetPassword, signInWithOAuth } = useAuthStore()
+  // 2FA state
+  const [mfaRequired, setMfaRequired] = useState(false)
+  const [mfaFactorId, setMfaFactorId] = useState(null)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaLoading, setMfaLoading] = useState(false)
+  const { signIn, signUp, resetPassword, signInWithOAuth, verifyMfa } = useAuthStore()
   const navigate = useNavigate()
 
   const isSignupMode = mode === 'signup'
+
+  const handleMfaVerify = async (e) => {
+    e.preventDefault()
+    if (!mfaCode || mfaCode.length !== 6) return toast.error('Enter a 6-digit code')
+    setMfaLoading(true)
+    try {
+      await verifyMfa(mfaFactorId, mfaCode)
+      toast.success('Welcome back!')
+      navigate('/')
+    } catch (err) {
+      toast.error(err.message || 'Invalid code')
+    } finally {
+      setMfaLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -40,7 +60,18 @@ export default function AuthPage() {
 
     try {
       if (mode === 'login') {
-        await signIn(email, password)
+        const result = await signIn(email, password)
+        if (result?.mfaRequired) {
+          // Get TOTP factor to challenge
+          const { data: factors } = await supabase.auth.mfa.listFactors()
+          const totpFactor = factors?.totp?.find(f => f.status === 'verified')
+          if (totpFactor) {
+            setMfaFactorId(totpFactor.id)
+            setMfaRequired(true)
+            setLoading(false)
+            return
+          }
+        }
         toast.success('Welcome back!')
         navigate('/')
       } else if (mode === 'signup') {
@@ -108,6 +139,38 @@ export default function AuthPage() {
 
         {/* Form Card */}
         <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-3xl p-8 backdrop-blur-sm">
+          {mfaRequired ? (
+            <form onSubmit={handleMfaVerify} className="space-y-4">
+              <div className="text-center mb-2">
+                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-3">
+                  <ShieldCheck size={24} className="text-indigo-400" />
+                </div>
+                <h2 className="text-lg font-bold text-white">Two-Factor Authentication</h2>
+                <p className="text-sm text-zinc-500 mt-1">Enter the 6-digit code from your authenticator app</p>
+              </div>
+              <Input
+                label="Verification Code"
+                icon={Lock}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="000000"
+                maxLength={6}
+                autoFocus
+                required
+              />
+              <Button type="submit" loading={mfaLoading} className="w-full" size="lg">
+                Verify
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaFactorId(null) }}
+                className="block w-full text-center text-sm text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer"
+              >
+                Back to login
+              </button>
+            </form>
+          ) : (
+          <>
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignupMode && (
               <>
@@ -212,6 +275,8 @@ export default function AuthPage() {
               <button onClick={() => setMode('login')} className="text-sm text-indigo-400 font-semibold hover:underline cursor-pointer">Back to login</button>
             )}
           </div>
+          </>
+          )}
         </div>
       </div>
     </div>

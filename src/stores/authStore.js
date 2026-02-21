@@ -117,6 +117,13 @@ export const useAuthStore = create((set, get) => ({
     })
     if (error) throw error
 
+    // Check if MFA is required
+    const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aalData?.currentLevel === 'aal1' && aalData?.nextLevel === 'aal2') {
+      // User has MFA enrolled – return special flag so AuthPage shows TOTP input
+      return { ...data, mfaRequired: true }
+    }
+
     // Record login and session (non-blocking)
     if (data?.user?.id) {
       const sessionHash = data.session?.access_token
@@ -138,6 +145,42 @@ export const useAuthStore = create((set, get) => ({
     }
 
     return data
+  },
+
+  verifyMfa: async (factorId, code) => {
+    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId })
+    if (challengeError) throw challengeError
+
+    const { data, error } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code,
+    })
+    if (error) throw error
+    return data
+  },
+
+  getMfaFactors: async () => {
+    const { data, error } = await supabase.auth.mfa.listFactors()
+    if (error) throw error
+    return data
+  },
+
+  enrollMfa: async () => {
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', issuer: 'VyxHub' })
+    if (error) throw error
+    return data // { id, type, totp: { qr_code, secret, uri } }
+  },
+
+  unenrollMfa: async (factorId) => {
+    const { error } = await supabase.auth.mfa.unenroll({ factorId })
+    if (error) throw error
+    // Update profile
+    const user = get().user
+    if (user) {
+      await supabase.from('profiles').update({ mfa_enabled: false }).eq('id', user.id)
+      set({ profile: { ...get().profile, mfa_enabled: false } })
+    }
   },
 
   signInWithOAuth: async (provider) => {

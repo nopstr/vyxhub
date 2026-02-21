@@ -1,8 +1,9 @@
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
 import { registerRoute, NavigationRoute } from 'workbox-routing'
-import { CacheFirst, StaleWhileRevalidate, NetworkFirst } from 'workbox-strategies'
+import { CacheFirst, StaleWhileRevalidate, NetworkFirst, NetworkOnly } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 import { CacheableResponsePlugin } from 'workbox-cacheable-response'
+import { BackgroundSyncPlugin } from 'workbox-background-sync'
 
 // Workbox precaching (injected by vite-plugin-pwa)
 cleanupOutdatedCaches()
@@ -111,6 +112,61 @@ registerRoute(
       new CacheableResponsePlugin({ statuses: [0, 200] }),
     ],
   })
+)
+
+// ──────────────────────────────────────────────
+// Background sync for failed mutations
+// ──────────────────────────────────────────────
+// Queues failed POST/PATCH/DELETE to Supabase and retries when back online.
+const bgSyncPlugin = new BackgroundSyncPlugin('supabase-mutation-queue', {
+  maxRetentionTime: 24 * 60, // Retry for up to 24 hours (in minutes)
+  onSync: async ({ queue }) => {
+    let entry
+    while ((entry = await queue.shiftRequest())) {
+      try {
+        await fetch(entry.request.clone())
+      } catch (error) {
+        // Put it back and stop retrying for now
+        await queue.unshiftRequest(entry)
+        throw error
+      }
+    }
+  },
+})
+
+// Catch failed Supabase mutation requests (POST that aren't RPC reads)
+registerRoute(
+  ({ url, request }) => {
+    const isSupabase = /^https:\/\/[a-z0-9-]+\.supabase\.co\/rest\/v1\//i.test(url.href)
+    const isMutation = ['POST', 'PATCH', 'DELETE'].includes(request.method)
+    return isSupabase && isMutation
+  },
+  new NetworkOnly({
+    plugins: [bgSyncPlugin],
+  }),
+  'POST' // This covers POST; we also need PATCH and DELETE
+)
+
+registerRoute(
+  ({ url, request }) => {
+    const isSupabase = /^https:\/\/[a-z0-9-]+\.supabase\.co\/rest\/v1\//i.test(url.href)
+    return isSupabase && request.method === 'PATCH'
+  },
+  new NetworkOnly({
+    plugins: [bgSyncPlugin],
+  }),
+  'PATCH'
+)
+
+registerRoute(
+  ({ url, request }) => {
+    const isSupabase = /^https:\/\/[a-z0-9-]+\.supabase\.co\/rest\/v1\//i.test(url.href)
+    return isSupabase && request.method === 'DELETE'
+  },
+  new NetworkOnly({
+    plugins: [bgSyncPlugin],
+  }),
+  'DELETE'
 )
 
 // ──────────────────────────────────────────────

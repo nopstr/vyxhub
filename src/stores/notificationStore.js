@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 
 const PAGE_SIZE = 30
 
-// A7: Group notifications by type + reference within a time window
+// A7/A9: Group notifications by type + reference within a time window
+// Enhanced grouping with "X and N others" pattern
 function groupNotifications(notifications) {
   const groups = []
   const grouped = new Map()
@@ -29,11 +30,28 @@ function groupNotifications(notifications) {
         existing.grouped.count++
         // Keep unread if any in group is unread
         if (!notif.is_read) existing.is_read = false
+        // Keep highest priority_score in group
+        if ((notif.priority_score || 0) > (existing.priority_score || 0)) {
+          existing.priority_score = notif.priority_score
+        }
       } else {
         groups.push({ ...notif, grouped: null })
       }
     }
   }
+
+  // Sort grouped results by priority_score (engagement-weighted) then by time
+  groups.sort((a, b) => {
+    // Unread first
+    if (a.is_read !== b.is_read) return a.is_read ? 1 : -1
+    // Then by priority_score (higher = more important)
+    const scoreA = a.priority_score || 0
+    const scoreB = b.priority_score || 0
+    if (scoreB !== scoreA) return scoreB - scoreA
+    // Then by recency
+    return new Date(b.created_at) - new Date(a.created_at)
+  })
+
   return groups
 }
 
@@ -51,6 +69,7 @@ function transformRow(row) {
     message: row.message,
     is_read: row.is_read,
     priority: row.priority,
+    priority_score: row.priority_score || 0,
     created_at: row.created_at,
     actor: row.actor_username ? {
       id: row.actor_id,
@@ -59,10 +78,9 @@ function transformRow(row) {
       avatar_url: row.actor_avatar_url,
     } : null,
     // Rich preview data
-    post_preview: row.post_preview_text ? {
-      text: row.post_preview_text,
-      media: row.post_preview_media,
-      type: row.post_type,
+    post_preview: row.post_content ? {
+      text: row.post_content,
+      media: row.post_thumbnail,
     } : null,
   }
 }

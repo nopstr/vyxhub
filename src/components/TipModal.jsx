@@ -3,7 +3,7 @@ import { X, DollarSign, Heart, Sparkles } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { MIN_TIP_AMOUNT, MAX_TIP_AMOUNT, PLATFORM_FEE_PERCENT } from '../lib/constants'
-import { cn } from '../lib/utils'
+import { cn, haptic } from '../lib/utils'
 import Button from './ui/Button'
 import { toast } from 'sonner'
 
@@ -42,6 +42,7 @@ export default function TipModal({ open, onClose, creator, postId = null }) {
       toast.success(`Sent $${currentAmount.toFixed(2)} tip to @${creator.username}!`, {
         icon: '💸',
       })
+      haptic('success')
       onClose()
     } catch (err) {
       toast.error(err.message || 'Failed to send tip')

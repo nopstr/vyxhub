@@ -73,3 +73,18 @@ export function debounce(fn, delay) {
     timeout = setTimeout(() => fn(...args), delay)
   }
 }
+
+// Haptic feedback utility (Web Vibration API)
+// Patterns: 'light' = 10ms, 'medium' = 25ms, 'heavy' = 50ms
+export function haptic(pattern = 'light') {
+  if (!navigator.vibrate) return
+  const patterns = {
+    light: 10,
+    medium: 25,
+    heavy: 50,
+    success: [10, 50, 20],
+    error: [50, 30, 50],
+    long: [30, 20, 30],
+  }
+  navigator.vibrate(patterns[pattern] || pattern)
+}
