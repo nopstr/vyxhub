@@ -92,6 +92,27 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Payment provider not configured' })
     }
 
+    // -- Check minimum amount for this currency --
+    try {
+      const minRes = await fetch(
+        `${NOWPAYMENTS_BASE}/min-amount?currency_from=${nowpaymentsCurrency}&currency_to=${nowpaymentsCurrency}&fiat_equivalent=usd`,
+        { headers: { 'x-api-key': NOWPAYMENTS_API_KEY } }
+      )
+      if (minRes.ok) {
+        const minData = await minRes.json()
+        const minUsd = minData.fiat_equivalent
+        if (minUsd && parseFloat(usd_amount) < minUsd) {
+          const cryptoName = crypto_currency.toUpperCase()
+          return res.status(400).json({
+            error: `Minimum for ${cryptoName} is $${minUsd.toFixed(2)} USD. Try a stablecoin (USDT/USDC) for smaller amounts.`,
+          })
+        }
+      }
+    } catch (e) {
+      // Non-blocking — proceed anyway, NOWPayments will reject if too small
+      console.warn('Min amount check failed:', e.message)
+    }
+
     const npResponse = await fetch(`${NOWPAYMENTS_BASE}/payment`, {
       method: 'POST',
       headers: {
@@ -112,8 +133,15 @@ export default async function handler(req, res) {
     if (!npResponse.ok) {
       const npError = await npResponse.json().catch(() => ({}))
       console.error('NOWPayments error:', npError)
+      // Provide user-friendly message for common errors
+      const msg = npError.message || ''
+      if (msg.toLowerCase().includes('small') || msg.toLowerCase().includes('minimum')) {
+        return res.status(400).json({
+          error: `Amount too small for ${crypto_currency.toUpperCase()}. Try a larger amount or use USDT/USDC.`,
+        })
+      }
       return res.status(502).json({
-        error: npError.message || 'Payment provider error. Please try again.',
+        error: msg || 'Payment provider error. Please try again.',
       })
     }
 

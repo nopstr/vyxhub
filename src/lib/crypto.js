@@ -5,16 +5,16 @@
  */
 
 export const SUPPORTED_CRYPTOS = [
-  { id: 'btc',  name: 'Bitcoin',   symbol: 'BTC',  coingeckoId: 'bitcoin',      color: '#F7931A', decimals: 8, minAmount: 0.0001 },
-  { id: 'eth',  name: 'Ethereum',  symbol: 'ETH',  coingeckoId: 'ethereum',     color: '#627EEA', decimals: 8, minAmount: 0.001 },
-  { id: 'usdt', name: 'Tether',    symbol: 'USDT', coingeckoId: 'tether',       color: '#26A17B', decimals: 2, minAmount: 1 },
-  { id: 'usdc', name: 'USD Coin',  symbol: 'USDC', coingeckoId: 'usd-coin',     color: '#2775CA', decimals: 2, minAmount: 1 },
-  { id: 'sol',  name: 'Solana',    symbol: 'SOL',  coingeckoId: 'solana',       color: '#9945FF', decimals: 6, minAmount: 0.01 },
-  { id: 'ltc',  name: 'Litecoin',  symbol: 'LTC',  coingeckoId: 'litecoin',     color: '#345D9D', decimals: 8, minAmount: 0.001 },
-  { id: 'doge', name: 'Dogecoin',  symbol: 'DOGE', coingeckoId: 'dogecoin',     color: '#C2A633', decimals: 4, minAmount: 1 },
-  { id: 'bnb',  name: 'BNB',       symbol: 'BNB',  coingeckoId: 'binancecoin',  color: '#F0B90B', decimals: 6, minAmount: 0.001 },
-  { id: 'xrp',  name: 'XRP',       symbol: 'XRP',  coingeckoId: 'ripple',       color: '#23292F', decimals: 6, minAmount: 0.1 },
-  { id: 'trx',  name: 'TRON',      symbol: 'TRX',  coingeckoId: 'tron',         color: '#EF0027', decimals: 6, minAmount: 1 },
+  { id: 'btc',  name: 'Bitcoin',   symbol: 'BTC',  coingeckoId: 'bitcoin',      color: '#F7931A', decimals: 8, minUsd: 0.50 },
+  { id: 'eth',  name: 'Ethereum',  symbol: 'ETH',  coingeckoId: 'ethereum',     color: '#627EEA', decimals: 8, minUsd: 0.50 },
+  { id: 'usdt', name: 'Tether',    symbol: 'USDT', coingeckoId: 'tether',       color: '#26A17B', decimals: 2, minUsd: 0.50 },
+  { id: 'usdc', name: 'USD Coin',  symbol: 'USDC', coingeckoId: 'usd-coin',     color: '#2775CA', decimals: 2, minUsd: 0.50 },
+  { id: 'sol',  name: 'Solana',    symbol: 'SOL',  coingeckoId: 'solana',       color: '#9945FF', decimals: 6, minUsd: 0.50 },
+  { id: 'ltc',  name: 'Litecoin',  symbol: 'LTC',  coingeckoId: 'litecoin',     color: '#345D9D', decimals: 8, minUsd: 0.50 },
+  { id: 'doge', name: 'Dogecoin',  symbol: 'DOGE', coingeckoId: 'dogecoin',     color: '#C2A633', decimals: 4, minUsd: 0.50 },
+  { id: 'bnb',  name: 'BNB',       symbol: 'BNB',  coingeckoId: 'binancecoin',  color: '#F0B90B', decimals: 6, minUsd: 0.50 },
+  { id: 'xrp',  name: 'XRP',       symbol: 'XRP',  coingeckoId: 'ripple',       color: '#23292F', decimals: 6, minUsd: 0.50 },
+  { id: 'trx',  name: 'TRON',      symbol: 'TRX',  coingeckoId: 'tron',         color: '#EF0027', decimals: 6, minUsd: 0.50 },
 ]
 
 // SVG icons for each crypto (simple circle + letter approach)

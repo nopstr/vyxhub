@@ -313,13 +313,29 @@ export default function CryptoPaymentModal({
                 <>
                   <p className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Select cryptocurrency</p>
                   <div className="space-y-2">
-                    {SUPPORTED_CRYPTOS.map(crypto => {
+                    {[...SUPPORTED_CRYPTOS]
+                      .sort((a, b) => {
+                        // Put stablecoins first for small amounts
+                        const aStable = a.id === 'usdt' || a.id === 'usdc'
+                        const bStable = b.id === 'usdt' || b.id === 'usdc'
+                        if (aStable && !bStable) return -1
+                        if (!aStable && bStable) return 1
+                        return 0
+                      })
+                      .map(crypto => {
                       const estimated = estimateCryptoAmount(amount, prices, crypto.id)
+                      const belowMin = parseFloat(amount) < (crypto.minUsd || 0)
                       return (
                         <button
                           key={crypto.id}
-                          onClick={() => handleSelectCrypto(crypto)}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600 hover:bg-zinc-800 transition-all cursor-pointer group"
+                          onClick={() => !belowMin && handleSelectCrypto(crypto)}
+                          disabled={belowMin}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all",
+                            belowMin
+                              ? "bg-zinc-900/30 border-zinc-800/30 opacity-40 cursor-not-allowed"
+                              : "bg-zinc-800/50 border-zinc-700/50 hover:border-zinc-600 hover:bg-zinc-800 cursor-pointer group"
+                          )}
                         >
                           {/* Icon */}
                           <div
@@ -335,10 +351,16 @@ export default function CryptoPaymentModal({
                           </div>
                           {/* Estimated amount */}
                           <div className="text-right">
-                            <p className="text-sm font-mono text-zinc-200">
-                              {estimated !== null ? formatCryptoAmount(estimated, crypto.id) : '...'}
-                            </p>
-                            <p className="text-[10px] text-zinc-500">{crypto.symbol}</p>
+                            {belowMin ? (
+                              <p className="text-xs text-zinc-500">Min ${crypto.minUsd?.toFixed(2)}</p>
+                            ) : (
+                              <>
+                                <p className="text-sm font-mono text-zinc-200">
+                                  {estimated !== null ? formatCryptoAmount(estimated, crypto.id) : '...'}
+                                </p>
+                                <p className="text-[10px] text-zinc-500">{crypto.symbol}</p>
+                              </>
+                            )}
                           </div>
                         </button>
                       )
