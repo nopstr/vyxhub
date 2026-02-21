@@ -1,17 +1,17 @@
 import { NavLink } from 'react-router-dom'
-import { Home, PlusCircle, Mail, Unlock, User, LogIn, Star } from 'lucide-react'
+import { Home, Search, Mail, Unlock, User, LogIn } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { cn } from '../../lib/utils'
 
 export default function MobileNav() {
   const { user, profile } = useAuthStore()
 
-  const NavItem = ({ to, icon: Icon, label, isActive: forcedActive, className: extraClass }) => (
+  const NavItem = ({ to, icon: Icon, label }) => (
     <NavLink
       to={to}
       className={({ isActive }) =>
         cn('flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-colors',
-          (forcedActive ?? isActive) ? 'text-white' : 'text-zinc-500', extraClass)
+          isActive ? 'text-white' : 'text-zinc-500')
       }
     >
       <Icon size={22} />
@@ -25,21 +25,13 @@ export default function MobileNav() {
         {/* 1. Home */}
         <NavItem to="/" icon={Home} label="Home" />
 
+        {/* 2. Explore */}
+        <NavItem to="/explore" icon={Search} label="Explore" />
+
         {user ? (
           <>
-            {/* 2. Messages */}
+            {/* 3. Messages */}
             <NavItem to="/messages" icon={Mail} label="Messages" />
-
-            {/* 3. Create (center) */}
-            {profile?.is_creator ? (
-              <NavLink to="/" className="flex flex-col items-center">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center -mt-5 shadow-lg shadow-indigo-600/30">
-                  <PlusCircle size={20} className="text-white" />
-                </div>
-              </NavLink>
-            ) : (
-              <NavItem to="/become-creator" icon={Star} label="Create" />
-            )}
 
             {/* 4. Unlocks */}
             <NavItem to="/unlocks" icon={Unlock} label="Unlocks" />
