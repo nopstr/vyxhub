@@ -39,6 +39,25 @@ export const useAuthStore = create((set, get) => ({
             set({ user: null, session: null, profile: null, loading: false })
           } else {
             set({ user: session.user, session, profile, loading: false })
+
+            // Record session for OAuth / token-refresh sign-ins (non-blocking)
+            const sessionHash = session.access_token
+              ? btoa(session.access_token.slice(-32))
+              : crypto.randomUUID()
+            const provider = session.user.app_metadata?.provider || 'unknown'
+
+            Promise.all([
+              supabase.rpc('record_login', {
+                p_user_id: session.user.id,
+                p_user_agent: navigator.userAgent,
+                p_method: provider,
+              }),
+              supabase.rpc('register_session', {
+                p_user_id: session.user.id,
+                p_session_hash: sessionHash,
+                p_device_info: navigator.userAgent,
+              }),
+            ]).catch(() => {})
           }
         } else if (event === 'SIGNED_OUT') {
           set({ user: null, session: null, profile: null, loading: false })
@@ -97,6 +116,27 @@ export const useAuthStore = create((set, get) => ({
       password,
     })
     if (error) throw error
+
+    // Record login and session (non-blocking)
+    if (data?.user?.id) {
+      const sessionHash = data.session?.access_token
+        ? btoa(data.session.access_token.slice(-32))
+        : crypto.randomUUID()
+
+      Promise.all([
+        supabase.rpc('record_login', {
+          p_user_id: data.user.id,
+          p_user_agent: navigator.userAgent,
+          p_method: 'password',
+        }),
+        supabase.rpc('register_session', {
+          p_user_id: data.user.id,
+          p_session_hash: sessionHash,
+          p_device_info: navigator.userAgent,
+        }),
+      ]).catch(() => {})
+    }
+
     return data
   },
 

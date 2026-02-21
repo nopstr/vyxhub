@@ -445,7 +445,7 @@ SYSTEM MATURITY ASSESSMENT (vs. Major Social Media Platforms)
 
                                     VyxHub    OnlyFans  Twitter/X  Instagram
                                     ------    --------  ---------  ---------
-Auth & Accounts                      85%       95%       98%        98%
+Auth & Accounts                      95%       95%       98%        98%
 Content Creation                     75%       90%       95%        95%
 Feed Algorithm                       92%       60%       95%        98%
 Content Discovery                    70%       40%       85%        95%
@@ -465,21 +465,23 @@ Infrastructure                       40%       95%       99%        99%
 DETAILED MATURITY BREAKDOWN
 ----------------------------
 
-1. AUTH & ACCOUNTS (85%)
+1. AUTH & ACCOUNTS (95%)
    ✅ Email/password signup/signin
-   ✅ OAuth (Google)
+   ✅ OAuth (Google, Twitter/X)
    ✅ Password reset via email
    ✅ Email change
-   ✅ Password change
+   ✅ Password change (with current password verification)
+   ✅ Confirm password on signup & password change
    ✅ Account deletion (GDPR)
    ✅ Age verification gate
+   ✅ Session management (view/revoke active sessions)
+   ✅ Login history tracking
+   ✅ Username change (14-day cooldown, removes verification)
+   ✅ Display name change (one-time, capitalization always allowed)
+   ✅ Password required for name/username changes
+   ✅ Warning banners on name change forms
    ❌ Missing: Email verification enforcement
    ❌ Missing: 2FA / MFA
-   ❌ Missing: Session management (view/revoke active sessions)
-   ❌ Missing: Login history/alerts
-   ❌ Missing: Social OAuth (Twitter, Apple, Google)
-   ❌ Missing: Username change
-   ❌ Missing: Confirm Password on signup/pw change
 
 2. CONTENT CREATION (75%)
    ✅ Text posts with visibility control

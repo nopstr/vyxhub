@@ -23,6 +23,7 @@ export default function AuthPage() {
   const [mode, setMode] = useState('login') // login | signup | forgot
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -45,6 +46,11 @@ export default function AuthPage() {
       } else if (mode === 'signup') {
         if (!agreedAge) {
           toast.error('You must confirm you are 18+')
+          setLoading(false)
+          return
+        }
+        if (password !== confirmPassword) {
+          toast.error('Passwords do not match')
           setLoading(false)
           return
         }
@@ -119,6 +125,18 @@ export default function AuthPage() {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+            )}
+
+            {isSignupMode && (
+              <Input
+                label="Confirm Password"
+                icon={Lock}
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
             )}
 
             {isSignupMode && (

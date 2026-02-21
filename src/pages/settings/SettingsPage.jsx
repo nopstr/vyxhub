@@ -93,8 +93,27 @@ function ProfileSettings() {
     website_url: profile?.website_url || '',
   })
   const [saving, setSaving] = useState(false)
+  const [nameChangePassword, setNameChangePassword] = useState('')
   const avatarRef = useRef(null)
   const bannerRef = useRef(null)
+
+  // Track what changed
+  const displayNameChanged = form.display_name !== (profile?.display_name || '')
+  const usernameChanged = form.username !== (profile?.username || '')
+  const nameFieldsChanged = displayNameChanged || usernameChanged
+  const otherFieldsChanged = form.bio !== (profile?.bio || '') ||
+    form.location !== (profile?.location || '') ||
+    form.website_url !== (profile?.website_url || '')
+
+  // Display name change rules
+  const displayNameAlreadyUsedChange = profile?.display_name_changed === true
+  const isDisplayNameCaseOnly = displayNameChanged && 
+    form.display_name.toLowerCase() === (profile?.display_name || '').toLowerCase()
+
+  // Username cooldown (14 days)
+  const lastUsernameChange = profile?.last_username_change ? new Date(profile.last_username_change) : null
+  const usernameNextChangeDate = lastUsernameChange ? new Date(lastUsernameChange.getTime() + 14 * 24 * 60 * 60 * 1000) : null
+  const usernameOnCooldown = usernameNextChangeDate && usernameNextChangeDate > new Date()
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0]
@@ -123,7 +142,73 @@ function ProfileSettings() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await updateProfile(form)
+      // If name fields changed, require password verification
+      if (nameFieldsChanged) {
+        if (!nameChangePassword) {
+          toast.error('Password required to change name or username')
+          setSaving(false)
+          return
+        }
+
+        // Verify password via re-auth
+        const { error: authError } = await supabase.auth.signInWithPassword({
+          email: user.email,
+          password: nameChangePassword,
+        })
+        if (authError) {
+          toast.error('Incorrect password')
+          setSaving(false)
+          return
+        }
+      }
+
+      // Handle display name change via RPC
+      if (displayNameChanged) {
+        const { data, error } = await supabase.rpc('change_display_name', {
+          p_user_id: user.id,
+          p_new_display_name: form.display_name,
+        })
+        if (error) throw error
+        if (data?.change_used) {
+          toast.info('Display name changed. This was your one-time change.')
+        }
+      }
+
+      // Handle username change via RPC
+      if (usernameChanged) {
+        const { data, error } = await supabase.rpc('change_username', {
+          p_user_id: user.id,
+          p_new_username: form.username,
+        })
+        if (error) throw error
+        if (data?.verification_removed) {
+          toast.info('Username changed. Verification has been removed.')
+        } else {
+          toast.success('Username updated!')
+        }
+      }
+
+      // Handle other profile fields normally
+      const otherUpdates = {}
+      if (form.bio !== (profile?.bio || '')) otherUpdates.bio = form.bio
+      if (form.location !== (profile?.location || '')) otherUpdates.location = form.location
+      if (form.website_url !== (profile?.website_url || '')) otherUpdates.website_url = form.website_url
+
+      if (Object.keys(otherUpdates).length > 0) {
+        await updateProfile(otherUpdates)
+      }
+
+      // Refresh profile in store
+      const { data: freshProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
+      if (freshProfile) {
+        useAuthStore.setState({ profile: freshProfile })
+      }
+
+      setNameChangePassword('')
       toast.success('Profile updated!')
     } catch (err) {
       toast.error(err.message || 'Failed to update')
@@ -175,19 +260,56 @@ function ProfileSettings() {
         </div>
       </div>
 
-      <Input
-        label="Display Name"
-        value={form.display_name}
-        onChange={(e) => setForm(f => ({ ...f, display_name: e.target.value }))}
-        maxLength={50}
-      />
+      {/* Display Name */}
+      <div>
+        <Input
+          label="Display Name"
+          value={form.display_name}
+          onChange={(e) => setForm(f => ({ ...f, display_name: e.target.value }))}
+          maxLength={50}
+        />
+        {displayNameAlreadyUsedChange && (
+          <div className="mt-2 flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <AlertTriangle size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-300">
+              You've already used your one-time name change. You can still adjust <strong>capitalization</strong> (e.g. "john" → "John").
+            </p>
+          </div>
+        )}
+        {!displayNameAlreadyUsedChange && (
+          <p className="text-xs text-zinc-500 mt-1.5">
+            Display name can only be changed once. Capitalization changes are always allowed.
+          </p>
+        )}
+      </div>
 
-      <Input
-        label="Username"
-        value={form.username}
-        onChange={(e) => setForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
-        maxLength={30}
-      />
+      {/* Username */}
+      <div>
+        <Input
+          label="Username"
+          value={form.username}
+          onChange={(e) => setForm(f => ({ ...f, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') }))}
+          maxLength={30}
+          disabled={usernameOnCooldown}
+        />
+        {usernameOnCooldown && (
+          <div className="mt-2 flex items-start gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20">
+            <Clock size={14} className="text-amber-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-300">
+              Username change on cooldown. Next change available: <strong>{usernameNextChangeDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong>
+            </p>
+          </div>
+        )}
+        {!usernameOnCooldown && (
+          <div className="mt-2 flex items-start gap-2 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50">
+            <AlertTriangle size={14} className="text-zinc-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-zinc-400">
+              Usernames can only be changed once every <strong className="text-zinc-300">14 days</strong>.
+              {profile?.is_verified && <span className="text-red-400"> Changing your username will <strong>remove your verification badge</strong>.</span>}
+            </p>
+          </div>
+        )}
+      </div>
 
       <Textarea
         label="Bio"
@@ -215,6 +337,24 @@ function ProfileSettings() {
         maxLength={200}
       />
 
+      {/* Password required for name changes */}
+      {nameFieldsChanged && (
+        <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-3">
+          <div className="flex items-center gap-2">
+            <Lock size={14} className="text-indigo-400" />
+            <p className="text-sm font-medium text-indigo-300">Password required to change name or username</p>
+          </div>
+          <Input
+            label="Your Password"
+            icon={Lock}
+            type="password"
+            value={nameChangePassword}
+            onChange={(e) => setNameChangePassword(e.target.value)}
+            placeholder="Enter your password to confirm"
+          />
+        </div>
+      )}
+
       <Button onClick={handleSave} loading={saving}>
         <Save size={16} />
         Save Changes
@@ -234,6 +374,28 @@ function AccountSettings() {
   const [passwordSaving, setPasswordSaving] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [loginHistory, setLoginHistory] = useState([])
+  const [sessions, setSessions] = useState([])
+  const [loadingSessions, setLoadingSessions] = useState(true)
+  const [revokingAll, setRevokingAll] = useState(false)
+
+  // Load login history and sessions
+  useEffect(() => {
+    const loadSecurityData = async () => {
+      setLoadingSessions(true)
+      try {
+        const [historyRes, sessionsRes] = await Promise.all([
+          supabase.from('login_history').select('*').eq('user_id', user.id).order('login_at', { ascending: false }).limit(20),
+          supabase.from('user_sessions').select('*').eq('user_id', user.id).order('last_active', { ascending: false }),
+        ])
+        if (historyRes.data) setLoginHistory(historyRes.data)
+        if (sessionsRes.data) setSessions(sessionsRes.data)
+      } catch {} finally {
+        setLoadingSessions(false)
+      }
+    }
+    if (user?.id) loadSecurityData()
+  }, [user?.id])
 
   const handleSignOut = async () => {
     await signOut()
@@ -258,11 +420,19 @@ function AccountSettings() {
   }
 
   const handleChangePassword = async () => {
+    if (!currentPassword) return toast.error('Enter your current password')
     if (!newPassword || !confirmPassword) return toast.error('Fill in all password fields')
     if (newPassword.length < 8) return toast.error('Password must be at least 8 characters')
     if (newPassword !== confirmPassword) return toast.error('Passwords do not match')
     setPasswordSaving(true)
     try {
+      // Verify current password first by re-authenticating
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      })
+      if (authError) throw new Error('Current password is incorrect')
+
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
       toast.success('Password updated successfully')
@@ -290,6 +460,40 @@ function AccountSettings() {
       toast.error(err.message || 'Failed to delete account')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleRevokeSession = async (sessionId) => {
+    try {
+      const { error } = await supabase.rpc('revoke_session', {
+        p_user_id: user.id,
+        p_session_id: sessionId,
+      })
+      if (error) throw error
+      setSessions(s => s.filter(sess => sess.id !== sessionId))
+      toast.success('Session revoked')
+    } catch (err) {
+      toast.error(err.message || 'Failed to revoke session')
+    }
+  }
+
+  const handleRevokeAllOther = async () => {
+    if (!confirm('Sign out of all other devices?')) return
+    setRevokingAll(true)
+    try {
+      // Find the current session hash
+      const currentSession = sessions.find(s => s.is_current)
+      const { error } = await supabase.rpc('revoke_all_other_sessions', {
+        p_user_id: user.id,
+        p_current_session_hash: currentSession?.session_token_hash || '',
+      })
+      if (error) throw error
+      setSessions(s => s.filter(sess => sess.is_current))
+      toast.success('All other sessions revoked')
+    } catch (err) {
+      toast.error(err.message || 'Failed to revoke sessions')
+    } finally {
+      setRevokingAll(false)
     }
   }
 
@@ -328,6 +532,13 @@ function AccountSettings() {
         </h3>
         <div className="space-y-3">
           <Input
+            label="Current Password"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Enter current password"
+          />
+          <Input
             label="New Password"
             type="password"
             value={newPassword}
@@ -345,6 +556,85 @@ function AccountSettings() {
             Update Password
           </Button>
         </div>
+      </div>
+
+      {/* Active Sessions */}
+      <div className="pt-4 border-t border-zinc-800">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+          <Shield size={16} className="text-indigo-400" /> Active Sessions
+        </h3>
+        {loadingSessions ? (
+          <div className="flex items-center gap-2 p-4 text-zinc-500">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Loading sessions...</span>
+          </div>
+        ) : sessions.length === 0 ? (
+          <p className="text-sm text-zinc-500 p-3">No active sessions tracked yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {sessions.map(sess => (
+              <div key={sess.id} className={cn(
+                "flex items-center justify-between p-3 rounded-xl border",
+                sess.is_current ? "bg-indigo-500/10 border-indigo-500/20" : "bg-zinc-900/30 border-zinc-800/50"
+              )}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-zinc-300 truncate">{sess.device_info || 'Unknown device'}</p>
+                    {sess.is_current && (
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400">Current</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {sess.ip_address || 'Unknown IP'} · Last active {new Date(sess.last_active).toLocaleDateString()}
+                  </p>
+                </div>
+                {!sess.is_current && (
+                  <button
+                    onClick={() => handleRevokeSession(sess.id)}
+                    className="text-xs text-red-400 hover:text-red-300 font-medium ml-3 cursor-pointer"
+                  >
+                    Revoke
+                  </button>
+                )}
+              </div>
+            ))}
+            {sessions.length > 1 && (
+              <Button variant="outline" size="sm" onClick={handleRevokeAllOther} loading={revokingAll} className="mt-2">
+                Sign out all other sessions
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Login History */}
+      <div className="pt-4 border-t border-zinc-800">
+        <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
+          <Clock size={16} className="text-indigo-400" /> Login History
+        </h3>
+        {loadingSessions ? (
+          <div className="flex items-center gap-2 p-4 text-zinc-500">
+            <Loader2 size={16} className="animate-spin" />
+            <span className="text-sm">Loading...</span>
+          </div>
+        ) : loginHistory.length === 0 ? (
+          <p className="text-sm text-zinc-500 p-3">No login history yet.</p>
+        ) : (
+          <div className="space-y-1 max-h-64 overflow-y-auto">
+            {loginHistory.map(entry => (
+              <div key={entry.id} className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-900/30 text-xs">
+                <div className="min-w-0 flex-1">
+                  <span className="text-zinc-300">{entry.method || 'password'}</span>
+                  <span className="text-zinc-600 mx-1.5">·</span>
+                  <span className="text-zinc-500">{entry.ip_address || 'Unknown IP'}</span>
+                </div>
+                <span className="text-zinc-500 ml-3 flex-shrink-0">
+                  {new Date(entry.login_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Sign Out */}
