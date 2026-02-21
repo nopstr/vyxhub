@@ -829,7 +829,7 @@ export default function PostCard({ post }) {
 
           {/* Content — gate text for subscriber-only posts */}
           {editedContent && (
-            <p className="text-[15px] text-zinc-200 leading-normal mb-1 whitespace-pre-wrap break-words">
+            <p className="text-[15px] text-zinc-200 leading-snug mb-1 whitespace-pre-wrap break-words">
               {isContentUnlocked || post.visibility === 'public'
                 ? <RichContent text={editedContent} />
                 : editedContent.length > 60
