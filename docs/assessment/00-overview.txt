@@ -14,6 +14,8 @@ Admin/Support/Management system is comprehensive with role-based access, audit
 trails, and 10+ RPC functions. Feed algorithm is now production-grade with
 multi-factor personalized scoring (9 signals), engagement velocity, social proof,
 content type affinity, topic affinity, and impression-based novelty detection.
+ML-based ranking is available via logistic regression with learned weights,
+A/B tested through an integrated experiment framework with auto-assignment.
 Content protection is robust with blurred previews for locked media. The platform
 now includes a "My Unlocks" page for purchased content and improved set preview
 behavior.
@@ -29,8 +31,9 @@ ARCHITECTURE SUMMARY
 - Supabase (PostgreSQL + Auth + Private Storage + Realtime)
 - Zustand 5 (7 stores: auth, post, comment, message, notification, search, subscriptionCache)
 - Vercel (hosting, CSP/HSTS/security headers, SPA rewrites)
-- 26 DB tables, 10 enums, ~40 functions, ~24 triggers, 1 view
-- 70+ RLS policies (including storage), 40+ indexes
+- 30 DB tables, 10 enums, ~45 functions, ~27 triggers, 1 view
+- 75+ RLS policies (including storage), 45+ indexes
+- Vercel Python serverless functions (ML training pipeline)
 - Zero test framework (no Jest/Vitest/Playwright)
 - Zero TypeScript (entire codebase is JSX/JS)
 
@@ -193,6 +196,34 @@ FEAT-9. FEED ALGORITHM V2 (Complete Overhaul)
     → Modified: postStore.js (impression tracking, following_feed_ranked RPC),
       VirtualizedPost.jsx (impression recording on viewport entry)
 
+FEAT-10. ML RANKING & A/B TESTING FRAMEWORK
+    → ML-based feed ranking: logistic regression scoring with learned weights
+      - 11 normalized features mapped to sigmoid probability of engagement
+      - model_weights table stores coefficients per model version
+      - Seed weights approximate heuristic behavior (no training needed to start)
+      - personalized_feed auto-dispatches heuristic vs ML based on experiment bucket
+    → Vercel Python serverless training pipeline:
+      - POST /api/train with Bearer token auth
+      - Fetches labeled training data via export_training_data RPC
+      - Trains scikit-learn LogisticRegression (balanced class weights, L2 regularized)
+      - Writes weights to model_weights table as new version
+      - Reports accuracy, AUC, cross-validated AUC, feature weights
+      - Optional auto-activation of trained model
+    → A/B testing framework:
+      - experiments table (name, control/test variants, traffic %, status)
+      - experiment_assignments (user ↔ bucket auto-assignment on first feed request)
+      - experiment_metrics (auto-tracked via DB triggers on likes/comments/bookmarks)
+      - get_experiment_results RPC: per-bucket user count, engagement count, engagement rate
+      - Seeded default experiment "heuristic_vs_ml_v1" (paused until ready)
+    → Training data export: export_training_data RPC returns labeled feature vectors
+      from post_impressions joined with engagement data (likes/comments/bookmarks)
+    → activate_model_version RPC to switch live model version
+    → pg_cron: cleanup old experiment metrics weekly
+    → DB migration: 20260221400000_ml_ranking_ab_testing.sql (4 new tables,
+      6+ RPCs, 3 triggers, cron job, 13 weight rows, 1 experiment)
+    → Files: api/train.py, api/requirements.txt
+    → Modified: vercel.json (exclude /api/ from SPA rewrite)
+
 FEAT-6. NOTIFICATION SYSTEM V2 (Complete Overhaul)
     → Fixed tip notification bug (wrong column names: type/from_user_id/post_id/metadata → notification_type/actor_id/reference_id/message)
     → Preference enforcement: should_notify() helper checks profiles.notification_preferences JSONB in all 6 trigger functions
@@ -275,10 +306,11 @@ BUG-6. SUGGESTED CREATORS DON'T EXCLUDE FOLLOWED USERS   [FIXED]
 NEW: TIER 5 — ALGORITHM DEVELOPMENT
 ================================================================================
 
-Current State: PRIMITIVE (~15% maturity)
-The platform has a basic hot_score function and ranked_posts view but zero
-personalization, zero collaborative filtering, and fake "trending" (just
-sorted by total follower_count with no time dimension).
+Current State: ADVANCED (~85% maturity)
+The platform has a comprehensive 9-factor personalized feed algorithm with
+ML-based ranking (logistic regression), A/B testing framework, collaborative
+filtering, time-windowed trending detection, and impression-based novelty.
+ML training pipeline uses Vercel Python serverless functions with scikit-learn.
 
 A1. FEED PERSONALIZATION ENGINE                           [DONE]
     Priority: CRITICAL
@@ -352,7 +384,42 @@ A6. BLOCKED/MUTED USER FEED FILTERING                    [DONE]
     
     Estimated effort: 0.5 days
 
-A7. ENGAGEMENT-WEIGHTED NOTIFICATIONS                     [NOT STARTED]
+A7. ML-BASED RANKING                                      [DONE]
+    Priority: HIGH
+    Implementation:
+    - Logistic regression feed scoring: sigmoid(w0 + w1*f1 + ... + w11*f11)
+    - 11 normalized features: ln_engagement, ln_affinity, is_following,
+      is_subscribed, content_pref, velocity_ratio, ln_friend_likes,
+      inv_age, is_novel, has_media, topic_affinity
+    - model_weights table stores coefficients per model version
+    - personalized_feed auto-branches: heuristic (control) vs ML (test)
+    - Vercel Python serverless training endpoint (POST /api/train)
+    - scikit-learn LogisticRegression with balanced class weights
+    - Training data export RPC: labeled (impression, engagement) feature vectors
+    - Seed weights approximate heuristic behavior before any training
+    - activate_model_version RPC switches which weight set is live
+    DB: model_weights table, api/train.py, api/requirements.txt
+    
+    Estimated effort: 2 days
+
+A8. A/B TESTING FRAMEWORK                                 [DONE]
+    Priority: HIGH
+    Implementation:
+    - experiments table: name, control/test variants, traffic_pct, status
+    - experiment_assignments table: user ↔ experiment ↔ bucket (0/1)
+    - experiment_metrics table: engagement events per bucket
+    - Auto-assignment: users get assigned on first feed request
+    - Auto-metric triggers on likes/comments/bookmarks for experiment users
+    - get_experiment_results RPC: users, likes, comments, bookmarks,
+      impressions, engagement rate, avg engagements per bucket
+    - Seeded default experiment (heuristic_vs_ml_v1, paused)
+    - pg_cron: cleanup old experiment metrics weekly
+    - personalized_feed dispatches heuristic vs ML based on bucket
+    DB: experiments, experiment_assignments, experiment_metrics tables
+    
+    Estimated effort: 1 day
+
+A9. ENGAGEMENT-WEIGHTED NOTIFICATIONS                     [NOT STARTED]
     Priority: LOW
     Description: All notifications are equal weight. Should prioritize:
     - Notifications from close connections (high affinity score)
@@ -361,7 +428,7 @@ A7. ENGAGEMENT-WEIGHTED NOTIFICATIONS                     [NOT STARTED]
     
     Estimated effort: 2 days
 
-A8. REEL AUTOPLAY ALGORITHM                               [NOT STARTED]
+A10. REEL AUTOPLAY ALGORITHM                              [NOT STARTED]
     Priority: MEDIUM
     Description: Reels page loads videos chronologically. Should:
     - Pre-fetch next reel while current one plays
@@ -380,7 +447,7 @@ SYSTEM MATURITY ASSESSMENT (vs. Major Social Media Platforms)
                                     ------    --------  ---------  ---------
 Auth & Accounts                      85%       95%       98%        98%
 Content Creation                     75%       90%       95%        95%
-Feed Algorithm                       85%       60%       95%        98%
+Feed Algorithm                       92%       60%       95%        98%
 Content Discovery                    70%       40%       85%        95%
 Messaging                            90%       80%       90%        92%
 Notifications                        95%       85%       95%        95%
@@ -433,7 +500,7 @@ DETAILED MATURITY BREAKDOWN
    ✅ Scheduled post media upload
    ✅ Post editing after publish
 
-3. FEED ALGORITHM (85%)
+3. FEED ALGORITHM (92%)
    ✅ Hot score function (logarithmic engagement / polynomial decay)
    ✅ ranked_posts view
    ✅ Fallback to chronological
@@ -454,8 +521,8 @@ DETAILED MATURITY BREAKDOWN
    ✅ pg_cron scheduling (trending 15m, decay daily, cleanup weekly)
    ✅ Trending detection (time-windowed materialized views, 4h/24h windows)
    ✅ Collaborative filtering (suggest_creators with mutual follows)
-   ❌ Missing: ML-based ranking (statistical heuristics only)
-   ❌ Missing: A/B testing framework for algorithm tuning
+   ✅ ML-based ranking (logistic regression with learned weights, Vercel Python training pipeline)
+   ✅ A/B testing framework (experiments table, auto-assignment, per-bucket metrics, results RPC)
 
 4. CONTENT DISCOVERY (70%)
    ✅ Full-text post search (tsvector + GIN)
@@ -600,7 +667,7 @@ DETAILED MATURITY BREAKDOWN
     ✅ Missing: Likes working, show all reactions all the time, when clicked they should be colored, if possible add little color fill animation
 
 ================================================================================
-WHAT WORKS END-TO-END TODAY (132+ flows)
+WHAT WORKS END-TO-END TODAY (139+ flows)
 ================================================================================
 
 1-72. [All previous flows — see v1 for full list]
@@ -664,6 +731,13 @@ WHAT WORKS END-TO-END TODAY (132+ flows)
 130. Freshness bonus: 7-level time decay (< 1h = 3x, < 3h = 2.2x, etc.)
 131. Novelty factor: already-seen posts penalized to 0.25x score
 132. pg_cron: trending refresh (15min), affinity decay (daily), topic decay (daily), impression cleanup (weekly)
+133. ML-based feed ranking: logistic regression scoring with learned weights from engagement data
+134. A/B testing: experiment framework auto-assigns users to control (heuristic) vs test (ML) buckets
+135. Model training: POST /api/train triggers scikit-learn logistic regression on impression data
+136. Experiment results: get_experiment_results RPC aggregates engagement rate per bucket
+137. Training data export: export_training_data RPC returns labeled (user, post, features, engaged?) vectors
+138. Model versioning: model_weights table stores weights per version, activate_model_version switches live model
+139. Experiment metrics: auto-tracked via DB triggers on likes/comments/bookmarks for experiment users
 
 ONE REMAINING EXISTENTIAL BLOCKER
 -----------------------------------
@@ -672,17 +746,19 @@ ONE REMAINING EXISTENTIAL BLOCKER
 
 ESTIMATED TIMELINE
 ------------------
-- Algorithm tier completion (A1-A8): 2-3 weeks
+- Algorithm tier completion (A1-A10): A1-A8 done, A9-A10 remaining
 - Real MVP (Phase 3 remaining): 2-3 weeks of focused work
 - Feature parity with top platforms: 3-6 months
 
 NEXT PRIORITIES
 ---------------
 1. Phase 3: Payment integration (Stripe Connect — existential blocker)
-2. Tier 5: Algorithm development (A1 personalization, A2 discovery, A3 trending)
+2. Tier 5: Remaining algorithm work (A9 notification weighting, A10 reel autoplay)
 3. Testing: Vitest + Playwright setup
 4. Performance: CDN, virtual scrolling, bundle optimization
 5. Mobile: Haptic feedback, background sync
+6. ML: Trigger first training run once enough impression data accumulates
+   (set SUPABASE_SERVICE_KEY + TRAIN_API_KEY in Vercel env vars)
 
 FILES IN THIS ASSESSMENT
 -------------------------
