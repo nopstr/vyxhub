@@ -13,14 +13,19 @@ const THROTTLE_MS = 500
 const _impressionBuffer = new Set()
 let _impressionTimer = null
 
-function flushImpressions(userId) {
+async function flushImpressions(userId) {
   if (!userId || _impressionBuffer.size === 0) return
   const ids = [..._impressionBuffer]
   _impressionBuffer.clear()
-  supabase.rpc('record_post_impressions', {
-    p_user_id: userId,
-    p_post_ids: ids,
-  }).catch(err => console.warn('Failed to record impressions:', err))
+  try {
+    const { error } = await supabase.rpc('record_post_impressions', {
+      p_user_id: userId,
+      p_post_ids: ids,
+    })
+    if (error) console.warn('Failed to record impressions:', error)
+  } catch (err) {
+    console.warn('Failed to record impressions:', err)
+  }
 }
 
 export function recordImpression(postId, userId) {
@@ -45,7 +50,7 @@ if (typeof window !== 'undefined') {
       supabase.rpc('record_post_impressions', {
         p_user_id: null, // will be set by current auth context
         p_post_ids: ids,
-      }).catch(() => {})
+      }).then(() => {})
     }
   })
 }

@@ -94,6 +94,32 @@ export async function fetchCryptoPrices() {
 }
 
 /**
+ * Fetch minimum payment amounts per crypto from our API proxy
+ * Returns { btc: 1.50, eth: 0.80, usdt: 0.50, ... } in USD
+ */
+let minCache = null
+let minCacheTime = 0
+const MIN_CACHE_TTL = 300_000 // 5 minutes client-side
+
+export async function fetchMinAmounts() {
+  const now = Date.now()
+  if (minCache && now - minCacheTime < MIN_CACHE_TTL) {
+    return minCache
+  }
+
+  const res = await fetch('/api/crypto/min-amounts')
+  if (!res.ok) {
+    if (minCache) return minCache
+    return null
+  }
+
+  const data = await res.json()
+  minCache = data
+  minCacheTime = now
+  return data
+}
+
+/**
  * Create a crypto payment via our API
  */
 export async function createCryptoPayment({ accessToken, usdAmount, cryptoCurrency, paymentType, metadata }) {

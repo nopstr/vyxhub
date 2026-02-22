@@ -9,6 +9,7 @@ import {
   formatCryptoAmount,
   estimateCryptoAmount,
   fetchCryptoPrices,
+  fetchMinAmounts,
   createCryptoPayment,
   formatCountdown,
   getPaymentStatusLabel,
@@ -46,6 +47,7 @@ export default function CryptoPaymentModal({
   // State
   const [step, setStep] = useState('select')
   const [prices, setPrices] = useState(null)
+  const [minAmounts, setMinAmounts] = useState(null)
   const [loadingPrices, setLoadingPrices] = useState(true)
   const [selectedCrypto, setSelectedCrypto] = useState(null)
   const [payment, setPayment] = useState(null)
@@ -74,8 +76,14 @@ export default function CryptoPaymentModal({
   const loadPrices = async () => {
     setLoadingPrices(true)
     try {
-      const data = await fetchCryptoPrices()
-      if (mountedRef.current) setPrices(data)
+      const [priceData, minData] = await Promise.all([
+        fetchCryptoPrices(),
+        fetchMinAmounts(),
+      ])
+      if (mountedRef.current) {
+        setPrices(priceData)
+        setMinAmounts(minData)
+      }
     } catch {
       if (mountedRef.current) setError('Failed to load crypto prices. Please try again.')
     } finally {
@@ -324,7 +332,8 @@ export default function CryptoPaymentModal({
                       })
                       .map(crypto => {
                       const estimated = estimateCryptoAmount(amount, prices, crypto.id)
-                      const belowMin = parseFloat(amount) < (crypto.minUsd || 0)
+                      const realMin = minAmounts?.[crypto.id] ?? crypto.minUsd ?? 0
+                      const belowMin = parseFloat(amount) < realMin
                       return (
                         <button
                           key={crypto.id}
@@ -352,7 +361,7 @@ export default function CryptoPaymentModal({
                           {/* Estimated amount */}
                           <div className="text-right">
                             {belowMin ? (
-                              <p className="text-xs text-zinc-500">Min ${crypto.minUsd?.toFixed(2)}</p>
+                              <p className="text-xs text-red-400/70">Min ${realMin.toFixed(2)}</p>
                             ) : (
                               <>
                                 <p className="text-sm font-mono text-zinc-200">
