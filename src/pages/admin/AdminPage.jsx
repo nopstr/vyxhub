@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import { toast } from 'sonner'
 import { cn, formatCurrency } from '../../lib/utils'
+import * as Sentry from '@sentry/react'
 import {
   ShieldAlert, DollarSign, Users, TrendingUp, BarChart3,
   Search, Save, Crown, Percent, UserCheck, Eye, CreditCard,
@@ -645,7 +646,11 @@ export default function AdminPage() {
           <Button 
             variant="danger" 
             size="sm" 
-            onClick={() => { throw new Error("Sentry Test Error from Admin Panel!"); }}
+            onClick={() => {
+              const err = new Error('Sentry Test Error from Admin Panel!')
+              Sentry.captureException(err)
+              toast.success('Test error sent to Sentry!')
+            }}
           >
             Test Sentry Crash
           </Button>
