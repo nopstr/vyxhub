@@ -3,6 +3,7 @@
 ALTER TABLE affiliate_ads ADD COLUMN IF NOT EXISTS sidebar_image_url TEXT;
 
 -- Update the get_affiliate_ads RPC to return sidebar_image_url
+DROP FUNCTION IF EXISTS get_affiliate_ads(TEXT, INT);
 CREATE OR REPLACE FUNCTION get_affiliate_ads(
   p_placement TEXT DEFAULT 'feed',
   p_limit INT DEFAULT 3

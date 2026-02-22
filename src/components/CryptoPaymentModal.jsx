@@ -36,7 +36,7 @@ export default function CryptoPaymentModal({
   open,
   onClose,
   amount,        // USD amount to pay
-  paymentType,   // 'subscription' | 'tip' | 'ppv_post' | 'message_unlock' | 'payment_request' | 'plus_subscription'
+    paymentType,   // 'subscription' | 'tip' | 'ppv_post' | 'message_unlock' | 'payment_request' | 'plus_subscription' | 'custom_request'
   metadata = {}, // { creator_id, post_id, message, conversation_id, message_id, referrer_id }
   onSuccess,     // Called when payment is confirmed and business logic is processed
   label = '',    // Optional label e.g. "Subscribe to @username"

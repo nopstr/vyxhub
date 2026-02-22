@@ -71,43 +71,46 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
 
   const handleSubscribe = async () => {
     if (!user) return toast.error('Sign in to subscribe')
-    setLoading(true)
-    try {
-      const amount = effectivePrice
-
-      const { data: subResult, error } = await supabase.rpc('process_subscription', {
-        p_subscriber_id: user.id,
-        p_creator_id: creator.id,
-        p_price: amount,
-        p_referrer_id: null,
-      })
-      if (error) throw error
-
-      // Redeem promo code if used
-      if (promoResult?.code_id) {
-        await supabase.rpc('redeem_promo_code', {
-          p_code_id: promoResult.code_id,
-          p_original_amount: basePrice,
-          p_discount_amount: +(basePrice - amount).toFixed(2),
+    
+    // If price is 0 (100% discount), we can bypass crypto payment
+    if (effectivePrice === 0) {
+      setLoading(true)
+      try {
+        const { data: subResult, error } = await supabase.rpc('process_subscription', {
+          p_subscriber_id: user.id,
+          p_creator_id: creator.id,
+          p_price: 0,
+          p_referrer_id: null,
         })
+        if (error) throw error
+
+        // Redeem promo code if used
+        if (promoResult?.code_id) {
+          await supabase.rpc('redeem_promo_code', {
+            p_code_id: promoResult.code_id,
+            p_original_amount: basePrice,
+            p_discount_amount: basePrice,
+          })
+        }
+
+        addSubscription(creator.id)
+        await supabase.from('follows').insert({
+          follower_id: user.id,
+          following_id: creator.id
+        }).catch(() => {})
+
+        haptic('success')
+        toast.success(`Subscribed to @${creator.username}!`)
+        onSubscribed?.()
+        onClose()
+      } catch (err) {
+        toast.error(err.message || 'Failed to subscribe')
+      } finally {
+        setLoading(false)
       }
-
-      addSubscription(creator.id)
-
-      // Auto-follow
-      await supabase.from('follows').insert({
-        follower_id: user.id,
-        following_id: creator.id
-      }).catch(() => {})
-
-      haptic('success')
-      toast.success(`Subscribed to @${creator.username}!`)
-      onSubscribed?.()
-      onClose()
-    } catch (err) {
-      toast.error(err.message || 'Failed to subscribe')
-    } finally {
-      setLoading(false)
+    } else {
+      // Open crypto payment modal
+      setShowCrypto(true)
     }
   }
 
@@ -245,21 +248,12 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
             ) : (
               <>
                 <Zap size={16} className="fill-current" />
-                Subscribe — ${effectivePrice.toFixed(2)}/mo
+                {effectivePrice === 0 ? 'Subscribe for Free' : `Subscribe — $${effectivePrice.toFixed(2)}/mo`}
               </>
             )}
           </button>
 
-          {/* Crypto payment option */}
-          <button
-            onClick={() => setShowCrypto(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
-          >
-            <Wallet size={14} />
-            or pay with crypto
-          </button>
-
-          <p className="text-[11px] text-zinc-600 text-center">
+          <p className="text-[11px] text-zinc-600 text-center mt-4">
             Cancel anytime. Payments processed securely.
           </p>
         </div>

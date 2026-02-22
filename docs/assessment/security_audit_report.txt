@@ -1,0 +1,64 @@
+VyxHub Security Audit Report
+============================
+
+During the comprehensive security audit of the VyxHub platform, 10 critical vulnerabilities were identified and patched. These vulnerabilities primarily affected the financial systems, RPC layer, and external API integrations, allowing for unauthorized fund generation, payment bypasses, and race conditions.
+
+1. Payment Bypass via Direct RPC Calls
+--------------------------------------
+- **Description**: Several `SECURITY DEFINER` RPCs (e.g., `process_subscription`, `send_tip`, `unlock_post`) were exposed to the public schema without verifying if the payment was actually processed through the frontend or a valid payment gateway.
+- **Impact**: Any authenticated user could call these RPCs directly via the Supabase client to subscribe to creators, send tips, or unlock content without spending any money.
+- **Fix**: Added an `is_webhook` claim check to the JWT context. These RPCs now require `auth.jwt() ->> 'is_webhook' = 'true'`, ensuring they can only be called by the secure webhook handler.
+
+2. Custom Requests Infinite Money Glitch
+----------------------------------------
+- **Description**: The `complete_custom_request` RPC did not verify if the custom request was actually paid for before crediting the creator's wallet.
+- **Impact**: A user could create a custom request, and the creator could immediately complete it, crediting their wallet with the requested amount out of thin air.
+- **Fix**: Added a strict check `IF v_req.payment_status != 'paid' THEN RAISE EXCEPTION` to ensure only paid requests can be completed.
+
+3. Payout Request Race Condition
+--------------------------------
+- **Description**: The `request_payout` RPC checked the user's wallet balance and then inserted a payout request, but did not lock the wallet row.
+- **Impact**: An attacker could send multiple concurrent payout requests. All requests would read the same initial balance and succeed, allowing the attacker to withdraw more money than they actually had.
+- **Fix**: Implemented `SELECT balance INTO v_balance FROM wallets WHERE user_id = auth.uid() FOR UPDATE` to lock the row and prevent concurrent reads during the transaction.
+
+4. Partial Withdrawal Exploit
+-----------------------------
+- **Description**: The `request_payout` RPC marked all pending transactions as 'withdrawn' regardless of the actual payout amount requested.
+- **Impact**: If a user had $100 in pending transactions and requested a $10 payout, all $100 worth of transactions were marked as withdrawn, causing accounting discrepancies and potential loss of funds for the platform.
+- **Fix**: Removed the flawed transaction update logic. Payouts now simply deduct from the wallet balance and create a 'withdrawal' transaction, relying on the wallet balance as the source of truth.
+
+5. Free Content Promotions Exploit
+----------------------------------
+- **Description**: The `create_promotion` RPC did not deduct the promotion budget from the user's wallet balance.
+- **Impact**: Users could create unlimited content promotions (ads) without spending any money, draining platform resources and ruining the ad economy.
+- **Fix**: Added logic to verify the user has sufficient balance and deduct the `p_budget` from their wallet within the same transaction.
+
+6. Custom Request Completion Race Condition
+-------------------------------------------
+- **Description**: The `complete_custom_request` RPC did not lock the custom request row when processing completion.
+- **Impact**: A creator could send multiple concurrent completion requests for the same custom request. The system would process all of them, crediting the creator's wallet multiple times for a single payment.
+- **Fix**: Added `FOR UPDATE` row locking when fetching the custom request to ensure it can only be completed once.
+
+7. Admin Payout Rejection Race Condition
+----------------------------------------
+- **Description**: The `admin_update_payout_status` RPC refunded the user's wallet when a payout was rejected, but did not lock the payout request row.
+- **Impact**: A malicious admin (or compromised admin account) could send multiple concurrent rejection requests for the same payout. The system would refund the user's wallet multiple times, creating infinite funds.
+- **Fix**: Added `FOR UPDATE` row locking when fetching the payout request to ensure it can only be rejected and refunded once.
+
+8. Crypto Payment Status Spoofing
+---------------------------------
+- **Description**: The `update_crypto_payment_status` RPC was exposed to the public schema and lacked authorization checks.
+- **Impact**: An attacker could create a crypto payment, obtain the `provider_payment_id`, and call this RPC directly to mark their payment as 'finished' without actually transferring any cryptocurrency.
+- **Fix**: Added `IF current_setting('role') != 'service_role' THEN RAISE EXCEPTION` to ensure only the secure webhook (using the service role key) can update payment statuses.
+
+9. Crypto Payment Processing Bypass
+-----------------------------------
+- **Description**: The `process_confirmed_crypto_payment` RPC was exposed to the public schema, lacked authorization checks, and did not verify the payment's actual status before processing.
+- **Impact**: An attacker could call this RPC with their `crypto_payment_id` to instantly process the payment and receive the associated benefits (wallet deposit, subscription, etc.) even if the payment was still 'waiting'.
+- **Fix**: Restricted the RPC to `service_role` only and added a strict check to ensure `payment_status IN ('confirmed', 'sending', 'finished')` before processing.
+
+10. Webhook Signature Verification Bypass
+-----------------------------------------
+- **Description**: The NOWPayments webhook handler (`api/crypto/webhook.js`) contained fail-open logic: if the `NOWPAYMENTS_IPN_SECRET` environment variable was missing, it would return `true` and accept any payload.
+- **Impact**: If the environment variable was misconfigured in production, an attacker could send forged webhook payloads to credit their account with infinite funds.
+- **Fix**: Modified the `verifySignature` function to fail closed (`return false`) if the secret is missing, ensuring no unverified payloads are ever processed in production.

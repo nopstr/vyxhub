@@ -537,7 +537,7 @@ function CustomRequestModal({ creatorId, creatorName, minPrice, onClose }) {
         price,
       })
       if (error) throw error
-      toast.success('Custom request sent!')
+      toast.success('Custom request sent! You will be notified when the creator accepts it.')
       onClose()
     } catch (err) {
       toast.error(err.message || 'Failed to send request')
@@ -593,7 +593,7 @@ function CustomRequestModal({ creatorId, creatorName, minPrice, onClose }) {
           </div>
           <div className="bg-zinc-800/30 rounded-xl p-3">
             <p className="text-xs text-zinc-500">
-              You won&apos;t be charged until the creator completes and delivers your request. 
+              You won&apos;t be charged until the creator accepts your request.
               The creator may accept, decline, or suggest a different price.
             </p>
           </div>

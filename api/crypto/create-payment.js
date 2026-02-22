@@ -33,7 +33,7 @@ const CRYPTO_TO_NOWPAYMENTS = {
   trx:  'trx',
 }
 
-const VALID_PAYMENT_TYPES = ['subscription', 'tip', 'ppv_post', 'message_unlock', 'payment_request', 'plus_subscription']
+const VALID_PAYMENT_TYPES = ['subscription', 'tip', 'ppv_post', 'message_unlock', 'payment_request', 'plus_subscription', 'custom_request']
 
 export default async function handler(req, res) {
   // CORS headers for preflight

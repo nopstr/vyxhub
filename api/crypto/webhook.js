@@ -35,8 +35,8 @@ function sortObject(obj) {
  */
 function verifySignature(payload, signature) {
   if (!IPN_SECRET) {
-    console.warn('NOWPAYMENTS_IPN_SECRET not set — skipping signature verification')
-    return true // Allow in development
+    console.error('CRITICAL: NOWPAYMENTS_IPN_SECRET not set - failing closed')
+    return false // Fail closed in production
   }
   if (!signature) return false
 

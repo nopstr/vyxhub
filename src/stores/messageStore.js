@@ -312,22 +312,6 @@ export const useMessageStore = create((set, get) => ({
     return msg
   },
 
-  payMessageRequest: async (payerId, messageId) => {
-    const { data, error } = await supabase.rpc('pay_message_request', {
-      p_payer_id: payerId,
-      p_message_id: messageId,
-    })
-    if (error) throw error
-    if (!data?.success) throw new Error(data?.error || 'Payment failed')
-
-    set({
-      messages: get().messages.map(m =>
-        m.id === messageId ? { ...m, payment_status: 'paid' } : m
-      ),
-    })
-    return data
-  },
-
   // ─── Read Receipts ────────────────────────────────────────────────────
 
   markAsRead: async (conversationId, userId) => {
@@ -540,17 +524,6 @@ export const useMessageStore = create((set, get) => ({
       return { allowed: true, reason: 'error_fallback', price: 0 }
     }
     set({ messageAccess: data })
-    return data
-  },
-
-  payMessageUnlock: async (senderId, receiverId, conversationId) => {
-    const { data, error } = await supabase.rpc('pay_message_unlock', {
-      p_sender_id: senderId,
-      p_receiver_id: receiverId,
-      p_conversation_id: conversationId,
-    })
-    if (error) throw error
-    await get().checkMessageAccess(senderId, receiverId)
     return data
   },
 

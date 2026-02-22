@@ -594,12 +594,16 @@ function CustomRequestsTab({ userId }) {
   }
 
   const handleComplete = async (requestId) => {
+    const deliveryUrl = window.prompt('Enter delivery URL (optional):')
+    if (deliveryUrl === null) return // Cancelled
+
     try {
       const { data, error } = await supabase.rpc('complete_custom_request', {
         p_request_id: requestId,
+        p_delivery_url: deliveryUrl.trim() || null
       })
       if (error) throw error
-      toast.success(`Request completed! You earned ${formatCurrency(data.net_amount)}`)
+      toast.success(`Request completed! You earned ${formatCurrency(data.net_earned)}`)
       fetchRequests()
     } catch (err) {
       toast.error(err.message || 'Failed to complete')
@@ -618,6 +622,7 @@ function CustomRequestsTab({ userId }) {
   const statusColors = {
     pending: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
     accepted: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    paid: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
     declined: 'bg-red-500/10 text-red-400 border-red-500/30',
     completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     cancelled: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30',
@@ -669,7 +674,7 @@ function CustomRequestsTab({ userId }) {
 
       {/* Filter tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {['pending', 'accepted', 'completed', 'declined', 'all'].map(f => (
+        {['pending', 'accepted', 'paid', 'completed', 'declined', 'all'].map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -776,6 +781,15 @@ function CustomRequestsTab({ userId }) {
               )}
 
               {req.status === 'accepted' && (
+                <div className="mt-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+                  <p className="text-sm text-indigo-400 font-medium flex items-center gap-2">
+                    <Clock size={14} />
+                    Waiting for user to complete payment...
+                  </p>
+                </div>
+              )}
+
+              {req.status === 'paid' && (
                 <div className="mt-3">
                   <Button size="sm" onClick={() => handleComplete(req.id)}>
                     <Package size={14} /> Mark as Completed & Collect Payment

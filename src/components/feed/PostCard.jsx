@@ -384,20 +384,7 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
 
   const handlePurchase = async () => {
     if (!user) return toast.error('Sign in to purchase')
-    setLoading(true)
-    try {
-      const { data, error } = await supabase.rpc('purchase_ppv_post', {
-        p_buyer_id: user.id,
-        p_post_id: post.id,
-      })
-      if (error) throw error
-      addPurchase(post.id)
-      toast.success('Content unlocked!')
-    } catch (err) {
-      toast.error(err.message || 'Failed to purchase')
-    } finally {
-      setLoading(false)
-    }
+    setShowCryptoModal(true)
   }
 
   return (

@@ -142,6 +142,7 @@ CREATE TRIGGER trg_set_notification_priority
   EXECUTE FUNCTION set_notification_priority();
 
 -- Update get_notifications_paginated to use priority_score
+DROP FUNCTION IF EXISTS get_notifications_paginated(UUID, TIMESTAMPTZ, INT, TEXT);
 CREATE OR REPLACE FUNCTION get_notifications_paginated(
   p_user_id UUID,
   p_cursor TIMESTAMPTZ DEFAULT NULL,
@@ -210,5 +211,4 @@ $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
 -- Index for priority-sorted notifications
 CREATE INDEX IF NOT EXISTS idx_notifications_priority_score
-  ON notifications(user_id, priority_score DESC, created_at DESC)
-  WHERE created_at > NOW() - INTERVAL '90 days';
+  ON notifications(user_id, priority_score DESC, created_at DESC);

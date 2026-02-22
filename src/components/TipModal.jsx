@@ -29,28 +29,7 @@ export default function TipModal({ open, onClose, creator, postId = null }) {
     if (!isValid) return toast.error(`Tip must be between $${MIN_TIP_AMOUNT} and $${MAX_TIP_AMOUNT}`)
     if (user.id === creator.id) return toast.error("You can't tip yourself")
 
-    setLoading(true)
-    try {
-      const { data, error } = await supabase.rpc('send_tip', {
-        p_from_user_id: user.id,
-        p_to_user_id: creator.id,
-        p_amount: currentAmount,
-        p_post_id: postId,
-        p_message: message || null,
-      })
-
-      if (error) throw error
-
-      toast.success(`Sent $${currentAmount.toFixed(2)} tip to @${creator.username}!`, {
-        icon: '💸',
-      })
-      haptic('success')
-      onClose()
-    } catch (err) {
-      toast.error(err.message || 'Failed to send tip')
-    } finally {
-      setLoading(false)
-    }
+    setShowCrypto(true)
   }
 
   return (
@@ -156,17 +135,7 @@ export default function TipModal({ open, onClose, creator, postId = null }) {
           </Button>
 
           {/* Crypto payment option */}
-          {isValid && (
-            <button
-              onClick={() => setShowCrypto(true)}
-              className="w-full flex items-center justify-center gap-2 py-2 mt-2 text-sm text-zinc-400 hover:text-amber-400 transition-colors cursor-pointer"
-            >
-              <Wallet size={14} />
-              or tip with crypto
-            </button>
-          )}
-
-          <p className="text-[11px] text-zinc-600 text-center mt-3">
+          <p className="text-[11px] text-zinc-600 text-center mt-4">
             Creator receives {100 - PLATFORM_FEE_PERCENT}% · Tips are non-refundable
           </p>
         </div>

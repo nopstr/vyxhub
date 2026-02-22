@@ -17,6 +17,7 @@ import {
 import { formatMessageTime, cn, formatCurrency } from '../../lib/utils'
 import { CEO_USERNAME, PLATFORM_FEE_PERCENT, ALLOWED_IMAGE_TYPES, ALLOWED_VIDEO_TYPES } from '../../lib/constants'
 import { toast } from 'sonner'
+import CryptoPaymentModal from '../../components/CryptoPaymentModal'
 
 // ─── Quick Emoji Reactions ──────────────────────────────────────────────────
 const QUICK_REACTIONS = ['❤️', '😂', '😮', '😢', '🔥', '👍']
@@ -539,22 +540,14 @@ function ConversationList({ conversations, activeId, onSelect }) {
 // ─── Payment Request Bubble ─────────────────────────────────────────────────
 
 function PaymentRequestBubble({ msg, isOwn, userId }) {
-  const { payMessageRequest } = useMessageStore()
   const [paying, setPaying] = useState(false)
+  const [showCrypto, setShowCrypto] = useState(false)
   const isPaid = msg.payment_status === 'paid'
   const canPay = !isOwn && !isPaid
 
   const handlePay = async () => {
     if (paying) return
-    setPaying(true)
-    try {
-      await payMessageRequest(userId, msg.id)
-      toast.success(`Paid $${parseFloat(msg.payment_amount).toFixed(2)}!`)
-    } catch (err) {
-      toast.error(err.message || 'Payment failed')
-    } finally {
-      setPaying(false)
-    }
+    setShowCrypto(true)
   }
 
   return (
@@ -577,6 +570,32 @@ function PaymentRequestBubble({ msg, isOwn, userId }) {
       {canPay && (
         <div className="px-4 pb-3">
           <button onClick={handlePay} disabled={paying}
+            className="w-full py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            {paying ? <PageLoader /> : <>Pay Now <ArrowLeft size={14} className="rotate-180" /></>}
+          </button>
+        </div>
+      )}
+      {showCrypto && (
+        <CryptoPaymentModal
+          open={showCrypto}
+          onClose={() => setShowCrypto(false)}
+          amount={parseFloat(msg.payment_amount)}
+          paymentType="payment_request"
+          metadata={{ message_id: msg.id, creator_id: msg.sender_id }}
+          label={`Pay request from @${msg.sender?.username || 'creator'}`}
+          onSuccess={() => {
+            toast.success(`Paid $${parseFloat(msg.payment_amount).toFixed(2)}!`)
+            setShowCrypto(false)
+            // The webhook will update the DB, but we can optimistically update the store
+            useMessageStore.setState(s => ({
+              messages: s.messages.map(m => m.id === msg.id ? { ...m, payment_status: 'paid' } : m)
+            }))
+          }}
+        />
+      )}
+    </div>
+  )
+}
             className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
             {paying ? <span>Processing...</span> : <><CreditCard size={15} /> Pay ${parseFloat(msg.payment_amount).toFixed(2)}</>}
           </button>
@@ -772,7 +791,7 @@ function MessageBubble({ msg, isOwn, userId, otherUser }) {
 function MessageThread({ conversationId, userId, otherUser, conversation }) {
   const {
     messages, fetchMessages, fetchOlderMessages, sendMessage, subscribeToMessages,
-    checkMessageAccess, payMessageUnlock, sendPaymentRequest, sendMediaMessage,
+    checkMessageAccess, sendPaymentRequest, sendMediaMessage,
     sendVoiceMessage, messageAccess, hasMoreMessages, broadcastTyping,
     subscribeToTyping, markAsRead, approveVoiceVideo,
   } = useMessageStore()
@@ -783,6 +802,7 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
   const [showConvSettings, setShowConvSettings] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [unlocking, setUnlocking] = useState(false)
+  const [showUnlockCrypto, setShowUnlockCrypto] = useState(false)
   const [mediaFiles, setMediaFiles] = useState([])
   const [mediaPreviews, setMediaPreviews] = useState([])
   const bottomRef = useRef(null)
@@ -914,12 +934,8 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
 
   // Unlock messages
   const handleUnlockMessages = async () => {
-    setUnlocking(true)
-    try {
-      await payMessageUnlock(userId, otherUser.id, conversationId)
-      toast.success('Messages unlocked!')
-    } catch (err) { toast.error(err.message || 'Failed to unlock') }
-    finally { setUnlocking(false) }
+    if (unlocking) return
+    setShowUnlockCrypto(true)
   }
 
   const handleSendPaymentRequest = async (amount, note) => {
@@ -1113,6 +1129,24 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
       {showSearch && (
         <MessageSearchModal userId={userId} conversationId={conversationId} onClose={() => setShowSearch(false)} />
       )}
+
+      {/* Crypto Payment Modal for Unlocking */}
+      {showUnlockCrypto && (
+        <CryptoPaymentModal
+          open={showUnlockCrypto}
+          onClose={() => setShowUnlockCrypto(false)}
+          amount={paywallPrice}
+          paymentType="message_unlock"
+          metadata={{ creator_id: otherUser.id, conversation_id: conversationId }}
+          label={`Unlock messages with @${otherUser.username}`}
+          onSuccess={() => {
+            toast.success('Messages unlocked!')
+            setShowUnlockCrypto(false)
+            // Optimistically update access
+            useMessageStore.setState({ messageAccess: { allowed: true } })
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -1126,6 +1160,7 @@ export default function MessagesPage() {
   const [showNewMessage, setShowNewMessage] = useState(false)
   const [showGlobalSearch, setShowGlobalSearch] = useState(false)
   const [paywallUser, setPaywallUser] = useState(null)
+  const [showCryptoModal, setShowCryptoModal] = useState(false)
   const [searchParams] = useSearchParams()
 
   useEffect(() => {
@@ -1278,20 +1313,54 @@ export default function MessagesPage() {
               <Button variant="secondary" className="flex-1" onClick={() => setPaywallUser(null)}>Cancel</Button>
               <Button variant="primary" className="flex-1" onClick={async () => {
                 try {
+                  // Try to unlock directly (will succeed if user is Plus, otherwise throws)
                   const { data, error } = await supabase.rpc('pay_message_unlock', {
                     p_sender_id: user.id, p_receiver_id: paywallUser.id, p_conversation_id: null
                   })
                   if (error) throw error
-                  toast.success('Messages unlocked!')
-                  handleNewMessage(paywallUser)
-                  setPaywallUser(null)
-                } catch (err) { toast.error(err.message || 'Payment failed') }
+                  
+                  if (data?.plus_bypass) {
+                    toast.success('Messages unlocked for free with VyxHub+!')
+                    handleNewMessage(paywallUser)
+                    setPaywallUser(null)
+                  } else {
+                    // Should not happen unless webhook called it, but just in case
+                    toast.success('Messages unlocked!')
+                    handleNewMessage(paywallUser)
+                    setPaywallUser(null)
+                  }
+                } catch (err) {
+                  // If it fails (Payment required), open crypto modal
+                  if (err.message?.includes('Payment required')) {
+                    setShowCryptoModal(true)
+                  } else {
+                    toast.error(err.message || 'Payment failed')
+                  }
+                }
               }}>
                 Pay {formatCurrency(paywallUser.message_price)}
               </Button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Crypto Payment Modal */}
+      {showCryptoModal && paywallUser && (
+        <CryptoPaymentModal
+          open={showCryptoModal}
+          onClose={() => setShowCryptoModal(false)}
+          amount={paywallUser.message_price}
+          paymentType="message_unlock"
+          metadata={{ creator_id: paywallUser.id, conversation_id: null }}
+          label={`Unlock messages with @${paywallUser.username}`}
+          onSuccess={() => {
+            toast.success('Messages unlocked!')
+            handleNewMessage(paywallUser)
+            setPaywallUser(null)
+            setShowCryptoModal(false)
+          }}
+        />
       )}
     </div>
   )

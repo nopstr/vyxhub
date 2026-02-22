@@ -635,11 +635,20 @@ export default function AdminPage() {
   return (
     <div>
       <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50 px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center">
-            <ShieldAlert size={18} className="text-red-400" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center">
+              <ShieldAlert size={18} className="text-red-400" />
+            </div>
+            <h1 className="text-xl font-bold text-white">Admin Panel</h1>
           </div>
-          <h1 className="text-xl font-bold text-white">Admin Panel</h1>
+          <Button 
+            variant="danger" 
+            size="sm" 
+            onClick={() => { throw new Error("Sentry Test Error from Admin Panel!"); }}
+          >
+            Test Sentry Crash
+          </Button>
         </div>
       </header>
 
