@@ -18,7 +18,7 @@ const updateSW = registerSW({
 })
 
 Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN || "",
+  dsn: import.meta.env.VITE_SENTRY_DSN || "https://e18c117146aee267eb1426280b90b5ea@o4510926924546048.ingest.de.sentry.io/4510926925856848",
   integrations: [
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration(),
