@@ -596,29 +596,6 @@ function PaymentRequestBubble({ msg, isOwn, userId }) {
     </div>
   )
 }
-            className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
-            {paying ? <span>Processing...</span> : <><CreditCard size={15} /> Pay ${parseFloat(msg.payment_amount).toFixed(2)}</>}
-          </button>
-        </div>
-      )}
-      {isPaid && (
-        <div className="px-4 pb-3">
-          <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-medium">
-            <CheckCircle size={13} /> {isOwn ? 'Payment received' : 'You paid this request'}
-          </div>
-        </div>
-      )}
-      {isOwn && !isPaid && (
-        <div className="px-4 pb-3">
-          <p className="text-xs text-zinc-500 flex items-center gap-1"><Lock size={11} /> Waiting for payment</p>
-        </div>
-      )}
-      <div className="px-4 pb-2">
-        <p className="text-[10px] text-zinc-600">{formatMessageTime(msg.created_at)}</p>
-      </div>
-    </div>
-  )
-}
 
 // ─── Payment Request Modal ──────────────────────────────────────────────────
 
