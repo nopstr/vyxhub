@@ -24,7 +24,7 @@ const CRYPTO_TO_NOWPAYMENTS = {
   btc:  'btc',
   eth:  'eth',
   usdt: 'usdttrc20',   // TRC-20 = cheapest USDT network
-  usdc: 'usdcerc20',   // ERC-20 USDC
+  usdc: 'usdcmatic',   // Polygon USDC (low fees)
   sol:  'sol',
   ltc:  'ltc',
   doge: 'doge',

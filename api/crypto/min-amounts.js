@@ -13,7 +13,7 @@ const CRYPTOS = [
   { id: 'btc',  npId: 'btc' },
   { id: 'eth',  npId: 'eth' },
   { id: 'usdt', npId: 'usdttrc20' },
-  { id: 'usdc', npId: 'usdcerc20' },
+  { id: 'usdc', npId: 'usdcmatic' },
   { id: 'sol',  npId: 'sol' },
   { id: 'ltc',  npId: 'ltc' },
   { id: 'doge', npId: 'doge' },
