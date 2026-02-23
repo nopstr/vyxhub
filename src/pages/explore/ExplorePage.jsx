@@ -68,7 +68,7 @@ function CreatorCard({ profile }) {
             </h3>
             {profile.is_verified && <ShieldCheck size={15} className="text-red-400 flex-shrink-0" />}
             {profile.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0" />}
-            {profile.partner_tier === 'blue' && <ShieldCheck size={14} className="text-blue-400 flex-shrink-0" />}
+            {profile.partner_tier === 'red' && <ShieldCheck size={14} className="text-red-400 flex-shrink-0" />}
             {profile.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" />}
           </div>
           <p className="text-xs text-zinc-500">@{profile.username}</p>
@@ -599,7 +599,7 @@ export default function ExplorePage() {
                             <span className="text-sm font-bold text-white truncate">{post.author?.display_name}</span>
                             {post.author?.is_verified && <ShieldCheck size={12} className="text-red-400" />}
                             {post.author?.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400" />}
-                            {post.author?.partner_tier === 'blue' && <ShieldCheck size={11} className="text-blue-400" />}
+                            {post.author?.partner_tier === 'red' && <ShieldCheck size={11} className="text-red-400" />}
                             {post.author?.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400" />}
                           </div>
                           <span className="text-xs text-zinc-500">@{post.author?.username}</span>

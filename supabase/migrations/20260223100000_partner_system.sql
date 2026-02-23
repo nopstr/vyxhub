@@ -1,20 +1,20 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- HEATLY PARTNER BADGE SYSTEM
--- Blue Partner  = 500+ active subscribers for 3 consecutive months → Livestreaming
+-- Red Partner  = 500+ active subscribers for 3 consecutive months → Livestreaming
 -- Gold Partner  = 1000+ active subscribers for 3 consecutive months → 1-on-1 Calls
--- Staff can override partner_tier to 'blue', 'gold', or 'both'
+-- Staff can override partner_tier to 'red', 'gold', or 'both'
 -- ═══════════════════════════════════════════════════════════════════════
 
 -- ─── 1. Add partner columns to profiles ──────────────────────────────
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS partner_tier TEXT DEFAULT NULL
-  CHECK (partner_tier IN ('blue', 'gold', 'both'));
+  CHECK (partner_tier IN ('red', 'gold', 'both'));
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS partner_since TIMESTAMPTZ DEFAULT NULL;
 
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS partner_override BOOLEAN DEFAULT FALSE;
 
--- Livestreaming settings (only available to blue/gold/both partners)
+-- Livestreaming settings (only available to red/gold/both partners)
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS livestream_enabled BOOLEAN DEFAULT FALSE;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS livestream_price DECIMAL(10,2) DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS livestream_notify_followers BOOLEAN DEFAULT TRUE;
@@ -75,7 +75,7 @@ $$;
 
 -- ─── 4. Evaluate partner status for all creators ─────────────────────
 -- Checks the last 3 months of snapshots. If a creator has ≥500 subs
--- for all 3 months → blue. If ≥1000 for all 3 → gold.
+-- for all 3 months → red. If ≥1000 for all 3 → gold.
 -- Does NOT touch partner_override = true (staff overrides are sticky).
 
 CREATE OR REPLACE FUNCTION evaluate_partner_status()
@@ -127,7 +127,7 @@ BEGIN
     IF v_min_subs >= 1000 THEN
       v_new_tier := 'gold';
     ELSIF v_min_subs >= 500 THEN
-      v_new_tier := 'blue';
+      v_new_tier := 'red';
     ELSE
       v_new_tier := NULL;
     END IF;
@@ -148,11 +148,11 @@ END;
 $$;
 
 -- ─── 5. Admin: Set partner override ─────────────────────────────────
--- Allows staff to manually set any partner tier (blue, gold, both, null).
+-- Allows staff to manually set any partner tier (red, gold, both, null).
 
 CREATE OR REPLACE FUNCTION admin_set_partner_tier(
   p_target_user_id UUID,
-  p_tier TEXT,        -- 'blue', 'gold', 'both', or null
+  p_tier TEXT,        -- 'red', 'gold', 'both', or null
   p_override BOOLEAN DEFAULT TRUE
 )
 RETURNS void
@@ -169,8 +169,8 @@ BEGIN
   END IF;
 
   -- Validate tier
-  IF p_tier IS NOT NULL AND p_tier NOT IN ('blue', 'gold', 'both') THEN
-    RAISE EXCEPTION 'Invalid tier: must be blue, gold, both, or null';
+  IF p_tier IS NOT NULL AND p_tier NOT IN ('red', 'gold', 'both') THEN
+    RAISE EXCEPTION 'Invalid tier: must be red, gold, both, or null';
   END IF;
 
   UPDATE profiles
@@ -230,9 +230,9 @@ BEGIN
   -- Progress towards each tier
   v_progress := jsonb_build_object(
     'current_subscribers', v_active_subs,
-    'blue_threshold', 500,
+    'red_threshold', 500,
     'gold_threshold', 1000,
-    'blue_pct', LEAST(ROUND((v_active_subs::numeric / 500) * 100), 100),
+    'red_pct', LEAST(ROUND((v_active_subs::numeric / 500) * 100), 100),
     'gold_pct', LEAST(ROUND((v_active_subs::numeric / 1000) * 100), 100)
   );
 
@@ -281,8 +281,8 @@ BEGIN
     RAISE EXCEPTION 'Not a partner';
   END IF;
 
-  -- Blue/both can configure livestreaming
-  IF v_tier IN ('blue', 'gold', 'both') AND p_livestream_enabled IS NOT NULL THEN
+  -- Red/both can configure livestreaming
+  IF v_tier IN ('red', 'gold', 'both') AND p_livestream_enabled IS NOT NULL THEN
     UPDATE profiles SET livestream_enabled = p_livestream_enabled WHERE id = auth.uid();
   END IF;
   IF p_livestream_price IS NOT NULL THEN

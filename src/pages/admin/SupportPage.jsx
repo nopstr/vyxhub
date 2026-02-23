@@ -104,7 +104,7 @@ function ReportQueue() {
 
   const statusFilters = [
     { value: 'pending', label: 'Pending', color: 'text-amber-400' },
-    { value: 'reviewed', label: 'Reviewed', color: 'text-blue-400' },
+    { value: 'reviewed', label: 'Reviewed', color: 'text-red-400' },
     { value: 'actioned', label: 'Actioned', color: 'text-emerald-400' },
     { value: 'dismissed', label: 'Dismissed', color: 'text-zinc-500' },
     { value: 'all', label: 'All', color: 'text-zinc-300' },
@@ -184,7 +184,7 @@ function ReportQueue() {
                   <Flag size={16} className={cn(
                     report.status === 'pending' ? 'text-amber-400' :
                     report.status === 'actioned' ? 'text-red-400' :
-                    report.status === 'dismissed' ? 'text-zinc-500' : 'text-blue-400'
+                    report.status === 'dismissed' ? 'text-zinc-500' : 'text-red-400'
                   )} />
 
                   <div className="flex-1 min-w-0">
@@ -196,7 +196,7 @@ function ReportQueue() {
                         'text-[10px] px-2 py-0.5 rounded-full font-medium',
                         report.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
                         report.status === 'actioned' ? 'bg-red-500/10 text-red-400' :
-                        report.status === 'dismissed' ? 'bg-zinc-500/10 text-zinc-500' : 'bg-blue-500/10 text-blue-400'
+                        report.status === 'dismissed' ? 'bg-zinc-500/10 text-zinc-500' : 'bg-red-500/10 text-red-400'
                       )}>
                         {report.status}
                       </span>
@@ -246,7 +246,7 @@ function ReportQueue() {
                         <span>@{report.reported_user?.username}</span>
                         {report.reported_user?.is_verified && <ShieldCheck size={11} className="text-red-400" />}
                         {report.reported_user?.partner_tier === 'verified' && <ShieldCheck size={10} className="text-emerald-400" />}
-                        {report.reported_user?.partner_tier === 'blue' && <ShieldCheck size={10} className="text-blue-400" />}
+                        {report.reported_user?.partner_tier === 'red' && <ShieldCheck size={10} className="text-red-400" />}
                         {report.reported_user?.partner_tier === 'gold' && <ShieldCheck size={10} className="text-amber-400" />}
                         {report.reported_user?.is_suspended && <span className="text-amber-400">Suspended</span>}
                         {report.reported_user?.is_banned && <span className="text-red-400">Banned</span>}
@@ -483,7 +483,7 @@ function UserModeration() {
                       <span className={cn(
                         'text-xs px-2 py-0.5 rounded-full flex items-center gap-1',
                         user.partner_tier === 'gold' ? 'bg-amber-500/10 text-amber-400' :
-                        user.partner_tier === 'blue' ? 'bg-blue-500/10 text-blue-400' :
+                        user.partner_tier === 'red' ? 'bg-red-500/10 text-red-400' :
                         'bg-emerald-500/10 text-emerald-400'
                       )}>
                         <ShieldCheck size={10} /> {user.partner_tier.charAt(0).toUpperCase() + user.partner_tier.slice(1)} Partner
@@ -933,7 +933,7 @@ function AppealsQueue() {
 
   const statusFilters = [
     { value: 'pending', label: 'Pending', color: 'text-amber-400' },
-    { value: 'under_review', label: 'Under Review', color: 'text-blue-400' },
+    { value: 'under_review', label: 'Under Review', color: 'text-red-400' },
     { value: 'approved', label: 'Approved', color: 'text-emerald-400' },
     { value: 'denied', label: 'Denied', color: 'text-red-400' },
     { value: 'all', label: 'All', color: 'text-zinc-300' },
@@ -982,7 +982,7 @@ function AppealsQueue() {
                     <span className={cn(
                       'text-[10px] px-2 py-0.5 rounded-full font-medium',
                       appeal.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
-                      appeal.status === 'under_review' ? 'bg-blue-500/10 text-blue-400' :
+                      appeal.status === 'under_review' ? 'bg-red-500/10 text-red-400' :
                       appeal.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
                       'bg-red-500/10 text-red-400'
                     )}>

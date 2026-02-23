@@ -334,10 +334,10 @@ function PartnerManager() {
 
   return (
     <div className="space-y-4">
-      <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 mb-4">
-        <p className="text-sm text-blue-300/70">
+      <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4 mb-4">
+        <p className="text-sm text-red-300/70">
           Override partner tiers manually. Overridden users won't be affected by automatic monthly evaluations.
-          Verified is permanent once earned. Blue and Gold can be lost if requirements aren't met.
+          Verified is permanent once earned. Red and Gold can be lost if requirements aren't met.
         </p>
       </div>
 
@@ -366,7 +366,7 @@ function PartnerManager() {
                       <span className={cn(
                         'text-xs px-2 py-0.5 rounded-full uppercase font-bold',
                         user.partner_tier === 'gold' ? 'bg-amber-500/10 text-amber-400' :
-                        user.partner_tier === 'blue' ? 'bg-blue-500/10 text-blue-400' :
+                        user.partner_tier === 'red' ? 'bg-red-500/10 text-red-400' :
                         'bg-emerald-500/10 text-emerald-400'
                       )}>
                         {user.partner_tier}{user.partner_override ? ' ✦' : ''}
@@ -382,7 +382,7 @@ function PartnerManager() {
                 >
                   <option value="">No Partner</option>
                   <option value="verified">Verified</option>
-                  <option value="blue">Blue</option>
+                  <option value="red">Red</option>
                   <option value="gold">Gold</option>
                 </select>
               </div>
@@ -790,7 +790,7 @@ function PayoutQueue() {
   const statusBadge = (status) => {
     const styles = {
       pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-      processing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      processing: 'bg-red-500/10 text-red-400 border-red-500/20',
       completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
       rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
     }
@@ -961,7 +961,7 @@ function PayoutQueue() {
               )}
 
               {p.status === 'processing' && (
-                <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded-xl px-3 py-2">
+                <div className="flex items-center gap-2 text-xs text-red-400 bg-red-500/5 border border-red-500/20 rounded-xl px-3 py-2">
                   <Loader2 size={13} className="animate-spin" />
                   <span>Payout in progress via NOWPayments...</span>
                 </div>
@@ -992,7 +992,7 @@ function PlusStats() {
 
   const cards = [
     { label: 'Active Subscribers', value: stats.total_active, icon: Crown, color: 'amber' },
-    { label: 'User Tier', value: stats.user_tier, icon: Users, color: 'blue' },
+    { label: 'User Tier', value: stats.user_tier, icon: Users, color: 'red' },
     { label: 'Creator Tier', value: stats.creator_tier, icon: Crown, color: 'purple' },
     { label: 'Monthly Revenue', value: formatCurrency(stats.monthly_revenue), icon: DollarSign, color: 'green' },
   ]

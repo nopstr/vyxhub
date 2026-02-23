@@ -87,7 +87,7 @@ BEGIN
   WHERE conversation_id = p_conversation_id AND user_id = p_user_id;
 
   -- Only mark individual messages as read if user has receipts enabled
-  -- (When receipts are off, sender won't see blue checks)
+  -- (When receipts are off, sender won't see red checks)
   IF v_receipts_enabled THEN
     UPDATE messages
     SET is_read = TRUE

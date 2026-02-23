@@ -469,7 +469,7 @@ export default function CryptoPaymentModal({
                     <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                   )}
                   {payment.payment_status === 'confirming' && (
-                    <Loader2 size={14} className="text-blue-400 animate-spin" />
+                    <Loader2 size={14} className="text-red-400 animate-spin" />
                   )}
                   {(payment.payment_status === 'confirmed' || payment.payment_status === 'sending') && (
                     <Loader2 size={14} className="text-emerald-400 animate-spin" />
@@ -477,7 +477,7 @@ export default function CryptoPaymentModal({
                   <span className={cn(
                     'text-sm font-medium',
                     payment.payment_status === 'waiting' && 'text-amber-400',
-                    payment.payment_status === 'confirming' && 'text-blue-400',
+                    payment.payment_status === 'confirming' && 'text-red-400',
                     (payment.payment_status === 'confirmed' || payment.payment_status === 'sending') && 'text-emerald-400',
                   )}>
                     {getPaymentStatusLabel(payment.payment_status)}

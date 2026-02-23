@@ -10,7 +10,7 @@ export default function Badge({ children, variant = 'default', className }) {
     live: 'bg-red-600 text-white animate-pulse',
     premium: 'bg-gradient-to-r from-red-500/20 to-orange-500/20 text-red-300',
     'partner-verified': 'bg-emerald-500/20 text-emerald-400',
-    'partner-blue': 'bg-blue-500/20 text-blue-400',
+    'partner-red': 'bg-red-500/20 text-red-400',
     'partner-gold': 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400',
   }
 

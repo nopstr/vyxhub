@@ -13,8 +13,8 @@ import { cn } from '../../lib/utils'
 import { toast } from 'sonner'
 
 const VERIFIED_SUBS = 100
-const BLUE_SUBS = 500
-const BLUE_REV = 5000
+const RED_SUBS = 500
+const RED_REV = 5000
 const GOLD_SUBS = 1000
 const GOLD_REV = 15000
 
@@ -137,18 +137,18 @@ export default function PartnerPage() {
   const currentRevenue = progress.current_revenue || 0
   const snapshots = partnerData?.snapshots || []
 
-  const isVerified = tier === 'verified' || tier === 'blue' || tier === 'gold'
-  const isBlue = tier === 'blue' || tier === 'gold'
+  const isVerified = tier === 'verified' || tier === 'red' || tier === 'gold'
+  const isRed = tier === 'red' || tier === 'gold'
   const isGold = tier === 'gold'
 
-  const tierLabel = isGold ? 'Gold' : isBlue ? 'Blue' : isVerified ? 'Verified' : null
+  const tierLabel = isGold ? 'Gold' : isRed ? 'Red' : isVerified ? 'Verified' : null
   const tierGradient = isGold
     ? 'from-amber-400 to-orange-400'
-    : isBlue
-      ? 'from-blue-400 to-cyan-400'
+    : isRed
+      ? 'from-red-400 to-cyan-400'
       : isVerified
         ? 'from-emerald-400 to-teal-400'
-        : 'from-blue-400 to-cyan-400'
+        : 'from-red-400 to-cyan-400'
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -161,7 +161,7 @@ export default function PartnerPage() {
           <div className={cn(
             'w-8 h-8 rounded-lg flex items-center justify-center',
             isGold ? 'bg-gradient-to-br from-amber-500 to-orange-600' :
-            isBlue ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
+            isRed ? 'bg-gradient-to-br from-red-500 to-red-600' :
             isVerified ? 'bg-gradient-to-br from-emerald-500 to-teal-600' :
             'bg-gradient-to-br from-zinc-600 to-zinc-700'
           )}>
@@ -170,7 +170,7 @@ export default function PartnerPage() {
           <h1 className="text-xl font-bold text-white">Partner Program</h1>
           {tier && (
             <div className="ml-auto">
-              <Badge variant={tier === 'gold' ? 'partner-gold' : tier === 'blue' ? 'partner-blue' : 'partner-verified'}>
+              <Badge variant={tier === 'gold' ? 'partner-gold' : tier === 'red' ? 'partner-red' : 'partner-verified'}>
                 {tierLabel}
               </Badge>
             </div>
@@ -180,8 +180,8 @@ export default function PartnerPage() {
 
       {/* Hero */}
       <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/5 via-transparent to-transparent" />
-        <div className="absolute top-10 left-1/4 w-72 h-72 bg-blue-500/10 blur-[120px] rounded-full" />
+        <div className="absolute inset-0 bg-gradient-to-b from-red-500/5 via-transparent to-transparent" />
+        <div className="absolute top-10 left-1/4 w-72 h-72 bg-red-500/10 blur-[120px] rounded-full" />
         <div className="absolute top-20 right-1/4 w-64 h-64 bg-amber-500/8 blur-[100px] rounded-full" />
 
         <div className="relative text-center py-10 px-5">
@@ -217,7 +217,7 @@ export default function PartnerPage() {
                       className={cn(
                         'absolute bottom-0 left-0 right-0 rounded-b-lg transition-all',
                         s.count >= GOLD_SUBS ? 'bg-amber-500/30' :
-                        s.count >= BLUE_SUBS ? 'bg-blue-500/30' :
+                        s.count >= RED_SUBS ? 'bg-red-500/30' :
                         s.count >= VERIFIED_SUBS ? 'bg-emerald-500/30' : 'bg-zinc-700/30'
                       )}
                       style={{ height: `${subPct}%` }}
@@ -234,7 +234,7 @@ export default function PartnerPage() {
           </div>
           <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-600">
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500/40" /> ≥100</span>
-            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500/40" /> ≥500</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500/40" /> ≥500</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500/40" /> ≥1,000</span>
           </div>
         </div>
@@ -263,21 +263,21 @@ export default function PartnerPage() {
           ]}
         />
         <TierCard
-          label="Blue Partner"
+          label="Red Partner"
           requirements={['500 subscribers + $5,000 revenue/month for 3 months']}
-          unlocked={isBlue}
+          unlocked={isRed}
           permanent={false}
-          color="blue"
+          color="red"
           icon={Phone}
           badgeVariant="primary"
           bars={[
-            { label: 'Subscribers', pct: progress.blue_subs_pct || 0, color: 'bg-blue-500', sublabel: `${currentSubs.toLocaleString()} / ${BLUE_SUBS.toLocaleString()}` },
-            { label: 'Revenue', pct: currentRevenue > 0 ? Math.min((currentRevenue / BLUE_REV) * 100, 100) : 0, color: 'bg-blue-500', sublabel: `${formatCurrency(currentRevenue)} / ${formatCurrency(BLUE_REV)}` },
+            { label: 'Subscribers', pct: progress.red_subs_pct || 0, color: 'bg-red-500', sublabel: `${currentSubs.toLocaleString()} / ${RED_SUBS.toLocaleString()}` },
+            { label: 'Revenue', pct: currentRevenue > 0 ? Math.min((currentRevenue / RED_REV) * 100, 100) : 0, color: 'bg-red-500', sublabel: `${formatCurrency(currentRevenue)} / ${formatCurrency(RED_REV)}` },
           ]}
           features={[
             'Everything in Verified',
             '1-on-1 Video Calls with subscribers',
-            'Blue partner checkmark badge',
+            'Red partner checkmark badge',
             'Priority support',
           ]}
         />
@@ -294,7 +294,7 @@ export default function PartnerPage() {
             { label: 'Revenue', pct: currentRevenue > 0 ? Math.min((currentRevenue / GOLD_REV) * 100, 100) : 0, color: 'bg-amber-500', sublabel: `${formatCurrency(currentRevenue)} / ${formatCurrency(GOLD_REV)}` },
           ]}
           features={[
-            'Everything in Verified & Blue',
+            'Everything in Verified & Red',
             'Livestreaming to your subscribers',
             'Gold partner checkmark badge',
             'Dedicated partner support agent',
@@ -303,7 +303,7 @@ export default function PartnerPage() {
         />
       </div>
 
-      {/* Partner Features (only shown if blue+) */}
+      {/* Partner Features (only shown if red+) */}
       {tier && tier !== 'verified' && (
         <div className="px-5 mb-6">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -311,13 +311,13 @@ export default function PartnerPage() {
             Partner Features
           </h3>
 
-          {/* 1-on-1 Calls Section (Blue+) */}
-          {isBlue && (
+          {/* 1-on-1 Calls Section (Red+) */}
+          {isRed && (
             <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 mb-3">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                    <Phone size={20} className="text-blue-400" />
+                  <div className="w-10 h-10 bg-red-500/10 rounded-xl flex items-center justify-center">
+                    <Phone size={20} className="text-red-400" />
                   </div>
                   <div>
                     <h4 className="font-bold text-white text-sm">1-on-1 Video Calls</h4>
@@ -326,15 +326,15 @@ export default function PartnerPage() {
                 </div>
                 <button
                   onClick={() => toast.info('1-on-1 calls are coming soon!')}
-                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30"
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30"
                 >
                   <Phone size={14} className="inline mr-1.5" />
                   Coming Soon
                 </button>
               </div>
-              <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3 text-sm text-blue-300/70">
+              <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-3 text-sm text-red-300/70">
                 <Zap size={14} className="inline mr-1" />
-                1-on-1 video calls will be available in messages. Blue Partners will be first to access them.
+                1-on-1 video calls will be available in messages. Red Partners will be first to access them.
               </div>
             </div>
           )}
@@ -396,8 +396,8 @@ export default function PartnerPage() {
               a: 'Maintain 100+ active subscribers for 3 consecutive months. The system evaluates your status automatically at the start of each month. Once earned, Verified status is permanent.'
             },
             {
-              q: 'How do I reach Blue Partner?',
-              a: 'Maintain 500+ active subscribers and $5,000+ in monthly revenue for 3 consecutive months. Blue unlocks 1-on-1 calls and priority support. This status can be lost if you drop below thresholds.'
+              q: 'How do I reach Red Partner?',
+              a: 'Maintain 500+ active subscribers and $5,000+ in monthly revenue for 3 consecutive months. Red unlocks 1-on-1 calls and priority support. This status can be lost if you drop below thresholds.'
             },
             {
               q: 'How do I reach Gold Partner?',
@@ -405,7 +405,7 @@ export default function PartnerPage() {
             },
             {
               q: 'Can I lose my partner status?',
-              a: 'Verified status is permanent once earned. Blue and Gold can be lost if your subscriber count or revenue drops below the threshold for 3 consecutive months. You\'ll always keep Verified as a baseline.'
+              a: 'Verified status is permanent once earned. Red and Gold can be lost if your subscriber count or revenue drops below the threshold for 3 consecutive months. You\'ll always keep Verified as a baseline.'
             },
             {
               q: 'What counts as an active subscriber?',

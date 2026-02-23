@@ -876,7 +876,7 @@ function AccountSettings() {
                 <div className={cn(
                   'text-xs px-3 py-2 rounded-xl',
                   existingAppeal.status === 'pending' ? 'bg-amber-500/10 text-amber-400' :
-                  existingAppeal.status === 'under_review' ? 'bg-blue-500/10 text-blue-400' :
+                  existingAppeal.status === 'under_review' ? 'bg-red-500/10 text-red-400' :
                   'bg-zinc-800 text-zinc-400'
                 )}>
                   <span className="font-medium">Appeal {existingAppeal.status.replace('_', ' ')}</span>
@@ -1862,7 +1862,7 @@ function PartnerSettings({ profile }) {
   const [saving, setSaving] = useState(false)
 
   const tier = profile?.partner_tier
-  const isBlue = tier === 'blue' || tier === 'gold'
+  const isRed = tier === 'red' || tier === 'gold'
   const isGold = tier === 'gold'
 
   useEffect(() => {
@@ -1918,20 +1918,20 @@ function PartnerSettings({ profile }) {
       <div className={cn(
         'rounded-2xl p-4 border',
         isGold ? 'bg-amber-500/5 border-amber-500/20' :
-        isBlue ? 'bg-blue-500/5 border-blue-500/20' :
+        isRed ? 'bg-red-500/5 border-red-500/20' :
         tier === 'verified' ? 'bg-emerald-500/5 border-emerald-500/20' :
         'bg-zinc-900/50 border-zinc-800/50'
       )}>
         {tier ? (
           <>
             <p className={cn('text-sm font-medium',
-              isGold ? 'text-amber-400' : isBlue ? 'text-blue-400' : 'text-emerald-400'
+              isGold ? 'text-amber-400' : isRed ? 'text-red-400' : 'text-emerald-400'
             )}>
               You're a {tier.charAt(0).toUpperCase() + tier.slice(1)} Partner
             </p>
             <p className="text-xs text-zinc-500 mt-1">
               {isGold ? 'You have access to Livestreaming, 1-on-1 Calls, and all partner features.'
-                : isBlue ? 'You have access to 1-on-1 Calls and priority support. Reach Gold for Livestreaming.'
+                : isRed ? 'You have access to 1-on-1 Calls and priority support. Reach Gold for Livestreaming.'
                 : 'You have a verified badge and priority in Explore. Grow to unlock more features.'
               }
             </p>
@@ -1948,7 +1948,7 @@ function PartnerSettings({ profile }) {
       {isGold && (
         <div className="space-y-4">
           <h4 className="text-sm font-bold text-white flex items-center gap-2">
-            <Radio size={16} className="text-blue-400" />
+            <Radio size={16} className="text-red-400" />
             Livestreaming
           </h4>
 
@@ -1961,7 +1961,7 @@ function PartnerSettings({ profile }) {
               onClick={() => setSettings(s => ({ ...s, livestream_enabled: !s.livestream_enabled }))}
               className={cn(
                 'w-11 h-6 rounded-full transition-colors cursor-pointer relative',
-                settings.livestream_enabled ? 'bg-blue-500' : 'bg-zinc-700'
+                settings.livestream_enabled ? 'bg-red-500' : 'bg-zinc-700'
               )}
             >
               <div className={cn(
@@ -1981,7 +1981,7 @@ function PartnerSettings({ profile }) {
                 step="0.01"
                 value={settings.livestream_price}
                 onChange={(e) => setSettings(s => ({ ...s, livestream_price: parseFloat(e.target.value) || 0 }))}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-8 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-8 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
               />
             </div>
             <p className="text-xs text-zinc-600 mt-1">Set to $0 for free livestreams (subscribers only)</p>
@@ -1996,7 +1996,7 @@ function PartnerSettings({ profile }) {
               onClick={() => setSettings(s => ({ ...s, livestream_notify_followers: !s.livestream_notify_followers }))}
               className={cn(
                 'w-11 h-6 rounded-full transition-colors cursor-pointer relative',
-                settings.livestream_notify_followers ? 'bg-blue-500' : 'bg-zinc-700'
+                settings.livestream_notify_followers ? 'bg-red-500' : 'bg-zinc-700'
               )}
             >
               <div className={cn(
@@ -2008,11 +2008,11 @@ function PartnerSettings({ profile }) {
         </div>
       )}
 
-      {/* Call Settings (Blue+) */}
-      {isBlue && (
+      {/* Call Settings (Red+) */}
+      {isRed && (
         <div className="space-y-4">
           <h4 className="text-sm font-bold text-white flex items-center gap-2">
-            <Phone size={16} className="text-blue-400" />
+            <Phone size={16} className="text-red-400" />
             1-on-1 Video Calls
           </h4>
 

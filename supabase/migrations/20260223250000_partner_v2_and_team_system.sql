@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- PARTNER SYSTEM V2 + TEAM LEAD FEATURES
 -- ═══════════════════════════════════════════════════════════════════════
--- 3 tiers: verified (permanent), blue (losable), gold (losable)
+-- 3 tiers: verified (permanent), red (losable), gold (losable)
 -- Staff helper functions, updated RLS policies, team online tracking,
 -- dedicated partner support assignments, updated RPCs.
 -- ═══════════════════════════════════════════════════════════════════════
@@ -66,7 +66,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS partner_settings JSONB DEFAULT '{}
 
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_partner_tier_check;
 ALTER TABLE profiles ADD CONSTRAINT profiles_partner_tier_check
-  CHECK (partner_tier IN ('verified', 'blue', 'gold'));
+  CHECK (partner_tier IN ('verified', 'red', 'gold'));
 
 -- Permanent verified timestamp (never lost once earned)
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS verified_partner_since TIMESTAMPTZ DEFAULT NULL;
@@ -552,7 +552,7 @@ $$;
 
 -- Updated evaluation for 3-tier system
 -- Verified: 100 subs × 3 months (permanent once earned)
--- Blue: 500 subs + $5,000 revenue/month × 3 months (losable)
+-- Red: 500 subs + $5,000 revenue/month × 3 months (losable)
 -- Gold: 1,000 subs + $15,000 revenue/month × 3 months (losable)
 
 CREATE OR REPLACE FUNCTION evaluate_partner_status()
@@ -608,7 +608,7 @@ BEGIN
     IF v_min_subs >= 1000 AND v_min_revenue >= 15000 THEN
       v_new_tier := 'gold';
     ELSIF v_min_subs >= 500 AND v_min_revenue >= 5000 THEN
-      v_new_tier := 'blue';
+      v_new_tier := 'red';
     ELSIF v_min_subs >= 100 THEN
       v_new_tier := 'verified';
     ELSE
@@ -627,7 +627,7 @@ BEGIN
           END,
           -- Set verified_partner_since when first reaching any tier
           verified_partner_since = CASE
-            WHEN v_new_tier IN ('verified', 'blue', 'gold') AND verified_partner_since IS NULL THEN NOW()
+            WHEN v_new_tier IN ('verified', 'red', 'gold') AND verified_partner_since IS NULL THEN NOW()
             ELSE verified_partner_since
           END
       WHERE id = r.id;
@@ -656,8 +656,8 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
 
-  IF p_tier IS NOT NULL AND p_tier NOT IN ('verified', 'blue', 'gold') THEN
-    RAISE EXCEPTION 'Invalid tier: must be verified, blue, gold, or null';
+  IF p_tier IS NOT NULL AND p_tier NOT IN ('verified', 'red', 'gold') THEN
+    RAISE EXCEPTION 'Invalid tier: must be verified, red, gold, or null';
   END IF;
 
   UPDATE profiles
@@ -669,7 +669,7 @@ BEGIN
         ELSE partner_since
       END,
       verified_partner_since = CASE
-        WHEN p_tier IN ('verified', 'blue', 'gold') AND verified_partner_since IS NULL THEN NOW()
+        WHEN p_tier IN ('verified', 'red', 'gold') AND verified_partner_since IS NULL THEN NOW()
         ELSE verified_partner_since
       END
   WHERE id = p_target_user_id;
@@ -733,13 +733,13 @@ BEGIN
     'current_subscribers', v_active_subs,
     'current_revenue', v_current_revenue,
     'verified_threshold_subs', 100,
-    'blue_threshold_subs', 500,
-    'blue_threshold_revenue', 5000,
+    'red_threshold_subs', 500,
+    'red_threshold_revenue', 5000,
     'gold_threshold_subs', 1000,
     'gold_threshold_revenue', 15000,
     'verified_pct', LEAST(ROUND((v_active_subs::numeric / 100) * 100), 100),
-    'blue_subs_pct', LEAST(ROUND((v_active_subs::numeric / 500) * 100), 100),
-    'blue_rev_pct', LEAST(ROUND((v_current_revenue / 5000) * 100), 100),
+    'red_subs_pct', LEAST(ROUND((v_active_subs::numeric / 500) * 100), 100),
+    'red_rev_pct', LEAST(ROUND((v_current_revenue / 5000) * 100), 100),
     'gold_subs_pct', LEAST(ROUND((v_active_subs::numeric / 1000) * 100), 100),
     'gold_rev_pct', LEAST(ROUND((v_current_revenue / 15000) * 100), 100)
   );
@@ -765,7 +765,7 @@ END;
 $$;
 
 
--- Updated partner settings (calls now unlock at blue, livestream at gold)
+-- Updated partner settings (calls now unlock at red, livestream at gold)
 CREATE OR REPLACE FUNCTION update_partner_settings(
   p_livestream_enabled BOOLEAN DEFAULT NULL,
   p_livestream_price DECIMAL DEFAULT NULL,
@@ -788,8 +788,8 @@ BEGIN
     RAISE EXCEPTION 'Not a partner';
   END IF;
 
-  -- Blue+ can configure calls (1-on-1 calls unlock at blue)
-  IF v_tier IN ('blue', 'gold') AND p_calls_enabled IS NOT NULL THEN
+  -- Red+ can configure calls (1-on-1 calls unlock at red)
+  IF v_tier IN ('red', 'gold') AND p_calls_enabled IS NOT NULL THEN
     UPDATE profiles SET calls_enabled = p_calls_enabled WHERE id = auth.uid();
   END IF;
   IF p_call_price IS NOT NULL THEN

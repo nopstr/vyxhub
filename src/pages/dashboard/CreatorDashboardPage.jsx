@@ -620,7 +620,7 @@ function CustomRequestsTab({ userId }) {
 
   const statusColors = {
     pending: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    accepted: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    accepted: 'bg-red-500/10 text-red-400 border-red-500/30',
     paid: 'bg-red-500/10 text-red-400 border-red-500/30',
     declined: 'bg-red-500/10 text-red-400 border-red-500/30',
     completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
@@ -1748,7 +1748,7 @@ function WalletTab({ userId }) {
 
   const payoutStatusColors = {
     pending: 'text-amber-400 bg-amber-500/10',
-    processing: 'text-blue-400 bg-blue-500/10',
+    processing: 'text-red-400 bg-red-500/10',
     completed: 'text-emerald-400 bg-emerald-500/10',
     rejected: 'text-red-400 bg-red-500/10',
   }

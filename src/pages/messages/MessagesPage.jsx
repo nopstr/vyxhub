@@ -248,10 +248,10 @@ function ReactionPicker({ messageId, userId, onClose }) {
 
 // ─── Read Receipt Indicator ─────────────────────────────────────────────────
 function ReadReceipt({ isRead, otherUserReceiptsEnabled }) {
-  // Double blue check = read + receipts enabled
+  // Double red check = read + receipts enabled
   // Single grey check = sent (unread or receipts off)
   if (isRead && otherUserReceiptsEnabled !== false) {
-    return <CheckCheck size={14} className="text-blue-400 flex-shrink-0" />
+    return <CheckCheck size={14} className="text-red-400 flex-shrink-0" />
   }
   return <Check size={14} className="text-zinc-600 flex-shrink-0" />
 }
@@ -418,7 +418,7 @@ function NewMessageModal({ onClose, onSelect }) {
               <span className="text-sm font-semibold text-white">{u.display_name}</span>
               {u.is_verified && <ShieldCheck size={13} className="text-red-400" />}
               {u.partner_tier === 'verified' && <ShieldCheck size={12} className="text-emerald-400" />}
-              {u.partner_tier === 'blue' && <ShieldCheck size={12} className="text-blue-400" />}
+              {u.partner_tier === 'red' && <ShieldCheck size={12} className="text-red-400" />}
               {u.partner_tier === 'gold' && <ShieldCheck size={12} className="text-amber-400" />}
             </div>
             <span className="text-xs text-zinc-500">@{u.username}</span>
@@ -520,7 +520,7 @@ function ConversationList({ conversations, activeId, onSelect }) {
                   </span>
                   {conv.otherUser?.is_verified && <ShieldCheck size={13} className="text-red-400" />}
                   {conv.otherUser?.partner_tier === 'verified' && <ShieldCheck size={12} className="text-emerald-400" />}
-                  {conv.otherUser?.partner_tier === 'blue' && <ShieldCheck size={12} className="text-blue-400" />}
+                  {conv.otherUser?.partner_tier === 'red' && <ShieldCheck size={12} className="text-red-400" />}
                   {conv.otherUser?.partner_tier === 'gold' && <ShieldCheck size={12} className="text-amber-400" />}
                   {isCeo && <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full ml-1">CEO</span>}
                   {isStaff && !isCeo && <span className="text-[9px] font-bold bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full ml-1">STAFF</span>}
@@ -1221,7 +1221,7 @@ export default function MessagesPage() {
                         </span>
                         {selectedConv.otherUser.is_verified && <ShieldCheck size={13} className="text-red-400" />}
                         {selectedConv.otherUser.partner_tier === 'verified' && <ShieldCheck size={12} className="text-emerald-400" />}
-                        {selectedConv.otherUser.partner_tier === 'blue' && <ShieldCheck size={12} className="text-blue-400" />}
+                        {selectedConv.otherUser.partner_tier === 'red' && <ShieldCheck size={12} className="text-red-400" />}
                         {selectedConv.otherUser.partner_tier === 'gold' && <ShieldCheck size={12} className="text-amber-400" />}
                         {isCeo && <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">CEO</span>}
                         {isStaff && !isCeo && <span className="text-[9px] font-bold bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full">STAFF</span>}

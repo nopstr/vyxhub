@@ -749,7 +749,7 @@ export default function CreatePost({ onSuccess }) {
                 onClick={() => setScheduling(!scheduling)}
                 className={cn(
                   'p-2 rounded-xl transition-colors cursor-pointer',
-                  scheduling ? 'text-blue-400 bg-blue-500/10' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                  scheduling ? 'text-red-400 bg-red-500/10' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
                 )}
                 title="Schedule post"
               >
@@ -799,7 +799,7 @@ export default function CreatePost({ onSuccess }) {
           {/* Schedule date/time picker */}
           {scheduling && (
             <div className="flex items-center gap-2 mt-2 pl-1">
-              <Clock size={14} className="text-blue-400" />
+              <Clock size={14} className="text-red-400" />
               <input
                 type="date"
                 value={scheduleDate}

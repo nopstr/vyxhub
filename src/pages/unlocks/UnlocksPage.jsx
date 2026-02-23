@@ -83,7 +83,7 @@ function CustomRequestsTab({ user }) {
     switch (status) {
       case 'pending': return { icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-500/10', label: 'Pending' }
       case 'accepted': return { icon: CreditCard, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Awaiting Payment' }
-      case 'paid': return { icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'In Progress' }
+      case 'paid': return { icon: Clock, color: 'text-red-400', bg: 'bg-red-500/10', label: 'In Progress' }
       case 'completed': return { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Completed' }
       case 'declined': return { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Declined' }
       case 'cancelled': return { icon: XCircle, color: 'text-zinc-400', bg: 'bg-zinc-500/10', label: 'Cancelled' }

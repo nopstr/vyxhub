@@ -429,7 +429,7 @@ function ScheduledPosts({ creatorId }) {
                 <span>{new Date(post.scheduled_for).toLocaleString()}</span>
                 <span className={cn(
                   'px-1.5 py-0.5 rounded text-[10px] font-medium',
-                  post.status === 'scheduled' ? 'bg-blue-500/10 text-blue-400' :
+                  post.status === 'scheduled' ? 'bg-red-500/10 text-red-400' :
                   post.status === 'published' ? 'bg-emerald-500/10 text-emerald-400' :
                   post.status === 'cancelled' ? 'bg-zinc-500/10 text-zinc-500' : 'bg-red-500/10 text-red-400'
                 )}>
