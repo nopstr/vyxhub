@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   Star, TrendingUp, Shield, Globe, DollarSign,
-  Camera, Heart, CheckCircle, ChevronRight, Sparkles,
+  Camera, Flame, CheckCircle, ChevronRight, Sparkles,
   Upload, FileCheck, User, MapPin, Calendar, Phone,
   CreditCard, ArrowLeft, Megaphone, Link2, Award,
   Eye, EyeOff, Zap, BadgeCheck, X, Image as ImageIcon,
@@ -43,22 +43,22 @@ const COUNTRIES = [
 
 /* ─────── Landing Page Section Components ─────── */
 
-function HeroSection({ onStart }) {
+function Heredction({ onStart }) {
   return (
     <div className="relative overflow-hidden">
       {/* Background effects */}
-      <div className="absolute inset-0 bg-gradient-to-b from-pink-600/5 via-transparent to-transparent" />
-      <div className="absolute top-20 left-1/4 w-72 h-72 bg-pink-500/10 blur-[120px] rounded-full" />
-      <div className="absolute top-40 right-1/4 w-64 h-64 bg-violet-500/10 blur-[100px] rounded-full" />
+      <div className="absolute inset-0 bg-gradient-to-b from-red-600/5 via-transparent to-transparent" />
+      <div className="absolute top-20 left-1/4 w-72 h-72 bg-red-500/10 blur-[120px] rounded-full" />
+      <div className="absolute top-40 right-1/4 w-64 h-64 bg-orange-500/10 blur-[100px] rounded-full" />
 
       <div className="relative text-center py-12 px-5">
-        <div className="w-20 h-20 bg-gradient-to-br from-pink-500 to-violet-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-pink-500/25">
+        <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-red-500/25">
           <Sparkles className="text-white" size={36} />
         </div>
 
         <h1 className="text-3xl sm:text-4xl font-black text-white mb-4 leading-tight">
           Your content.<br />
-          <span className="bg-gradient-to-r from-pink-400 to-violet-400 bg-clip-text text-transparent">Your rules. Your money.</span>
+          <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">Your rules. Your money.</span>
         </h1>
 
         <p className="text-base text-zinc-400 max-w-md mx-auto leading-relaxed mb-8">
@@ -67,7 +67,7 @@ function HeroSection({ onStart }) {
 
         <button
           onClick={onStart}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-400 hover:to-violet-500 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-xl shadow-pink-500/25 transition-all active:scale-[0.97] cursor-pointer"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-400 hover:to-orange-500 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-xl shadow-red-500/25 transition-all active:scale-[0.97] cursor-pointer"
         >
           I Want to Start Earning <ChevronRight size={20} />
         </button>
@@ -83,13 +83,13 @@ function EarningsSection() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mx-auto">
         {/* Standard */}
-        <div className="relative bg-gradient-to-br from-pink-500/10 to-violet-600/10 border border-pink-500/20 rounded-3xl p-6 text-center">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-pink-500 to-violet-600 text-white text-xs font-bold px-3 py-1 rounded-full">
+        <div className="relative bg-gradient-to-br from-red-500/10 to-orange-600/10 border border-red-500/20 rounded-3xl p-6 text-center">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-red-500 to-orange-600 text-white text-xs font-bold px-3 py-1 rounded-full">
             STANDARD
           </div>
           <p className="text-5xl font-black text-white mt-2">{CREATOR_EARNING}%</p>
           <p className="text-sm text-zinc-400 mt-2">of all earnings</p>
-          <p className="text-xs text-pink-400 mt-1">Subscriptions • Tips • PPV</p>
+          <p className="text-xs text-red-400 mt-1">Subscriptions • Tips • PPV</p>
         </div>
 
         {/* Referral */}
@@ -105,7 +105,7 @@ function EarningsSection() {
 
       <div className="mt-6 bg-zinc-900/40 border border-white/5 rounded-2xl p-4 max-w-lg mx-auto">
         <div className="flex items-center gap-3 text-sm">
-          <Award size={20} className="text-pink-400 flex-shrink-0" />
+          <Award size={20} className="text-red-400 flex-shrink-0" />
           <p className="text-zinc-300">
             <strong className="text-white">Highest in the industry.</strong>{' '}
             Most platforms take 40-50%. We believe creators should keep the majority of what they earn.
@@ -124,7 +124,7 @@ function BenefitsSection() {
     { icon: Shield, title: 'Creator Safety', desc: 'Geo-blocking by region, automatic watermarks, DMCA protection, and content security tools' },
     { icon: Eye, title: 'Algorithmic Discovery', desc: 'Our For You feed actively promotes your content to the right audience, so you get discovered' },
     { icon: Camera, title: 'Rich Media Support', desc: 'Upload photos, videos, stories, reels, and sets — all with full HD quality and fast delivery' },
-    { icon: Heart, title: 'Fan Engagement Tools', desc: 'DMs, polls, reactions, exclusive content tiers, and mass messaging to keep fans coming back' },
+    { icon: Flame, title: 'Fan Engagement Tools', desc: 'DMs, polls, reactions, exclusive content tiers, and mass messaging to keep fans coming back' },
     { icon: CreditCard, title: 'Fast Payouts', desc: 'Weekly or bi-weekly payouts via direct deposit, wire, or crypto — your choice, no delays' },
   ]
 
@@ -135,10 +135,10 @@ function BenefitsSection() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl mx-auto">
         {benefits.map((b, i) => (
-          <div key={i} className="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 hover:border-pink-500/20 transition-colors">
+          <div key={i} className="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 hover:border-red-500/20 transition-colors">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-pink-500/10 flex-shrink-0">
-                <b.icon size={16} className="text-pink-400" />
+              <div className="p-2 rounded-xl bg-red-500/10 flex-shrink-0">
+                <b.icon size={16} className="text-red-400" />
               </div>
               <div>
                 <h3 className="text-sm font-bold text-white mb-1">{b.title}</h3>
@@ -167,16 +167,16 @@ function HowItWorksSection() {
         {steps.map((s, i) => (
           <div key={s.num} className="flex gap-4 items-start">
             <div className="relative">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-violet-600 flex items-center justify-center flex-shrink-0 text-sm font-bold text-white shadow-lg shadow-pink-500/20">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center flex-shrink-0 text-sm font-bold text-white shadow-lg shadow-red-500/20">
                 {s.num}
               </div>
               {i < steps.length - 1 && (
-                <div className="absolute left-1/2 top-full w-px h-4 bg-gradient-to-b from-pink-500/50 to-transparent -translate-x-1/2" />
+                <div className="absolute left-1/2 top-full w-px h-4 bg-gradient-to-b from-red-500/50 to-transparent -translate-x-1/2" />
               )}
             </div>
             <div className="pb-4">
               <p className="text-sm font-bold text-white flex items-center gap-2">
-                {s.title} <s.icon size={14} className="text-pink-400" />
+                {s.title} <s.icon size={14} className="text-red-400" />
               </p>
               <p className="text-xs text-zinc-500 mt-0.5">{s.desc}</p>
             </div>
@@ -206,7 +206,7 @@ function EarningsCalculator() {
             <input
               type="range" min={10} max={5000} step={10} value={subs}
               onChange={(e) => setSubs(+e.target.value)}
-              className="w-full accent-pink-500 cursor-pointer"
+              className="w-full accent-red-500 cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
               <span>10</span><span>5,000</span>
@@ -221,7 +221,7 @@ function EarningsCalculator() {
             <input
               type="range" min={4.99} max={49.99} step={1} value={price}
               onChange={(e) => setPrice(+e.target.value)}
-              className="w-full accent-pink-500 cursor-pointer"
+              className="w-full accent-red-500 cursor-pointer"
             />
             <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
               <span>$4.99</span><span>$49.99</span>
@@ -246,13 +246,13 @@ function EarningsCalculator() {
 function CtaSection({ onStart }) {
   return (
     <div className="px-5 py-10 text-center">
-      <div className="max-w-md mx-auto bg-gradient-to-br from-pink-500/10 to-violet-600/10 border border-pink-500/20 rounded-3xl p-8">
-        <Zap className="text-pink-400 mx-auto mb-4" size={32} />
+      <div className="max-w-md mx-auto bg-gradient-to-br from-red-500/10 to-orange-600/10 border border-red-500/20 rounded-3xl p-8">
+        <Zap className="text-red-400 mx-auto mb-4" size={32} />
         <h2 className="text-xl font-bold text-white mb-2">Ready to start earning?</h2>
         <p className="text-sm text-zinc-400 mb-6">Application takes less than 5 minutes. Get verified and start posting today.</p>
         <button
           onClick={onStart}
-          className="inline-flex items-center gap-2 bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-400 hover:to-violet-500 text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-pink-500/25 transition-all active:scale-[0.97] cursor-pointer w-full justify-center text-lg"
+          className="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-orange-600 hover:from-red-400 hover:to-orange-500 text-white font-bold px-8 py-4 rounded-2xl shadow-xl shadow-red-500/25 transition-all active:scale-[0.97] cursor-pointer w-full justify-center text-lg"
         >
           I Want to Start Earning <ChevronRight size={20} />
         </button>
@@ -281,10 +281,10 @@ function FileUploadBox({ label, hint, file, onSelect, onClear, accept = 'image/*
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
-          className="w-full border-2 border-dashed border-zinc-700/50 hover:border-pink-500/30 rounded-xl px-4 py-6 flex flex-col items-center gap-2 transition-colors cursor-pointer group"
+          className="w-full border-2 border-dashed border-zinc-700/50 hover:border-red-500/30 rounded-xl px-4 py-6 flex flex-col items-center gap-2 transition-colors cursor-pointer group"
         >
-          <div className="p-2 rounded-xl bg-zinc-800/50 group-hover:bg-pink-500/10 transition-colors">
-            <Upload size={20} className="text-zinc-500 group-hover:text-pink-400 transition-colors" />
+          <div className="p-2 rounded-xl bg-zinc-800/50 group-hover:bg-red-500/10 transition-colors">
+            <Upload size={20} className="text-zinc-500 group-hover:text-red-400 transition-colors" />
           </div>
           <span className="text-sm text-zinc-500 group-hover:text-zinc-300">Click to upload</span>
           {hint && <span className="text-[11px] text-zinc-600">{hint}</span>}
@@ -440,15 +440,15 @@ function ApplicationForm({ onBack }) {
             <div key={s} className="flex-1 h-1 rounded-full overflow-hidden bg-zinc-800">
               <div className={cn(
                 'h-full rounded-full transition-all duration-500',
-                s <= formStep ? 'bg-gradient-to-r from-pink-500 to-violet-600 w-full' : 'w-0'
+                s <= formStep ? 'bg-gradient-to-r from-red-500 to-orange-600 w-full' : 'w-0'
               )} />
             </div>
           ))}
         </div>
         <div className="flex justify-between mt-1.5">
-          <span className={cn('text-[10px]', formStep >= 1 ? 'text-pink-400' : 'text-zinc-600')}>Personal Info</span>
-          <span className={cn('text-[10px]', formStep >= 2 ? 'text-pink-400' : 'text-zinc-600')}>ID Verification</span>
-          <span className={cn('text-[10px]', formStep >= 3 ? 'text-pink-400' : 'text-zinc-600')}>Confirm</span>
+          <span className={cn('text-[10px]', formStep >= 1 ? 'text-red-400' : 'text-zinc-600')}>Personal Info</span>
+          <span className={cn('text-[10px]', formStep >= 2 ? 'text-red-400' : 'text-zinc-600')}>ID Verification</span>
+          <span className={cn('text-[10px]', formStep >= 3 ? 'text-red-400' : 'text-zinc-600')}>Confirm</span>
         </div>
       </header>
 
@@ -458,9 +458,9 @@ function ApplicationForm({ onBack }) {
           <div className="space-y-4">
             {isGuest && (
               <>
-                <div className="bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 rounded-2xl p-4 mb-2">
+                <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-2xl p-4 mb-2">
                   <div className="flex items-center gap-2 text-sm text-zinc-300">
-                    <Zap size={16} className="text-indigo-400" />
+                    <Zap size={16} className="text-red-400" />
                     <span>Create your account and apply as a creator in one step.</span>
                   </div>
                 </div>
@@ -483,7 +483,7 @@ function ApplicationForm({ onBack }) {
             {!isGuest && (
               <div className="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 mb-6">
                 <div className="flex items-center gap-2 text-sm text-zinc-300">
-                  <Shield size={16} className="text-pink-400" />
+                  <Shield size={16} className="text-red-400" />
                   <span>Your information is <strong className="text-white">encrypted</strong> and only used for verification purposes.</span>
                 </div>
               </div>
@@ -523,7 +523,7 @@ function ApplicationForm({ onBack }) {
               <select
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 cursor-pointer"
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/30 cursor-pointer"
               >
                 {COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -558,7 +558,7 @@ function ApplicationForm({ onBack }) {
             <Button
               onClick={() => setFormStep(2)}
               disabled={!canProceed1}
-              className="w-full !bg-gradient-to-r !from-pink-500 !to-violet-600 hover:!from-pink-400 hover:!to-violet-500"
+              className="w-full !bg-gradient-to-r !from-red-500 !to-orange-600 hover:!from-red-400 hover:!to-orange-500"
               size="lg"
             >
               Continue to ID Verification <ChevronRight size={18} />
@@ -567,7 +567,7 @@ function ApplicationForm({ onBack }) {
             {isGuest && (
               <p className="text-center text-xs text-zinc-600">
                 Already have an account?{' '}
-                <Link to="/auth" className="text-indigo-400 hover:underline">Sign in</Link>{' '}
+                <Link to="/auth" className="text-red-400 hover:underline">Sign in</Link>{' '}
                 then come back here.
               </p>
             )}
@@ -579,7 +579,7 @@ function ApplicationForm({ onBack }) {
           <div className="space-y-4">
             <div className="bg-zinc-900/40 border border-white/5 rounded-2xl p-4 mb-6">
               <div className="flex items-start gap-2 text-sm text-zinc-300">
-                <BadgeCheck size={16} className="text-pink-400 flex-shrink-0 mt-0.5" />
+                <BadgeCheck size={16} className="text-red-400 flex-shrink-0 mt-0.5" />
                 <span>
                   Upload a government-issued ID to verify your identity. This is required by law for content monetization.
                 </span>
@@ -592,7 +592,7 @@ function ApplicationForm({ onBack }) {
               <select
                 value={idType}
                 onChange={(e) => setIdType(e.target.value)}
-                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 cursor-pointer"
+                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/30 cursor-pointer"
               >
                 {ID_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
@@ -636,7 +636,7 @@ function ApplicationForm({ onBack }) {
             <Button
               onClick={() => setFormStep(3)}
               disabled={!canProceed2}
-              className="w-full !bg-gradient-to-r !from-pink-500 !to-violet-600 hover:!from-pink-400 hover:!to-violet-500"
+              className="w-full !bg-gradient-to-r !from-red-500 !to-orange-600 hover:!from-red-400 hover:!to-orange-500"
               size="lg"
             >
               Continue to Confirmation <ChevronRight size={18} />
@@ -652,7 +652,7 @@ function ApplicationForm({ onBack }) {
               <h3 className="text-sm font-bold text-white mb-3">Application Summary</h3>
 
               <div className="flex items-center gap-3 pb-3 border-b border-zinc-800/50">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-violet-600 flex items-center justify-center text-sm font-bold text-white">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center text-sm font-bold text-white">
                   {legalFirst[0]?.toUpperCase()}
                 </div>
                 <div>
@@ -678,21 +678,21 @@ function ApplicationForm({ onBack }) {
             {/* Agreements */}
             <div className="space-y-3">
               <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={agreedAge} onChange={(e) => setAgreedAge(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-pink-600 focus:ring-pink-500 cursor-pointer" />
+                <input type="checkbox" checked={agreedAge} onChange={(e) => setAgreedAge(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-red-600 focus:ring-red-500 cursor-pointer" />
                 <span className="text-xs text-zinc-400 leading-relaxed">
                   I confirm that I am <strong className="text-white">at least 18 years old</strong> and legally allowed to create adult content in my jurisdiction.
                 </span>
               </label>
 
               <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={agreedContent} onChange={(e) => setAgreedContent(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-pink-600 focus:ring-pink-500 cursor-pointer" />
+                <input type="checkbox" checked={agreedContent} onChange={(e) => setAgreedContent(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-red-600 focus:ring-red-500 cursor-pointer" />
                 <span className="text-xs text-zinc-400 leading-relaxed">
                   I confirm that all content I upload will be <strong className="text-white">original and created by me</strong>, and I have legal rights to monetize it.
                 </span>
               </label>
 
               <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-pink-600 focus:ring-pink-500 cursor-pointer" />
+                <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-red-600 focus:ring-red-500 cursor-pointer" />
                 <span className="text-xs text-zinc-400 leading-relaxed">
                   I agree to the <strong className="text-white">Creator Agreement</strong> including the {PLATFORM_FEE_PERCENT}% platform fee, content policies, community guidelines, and payout terms.
                 </span>
@@ -713,7 +713,7 @@ function ApplicationForm({ onBack }) {
               onClick={handleSubmit}
               loading={loading}
               disabled={!canSubmit}
-              className="w-full !bg-gradient-to-r !from-pink-500 !to-violet-600 hover:!from-pink-400 hover:!to-violet-500"
+              className="w-full !bg-gradient-to-r !from-red-500 !to-orange-600 hover:!from-red-400 hover:!to-orange-500"
               size="lg"
             >
               <Star size={18} /> Submit Application
@@ -762,7 +762,7 @@ export default function BecomeCreatorPage() {
   // Landing page
   return (
     <div className="pb-10">
-      <HeroSection onStart={handleStartEarning} />
+      <Heredction onStart={handleStartEarning} />
       <EarningsSection />
       <BenefitsSection />
       <EarningsCalculator />

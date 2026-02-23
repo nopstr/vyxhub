@@ -128,7 +128,7 @@ export default function PullToRefresh({ onRefresh, children, disabled = false })
         <div
           className={`flex items-center justify-center w-10 h-10 rounded-full border transition-all duration-200 ${
             canRelease || refreshing
-              ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400'
+              ? 'border-red-500 bg-red-500/10 text-red-400'
               : 'border-zinc-700 bg-zinc-900 text-zinc-400'
           }`}
           style={{

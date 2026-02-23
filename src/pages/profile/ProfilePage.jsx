@@ -205,7 +205,7 @@ export default function ProfilePage() {
       <div className="flex flex-col items-center justify-center py-20">
         <h2 className="text-xl font-bold text-zinc-300 mb-2">User not found</h2>
         <p className="text-sm text-zinc-500">@{cleanUsername} doesn't exist</p>
-        <Link to="/explore" className="mt-4 text-sm text-indigo-400 hover:underline">
+        <Link to="/explore" className="mt-4 text-sm text-red-400 hover:underline">
           Explore creators
         </Link>
       </div>
@@ -227,7 +227,7 @@ export default function ProfilePage() {
   return (
     <div>
       {/* Banner */}
-      <div className="h-48 md:h-56 bg-gradient-to-br from-indigo-900/40 via-zinc-900 to-violet-900/40 relative">
+      <div className="h-48 md:h-56 bg-gradient-to-br from-red-900/40 via-zinc-900 to-orange-900/40 relative">
         {profile.banner_url && (
           <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
         )}
@@ -353,7 +353,7 @@ export default function ProfilePage() {
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-black text-white">{profile.display_name}</h1>
-            {profile.is_verified && <ShieldCheck size={20} className="text-indigo-400 fill-indigo-400/10" />}
+            {profile.is_verified && <ShieldCheck size={20} className="text-red-400 fill-red-400/10" />}
             {profile.partner_tier === 'verified' && <ShieldCheck size={20} className="text-emerald-400" title="Verified Partner" />}
             {profile.partner_tier === 'blue' && <ShieldCheck size={20} className="text-blue-400" title="Blue Partner" />}
             {profile.partner_tier === 'gold' && <ShieldCheck size={20} className="text-amber-400" title="Gold Partner" />}
@@ -407,7 +407,7 @@ export default function ProfilePage() {
             {t.count > 0 && (
               <span className="text-[10px] text-zinc-500 font-normal">{t.count}</span>
             )}
-            {tab === t.key && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />}
+            {tab === t.key && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-red-500 rounded-full" />}
           </button>
         ))}
       </div>
@@ -574,7 +574,7 @@ function CustomRequestModal({ creatorId, creatorName, minPrice, onClose }) {
               placeholder="Describe your request in detail..."
               rows={4}
               maxLength={1000}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none focus:ring-2 focus:ring-red-500/50"
             />
             <p className="text-xs text-zinc-600 mt-1">{description.length}/1000</p>
           </div>
@@ -589,7 +589,7 @@ function CustomRequestModal({ creatorId, creatorName, minPrice, onClose }) {
                 step="1"
                 value={price}
                 onChange={e => setPrice(parseFloat(e.target.value) || 0)}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500/50"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-8 pr-3 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-red-500/50"
               />
             </div>
             <p className="text-xs text-zinc-600 mt-1">Minimum: ${minPrice}</p>

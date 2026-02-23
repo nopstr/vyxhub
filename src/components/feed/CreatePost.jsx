@@ -461,7 +461,7 @@ export default function CreatePost({ onSuccess }) {
             className={cn(
               'flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all cursor-pointer',
               postType === pt.key
-                ? 'bg-indigo-600 text-white shadow-lg'
+                ? 'bg-red-600 text-white shadow-lg'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
             )}
           >
@@ -602,7 +602,7 @@ export default function CreatePost({ onSuccess }) {
             <div className="mt-3 p-4 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-zinc-200 flex items-center gap-2">
-                  <BarChart2 size={16} className="text-indigo-400" />
+                  <BarChart2 size={16} className="text-red-400" />
                   Create Poll
                 </h4>
                 <button onClick={() => setShowPoll(false)} className="text-zinc-500 hover:text-zinc-300">
@@ -614,7 +614,7 @@ export default function CreatePost({ onSuccess }) {
                 value={pollQuestion}
                 onChange={(e) => setPollQuestion(e.target.value)}
                 placeholder="Ask a question..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-200 mb-3 outline-none focus:border-indigo-500/50"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-200 mb-3 outline-none focus:border-red-500/50"
               />
               <div className="space-y-2 mb-3">
                 {pollOptions.map((opt, i) => (
@@ -628,7 +628,7 @@ export default function CreatePost({ onSuccess }) {
                         setPollOptions(newOpts)
                       }}
                       placeholder={`Option ${i + 1}`}
-                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none focus:border-indigo-500/50"
+                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-zinc-200 outline-none focus:border-red-500/50"
                     />
                     {pollOptions.length > 2 && (
                       <button
@@ -644,7 +644,7 @@ export default function CreatePost({ onSuccess }) {
               {pollOptions.length < 4 && (
                 <button
                   onClick={() => setPollOptions([...pollOptions, ''])}
-                  className="text-xs text-indigo-400 hover:text-indigo-300 font-medium mb-4"
+                  className="text-xs text-red-400 hover:text-red-300 font-medium mb-4"
                 >
                   + Add Option
                 </button>
@@ -677,7 +677,7 @@ export default function CreatePost({ onSuccess }) {
               />
               <button
                 onClick={() => fileRef.current?.click()}
-                className="p-2.5 rounded-xl text-indigo-400 hover:bg-indigo-500/10 transition-colors cursor-pointer"
+                className="p-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
                 title={postType === 'video' ? 'Select video' : 'Add media'}
               >
                 {postType === 'video' ? <Video size={20} /> : <Image size={20} />}
@@ -688,7 +688,7 @@ export default function CreatePost({ onSuccess }) {
                   onClick={() => setShowPoll(!showPoll)}
                   className={cn(
                     "p-2.5 rounded-xl transition-colors cursor-pointer",
-                    showPoll ? "text-indigo-400 bg-indigo-500/10" : "text-zinc-400 hover:bg-zinc-800/50"
+                    showPoll ? "text-red-400 bg-red-500/10" : "text-zinc-400 hover:bg-zinc-800/50"
                   )}
                   title="Add poll"
                 >
@@ -714,7 +714,7 @@ export default function CreatePost({ onSuccess }) {
                           onClick={() => { setVisibility(opt.value); setShowVisibility(false) }}
                           className={cn(
                             'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors cursor-pointer',
-                            visibility === opt.value ? 'text-indigo-400 bg-indigo-500/10' : 'text-zinc-300 hover:bg-zinc-800'
+                            visibility === opt.value ? 'text-red-400 bg-red-500/10' : 'text-zinc-300 hover:bg-zinc-800'
                           )}
                         >
                           <OptIcon size={16} />

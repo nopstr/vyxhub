@@ -674,7 +674,7 @@ export const usePostStore = create((set, get) => ({
     }
   },
 
-  toggleReaction: async (postId, userId, reactionType = 'heart') => {
+  toggleReaction: async (postId, userId, reactionType = 'fire') => {
     // Throttle: ignore rapid-fire clicks (500ms cooldown)
     const throttleKey = `${postId}:${userId}`
     const now = Date.now()

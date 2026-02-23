@@ -28,7 +28,7 @@ export default function Input({
           id={inputId}
           className={cn(
             'w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none transition-colors',
-            'focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30',
+            'focus:border-red-500 focus:ring-1 focus:ring-red-500/30',
             Icon && 'pl-10',
             error && 'border-red-500 focus:border-red-500 focus:ring-red-500/30',
             className
@@ -64,7 +64,7 @@ export function Textarea({
         id={textareaId}
         className={cn(
           'w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none transition-colors resize-none',
-          'focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30',
+          'focus:border-red-500 focus:ring-1 focus:ring-red-500/30',
           error && 'border-red-500 focus:border-red-500 focus:ring-red-500/30',
           className
         )}

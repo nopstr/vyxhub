@@ -10,8 +10,8 @@ export default function CompliancePage() {
       </Link>
 
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 rounded-2xl bg-indigo-600/10">
-          <Shield size={24} className="text-indigo-400" />
+        <div className="p-3 rounded-2xl bg-red-600/10">
+          <Shield size={24} className="text-red-400" />
         </div>
         <div>
           <h1 className="text-2xl font-black text-white">18 U.S.C. § 2257 Compliance Notice</h1>

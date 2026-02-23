@@ -10,8 +10,8 @@ export default function TermsPage() {
       </Link>
 
       <div className="flex items-center gap-3 mb-8">
-        <div className="p-3 rounded-2xl bg-indigo-600/10">
-          <FileText size={24} className="text-indigo-400" />
+        <div className="p-3 rounded-2xl bg-red-600/10">
+          <FileText size={24} className="text-red-400" />
         </div>
         <div>
           <h1 className="text-2xl font-black text-white">Terms of Service</h1>

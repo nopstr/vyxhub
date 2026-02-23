@@ -38,7 +38,7 @@ export default function Avatar({ src, alt, size = 'md', className, status, ring 
         <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-zinc-900" />
       )}
       {status === 'live' && (
-        <div className="absolute -top-1 -right-1 bg-rose-600 text-[8px] font-black px-1 rounded border border-black uppercase">
+        <div className="absolute -top-1 -right-1 bg-red-600 text-[8px] font-black px-1 rounded border border-black uppercase">
           Live
         </div>
       )}

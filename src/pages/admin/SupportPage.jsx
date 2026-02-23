@@ -162,7 +162,7 @@ function ReportQueue() {
               key={report.id}
               className={cn(
                 'bg-zinc-900/30 border rounded-2xl overflow-hidden',
-                selected.has(report.id) ? 'border-indigo-500/50' : 'border-zinc-800/50'
+                selected.has(report.id) ? 'border-red-500/50' : 'border-zinc-800/50'
               )}
             >
               <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ function ReportQueue() {
                         href={`/post/${report.reported_post.id}`}
                         target="_blank"
                         rel="noopener"
-                        className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:underline mt-1"
+                        className="inline-flex items-center gap-1 text-xs text-red-400 hover:underline mt-1"
                       >
                         View post <ExternalLink size={10} />
                       </a>
@@ -244,7 +244,7 @@ function ReportQueue() {
                       <span className="text-sm font-medium text-white">{report.reported_user?.display_name}</span>
                       <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                         <span>@{report.reported_user?.username}</span>
-                        {report.reported_user?.is_verified && <ShieldCheck size={11} className="text-indigo-400" />}
+                        {report.reported_user?.is_verified && <ShieldCheck size={11} className="text-red-400" />}
                         {report.reported_user?.partner_tier === 'verified' && <ShieldCheck size={10} className="text-emerald-400" />}
                         {report.reported_user?.partner_tier === 'blue' && <ShieldCheck size={10} className="text-blue-400" />}
                         {report.reported_user?.partner_tier === 'gold' && <ShieldCheck size={10} className="text-amber-400" />}
@@ -461,7 +461,7 @@ function UserModeration() {
           {results.map(user => (
             <div key={user.id} className={cn(
               'bg-zinc-900/30 border rounded-2xl p-4',
-              selected.has(user.id) ? 'border-indigo-500/50' : 'border-zinc-800/50'
+              selected.has(user.id) ? 'border-red-500/50' : 'border-zinc-800/50'
             )}>
               <div className="flex items-start gap-3">
                 {!user.system_role && (
@@ -475,7 +475,7 @@ function UserModeration() {
                     <span className="font-bold text-white">{user.display_name}</span>
                     <span className="text-sm text-zinc-500">@{user.username}</span>
                     {user.is_verified && (
-                      <span className="text-xs bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1">
                         <ShieldCheck size={10} /> Verified
                       </span>
                     )}
@@ -490,7 +490,7 @@ function UserModeration() {
                       </span>
                     )}
                     {user.is_creator && (
-                      <span className="text-xs bg-pink-500/10 text-pink-400 px-2 py-0.5 rounded-full">Creator</span>
+                      <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full">Creator</span>
                     )}
                     {user.system_role && (
                       <span className="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full uppercase">{user.system_role}</span>
@@ -1014,7 +1014,7 @@ function AppealsQueue() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-xs text-zinc-500">Evidence:</span>
                   {appeal.evidence_urls.map((url, i) => (
-                    <a key={i} href={url} target="_blank" rel="noopener" className="text-xs text-indigo-400 hover:underline flex items-center gap-1">
+                    <a key={i} href={url} target="_blank" rel="noopener" className="text-xs text-red-400 hover:underline flex items-center gap-1">
                       Link {i + 1} <ExternalLink size={10} />
                     </a>
                   ))}
@@ -1306,7 +1306,7 @@ function ModerationLog() {
               'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
               action.action_type.includes('ban') ? 'bg-red-500/10' :
               action.action_type.includes('suspend') ? 'bg-amber-500/10' :
-              action.action_type.includes('verify') ? 'bg-indigo-500/10' :
+              action.action_type.includes('verify') ? 'bg-red-500/10' :
               action.action_type.includes('auto_') ? 'bg-orange-500/10' :
               action.action_type.includes('appeal') ? 'bg-purple-500/10' :
               action.action_type.includes('ip') ? 'bg-red-500/10' :
@@ -1314,7 +1314,7 @@ function ModerationLog() {
             )}>
               {action.action_type.includes('ban') ? <Ban size={14} className="text-red-400" /> :
                action.action_type.includes('suspend') ? <AlertTriangle size={14} className="text-amber-400" /> :
-               action.action_type.includes('verify') ? <ShieldCheck size={14} className="text-indigo-400" /> :
+               action.action_type.includes('verify') ? <ShieldCheck size={14} className="text-red-400" /> :
                action.action_type.includes('auto_') ? <Bot size={14} className="text-orange-400" /> :
                action.action_type.includes('appeal') ? <Scale size={14} className="text-purple-400" /> :
                action.action_type.includes('ip') ? <Globe size={14} className="text-red-400" /> :
@@ -1380,7 +1380,7 @@ function TeamOverview({ teamType = 'support' }) {
       {/* Online Status */}
       <div>
         <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-          <Users size={16} className="text-indigo-400" />
+          <Users size={16} className="text-red-400" />
           Team Members
           <span className="text-xs text-zinc-500 font-normal">
             ({onlineMembers.length} online / {teamStatus.length} total)
@@ -1442,7 +1442,7 @@ function TeamOverview({ teamType = 'support' }) {
       {/* Activity Log */}
       <div>
         <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-          <Clock size={16} className="text-indigo-400" />
+          <Clock size={16} className="text-red-400" />
           Recent Team Activity
         </h3>
 
@@ -1456,14 +1456,14 @@ function TeamOverview({ teamType = 'support' }) {
                   'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5',
                   action.action_type?.includes('ban') ? 'bg-red-500/10' :
                   action.action_type?.includes('suspend') ? 'bg-amber-500/10' :
-                  action.action_type?.includes('verify') ? 'bg-indigo-500/10' :
+                  action.action_type?.includes('verify') ? 'bg-red-500/10' :
                   action.action_type?.includes('appeal') ? 'bg-purple-500/10' :
                   action.action_type?.includes('resolve') ? 'bg-emerald-500/10' :
                   'bg-zinc-800/50'
                 )}>
                   {action.action_type?.includes('ban') ? <Ban size={13} className="text-red-400" /> :
                    action.action_type?.includes('suspend') ? <AlertTriangle size={13} className="text-amber-400" /> :
-                   action.action_type?.includes('verify') ? <ShieldCheck size={13} className="text-indigo-400" /> :
+                   action.action_type?.includes('verify') ? <ShieldCheck size={13} className="text-red-400" /> :
                    action.action_type?.includes('appeal') ? <Scale size={13} className="text-purple-400" /> :
                    action.action_type?.includes('resolve') ? <CheckCircle size={13} className="text-emerald-400" /> :
                    <Clock size={13} className="text-zinc-400" />}
@@ -1688,8 +1688,8 @@ export default function SupportPage() {
     <div>
       <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50 px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-500/10 rounded-lg flex items-center justify-center">
-            <ShieldAlert size={18} className="text-indigo-400" />
+          <div className="w-8 h-8 bg-red-500/10 rounded-lg flex items-center justify-center">
+            <ShieldAlert size={18} className="text-red-400" />
           </div>
           <h1 className="text-xl font-bold text-white">Support Panel</h1>
         </div>
@@ -1705,7 +1705,7 @@ export default function SupportPage() {
               className={cn(
                 'flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer whitespace-nowrap',
                 tab === t.id
-                  ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                   : 'text-zinc-500 hover:text-zinc-300 bg-zinc-900/30 border border-zinc-800/50'
               )}
             >

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
-  DollarSign, TrendingUp, Users, Eye, Heart, Image, MessageCircle,
+  DollarSign, TrendingUp, Users, Eye, Flame, Image, MessageCircle,
   ArrowUpRight, ArrowDownRight, Calendar, BarChart3, Send, Download,
   Clock, CheckCircle, XCircle, ChevronDown, Filter, FileText,
   Megaphone, ClipboardList, ArrowLeft, Loader2, Star, Package,
@@ -17,12 +17,11 @@ import { toast } from 'sonner'
 
 // ─── Shared Components ──────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon: Icon, trend, trendLabel, color = 'indigo' }) {
+function StatCard({ label, value, icon: Icon, trend, trendLabel, color = 'red' }) {
   const colors = {
-    indigo: 'bg-indigo-500/10 text-indigo-400',
+    red: 'bg-red-500/10 text-red-400',
     emerald: 'bg-emerald-500/10 text-emerald-400',
     amber: 'bg-amber-500/10 text-amber-400',
-    pink: 'bg-pink-500/10 text-pink-400',
     purple: 'bg-purple-500/10 text-purple-400',
   }
   return (
@@ -56,7 +55,7 @@ function SectionCard({ title, icon: Icon, children, action }) {
     <div className="bg-zinc-900/30 border border-white/5 rounded-2xl overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
         <h3 className="font-semibold text-white flex items-center gap-2">
-          {Icon && <Icon size={16} className="text-indigo-400" />}
+          {Icon && <Icon size={16} className="text-red-400" />}
           {title}
         </h3>
         {action}
@@ -72,7 +71,7 @@ function TabButton({ active, onClick, icon: Icon, label, badge }) {
       onClick={onClick}
       className={cn(
         'flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors cursor-pointer whitespace-nowrap',
-        active ? 'bg-indigo-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+        active ? 'bg-red-600 text-white' : 'text-zinc-400 hover:text-white hover:bg-zinc-800/50'
       )}
     >
       {Icon && <Icon size={16} />}
@@ -100,7 +99,7 @@ function MiniBarChart({ data, height = 160 }) {
       {data.map((d, i) => (
         <div key={i} className="flex-1 flex flex-col items-center gap-1 min-w-0">
           <div
-            className="w-full bg-indigo-600/50 hover:bg-indigo-500/70 rounded-t-sm transition-colors cursor-default"
+            className="w-full bg-red-600/50 hover:bg-red-500/70 rounded-t-sm transition-colors cursor-default"
             style={{ height: `${(d.amount / max) * 100}%`, minHeight: '2px' }}
             title={`${d.date}: $${Number(d.amount).toFixed(2)}`}
           />
@@ -186,7 +185,7 @@ function OverviewTab({ analytics, period, setPeriod }) {
             onClick={() => setPeriod(opt.value)}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer whitespace-nowrap',
-              period === opt.value ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+              period === opt.value ? 'bg-red-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
             )}
           >
             {opt.label}
@@ -208,7 +207,7 @@ function OverviewTab({ analytics, period, setPeriod }) {
           label="Subscribers"
           value={formatNumber(s.subscribers || 0)}
           icon={Users}
-          color="indigo"
+          color="red"
           trend={s.subscribers_prev > 0 ? Math.round(((s.subscribers - s.subscribers_prev) / s.subscribers_prev) * 100) : null}
         />
         <StatCard label="Views" value={formatNumber(s.views || 0)} icon={Eye} color="purple" />
@@ -250,7 +249,7 @@ function OverviewTab({ analytics, period, setPeriod }) {
                     <span className="text-sm font-medium text-white">{formatCurrency(amount)} ({pct}%)</span>
                   </div>
                   <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                    <div className="h-full bg-red-600 rounded-full transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               )
@@ -271,7 +270,7 @@ function OverviewTab({ analytics, period, setPeriod }) {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-zinc-300 truncate">{post.content || `${post.post_type} post`}</p>
                   <div className="flex items-center gap-3 mt-1 text-xs text-zinc-500">
-                    <span className="flex items-center gap-1"><Heart size={11} /> {formatNumber(post.like_count)}</span>
+                    <span className="flex items-center gap-1"><Flame size={11} /> {formatNumber(post.like_count)}</span>
                     <span className="flex items-center gap-1"><MessageCircle size={11} /> {formatNumber(post.comment_count)}</span>
                     <span className="flex items-center gap-1"><Eye size={11} /> {formatNumber(post.view_count)}</span>
                     {post.revenue > 0 && <span className="flex items-center gap-1 text-emerald-400"><DollarSign size={11} /> {formatCurrency(post.revenue)}</span>}
@@ -421,7 +420,7 @@ function MassMessageTab({ userId }) {
               placeholder="Type your message to all active subscribers..."
               rows={5}
               maxLength={2000}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 resize-none outline-none focus:ring-2 focus:ring-red-500/50"
             />
             <div className="flex items-center justify-between mt-1">
               <p className="text-xs text-zinc-600">{content.length}/2000</p>
@@ -435,7 +434,7 @@ function MassMessageTab({ userId }) {
               className={cn(
                 'flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-colors cursor-pointer border',
                 scheduleMode
-                  ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                  ? 'bg-orange-500/10 border-orange-500/30 text-orange-300'
                   : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:text-zinc-200'
               )}
             >
@@ -454,7 +453,7 @@ function MassMessageTab({ userId }) {
                   value={scheduledDate}
                   onChange={e => setScheduledDate(e.target.value)}
                   min={new Date().toISOString().split('T')[0]}
-                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-violet-500/50 [color-scheme:dark]"
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-orange-500/50 [color-scheme:dark]"
                 />
               </div>
               <div>
@@ -463,7 +462,7 @@ function MassMessageTab({ userId }) {
                   type="time"
                   value={scheduledTime}
                   onChange={e => setScheduledTime(e.target.value)}
-                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-violet-500/50 [color-scheme:dark]"
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-orange-500/50 [color-scheme:dark]"
                 />
               </div>
             </div>
@@ -494,10 +493,10 @@ function MassMessageTab({ userId }) {
           <div className="space-y-3">
             {scheduledMessages.filter(m => m.status === 'pending').map(msg => (
               <div key={msg.id} className="flex items-start gap-3 py-2 border-b border-zinc-800/50 last:border-0">
-                <CalendarClock size={14} className="text-violet-400 mt-1 flex-shrink-0" />
+                <CalendarClock size={14} className="text-orange-400 mt-1 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-zinc-300 line-clamp-2">{msg.content}</p>
-                  <p className="text-xs text-violet-400 mt-1">
+                  <p className="text-xs text-orange-400 mt-1">
                     Scheduled for {new Date(msg.scheduled_at).toLocaleString()}
                   </p>
                 </div>
@@ -522,7 +521,7 @@ function MassMessageTab({ userId }) {
           <div className="space-y-3">
             {history.map(msg => (
               <div key={msg.id} className="flex items-start gap-3 py-2 border-b border-zinc-800/50 last:border-0">
-                <Send size={14} className="text-indigo-400 mt-1 flex-shrink-0" />
+                <Send size={14} className="text-red-400 mt-1 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-zinc-300 line-clamp-2">{msg.content}</p>
                   <p className="text-xs text-zinc-600 mt-1">{formatMessageTime(msg.created_at)}</p>
@@ -622,7 +621,7 @@ function CustomRequestsTab({ userId }) {
   const statusColors = {
     pending: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
     accepted: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-    paid: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
+    paid: 'bg-red-500/10 text-red-400 border-red-500/30',
     declined: 'bg-red-500/10 text-red-400 border-red-500/30',
     completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
     cancelled: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/30',
@@ -642,7 +641,7 @@ function CustomRequestsTab({ userId }) {
               onClick={toggleAcceptRequests}
               className={cn(
                 'w-11 h-6 rounded-full transition-colors relative cursor-pointer',
-                profile?.accepts_custom_requests ? 'bg-indigo-600' : 'bg-zinc-700'
+                profile?.accepts_custom_requests ? 'bg-red-600' : 'bg-zinc-700'
               )}
             >
               <div className={cn(
@@ -665,7 +664,7 @@ function CustomRequestsTab({ userId }) {
                   const val = parseFloat(e.target.value)
                   if (val >= 5) await updateProfile({ custom_request_min_price: val })
                 }}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg pl-8 pr-3 py-1.5 text-sm text-zinc-200 outline-none focus:ring-1 focus:ring-indigo-500/50"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg pl-8 pr-3 py-1.5 text-sm text-zinc-200 outline-none focus:ring-1 focus:ring-red-500/50"
               />
             </div>
           </div>
@@ -680,7 +679,7 @@ function CustomRequestsTab({ userId }) {
             onClick={() => setFilter(f)}
             className={cn(
               'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer capitalize whitespace-nowrap',
-              filter === f ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+              filter === f ? 'bg-red-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
             )}
           >
             {f}
@@ -772,7 +771,7 @@ function CustomRequestsTab({ userId }) {
                   ) : (
                     <button
                       onClick={() => setRespondingId(req.id)}
-                      className="text-sm text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer"
+                      className="text-sm text-red-400 hover:text-red-300 font-medium cursor-pointer"
                     >
                       Respond →
                     </button>
@@ -781,8 +780,8 @@ function CustomRequestsTab({ userId }) {
               )}
 
               {req.status === 'accepted' && (
-                <div className="mt-3 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
-                  <p className="text-sm text-indigo-400 font-medium flex items-center gap-2">
+                <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl">
+                  <p className="text-sm text-red-400 font-medium flex items-center gap-2">
                     <Clock size={14} />
                     Waiting for user to complete payment...
                   </p>
@@ -867,7 +866,7 @@ function EarningsExportTab({ userId }) {
                 type="date"
                 value={startDate}
                 onChange={e => setStartDate(e.target.value)}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500/50 [color-scheme:dark]"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-red-500/50 [color-scheme:dark]"
               />
             </div>
             <div>
@@ -876,7 +875,7 @@ function EarningsExportTab({ userId }) {
                 type="date"
                 value={endDate}
                 onChange={e => setEndDate(e.target.value)}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500/50 [color-scheme:dark]"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 outline-none focus:ring-2 focus:ring-red-500/50 [color-scheme:dark]"
               />
             </div>
           </div>
@@ -1097,9 +1096,9 @@ function PromotionsTab({ userId }) {
                       step={5}
                       value={discountPercent}
                       onChange={e => setDiscountPercent(Number(e.target.value))}
-                      className="flex-1 accent-indigo-500"
+                      className="flex-1 accent-red-500"
                     />
-                    <span className="text-lg font-bold text-indigo-400 min-w-[50px] text-right">{discountPercent}%</span>
+                    <span className="text-lg font-bold text-red-400 min-w-[50px] text-right">{discountPercent}%</span>
                   </div>
                   <div className="flex items-center justify-between mt-2 text-xs text-zinc-500">
                     <span>Regular: {formatCurrency(subPrice)}</span>
@@ -1116,7 +1115,7 @@ function PromotionsTab({ userId }) {
                         onClick={() => setDurationDays(d)}
                         className={cn(
                           'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
-                          durationDays === d ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                          durationDays === d ? 'bg-red-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                         )}
                       >
                         {d} day{d !== 1 ? 's' : ''}
@@ -1125,8 +1124,8 @@ function PromotionsTab({ userId }) {
                   </div>
                 </div>
 
-                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-3">
-                  <p className="text-xs text-indigo-300">
+                <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-3">
+                  <p className="text-xs text-red-300">
                     New subscribers will see a <strong>{discountPercent}% off</strong> badge on your profile.
                     They'll pay <strong>{formatCurrency(previewPrice)}/mo</strong> instead of {formatCurrency(subPrice)}/mo for their first month.
                   </p>
@@ -1155,7 +1154,7 @@ function PromotionsTab({ userId }) {
                 onChange={e => setCodeText(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase())}
                 maxLength={20}
                 placeholder="e.g. SUMMER25"
-                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500/50"
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-red-500/50"
               />
             </div>
             <div>
@@ -1166,7 +1165,7 @@ function PromotionsTab({ userId }) {
                 onChange={e => setCodeDiscount(Math.min(100, Math.max(5, parseInt(e.target.value) || 5)))}
                 min={5}
                 max={100}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white outline-none focus:border-indigo-500/50"
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white outline-none focus:border-red-500/50"
               />
             </div>
             <div>
@@ -1177,7 +1176,7 @@ function PromotionsTab({ userId }) {
                 onChange={e => setCodeDuration(Math.min(365, Math.max(1, parseInt(e.target.value) || 1)))}
                 min={1}
                 max={365}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white outline-none focus:border-indigo-500/50"
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white outline-none focus:border-red-500/50"
               />
             </div>
             <div>
@@ -1188,7 +1187,7 @@ function PromotionsTab({ userId }) {
                 onChange={e => setCodeMaxUses(e.target.value)}
                 placeholder="Unlimited"
                 min={1}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-indigo-500/50"
+                className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-red-500/50"
               />
             </div>
           </div>
@@ -1205,7 +1204,7 @@ function PromotionsTab({ userId }) {
                 return (
                   <div key={c.id} className="flex items-center justify-between py-2 px-3 rounded-xl bg-zinc-800/30">
                     <div className="flex items-center gap-3">
-                      <span className="font-mono text-sm font-bold text-indigo-400">{c.code}</span>
+                      <span className="font-mono text-sm font-bold text-red-400">{c.code}</span>
                       <span className="text-xs text-zinc-500">{c.discount_percent}% off</span>
                       <span className="text-xs text-zinc-600">
                         {c.used_count}{c.max_uses ? `/${c.max_uses}` : ''} uses
@@ -1341,7 +1340,7 @@ function ReferralsTab({ userId }) {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Total Referrals" value={stats?.total_referrals ?? 0} icon={Users} color="indigo" />
+        <StatCard label="Total Referrals" value={stats?.total_referrals ?? 0} icon={Users} color="red" />
         <StatCard label="Subscribed" value={stats?.total_subscribed ?? 0} icon={CheckCircle} color="emerald" />
         <StatCard label="Commission" value={formatCurrency(stats?.total_commission ?? 0)} icon={DollarSign} color="amber" />
       </div>
@@ -1368,7 +1367,7 @@ function ReferralsTab({ userId }) {
                 <span className={cn(
                   'text-xs font-medium px-2 py-0.5 rounded-full',
                   ref.status === 'earned' ? 'bg-emerald-500/10 text-emerald-400' :
-                  ref.status === 'subscribed' ? 'bg-indigo-500/10 text-indigo-400' :
+                  ref.status === 'subscribed' ? 'bg-red-500/10 text-red-400' :
                   'bg-zinc-800 text-zinc-500'
                 )}>
                   {ref.status === 'earned' ? 'Earned' : ref.status === 'subscribed' ? 'Subscribed' : 'Signed up'}
@@ -1489,7 +1488,7 @@ function AdsManagerTab({ userId }) {
                 onClick={() => setPromoType('post')}
                 className={cn(
                   'flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition-colors cursor-pointer',
-                  promoType === 'post' ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white border border-zinc-700'
+                  promoType === 'post' ? 'bg-red-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white border border-zinc-700'
                 )}
               >
                 Promote a Post
@@ -1498,7 +1497,7 @@ function AdsManagerTab({ userId }) {
                 onClick={() => setPromoType('profile')}
                 className={cn(
                   'flex-1 py-2.5 rounded-xl text-sm font-medium text-center transition-colors cursor-pointer',
-                  promoType === 'profile' ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white border border-zinc-700'
+                  promoType === 'profile' ? 'bg-red-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white border border-zinc-700'
                 )}
               >
                 Promote Profile
@@ -1520,7 +1519,7 @@ function AdsManagerTab({ userId }) {
                     onClick={() => setSelectedPostId(p.id)}
                     className={cn(
                       'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer',
-                      selectedPostId === p.id ? 'bg-indigo-600/20 border border-indigo-500/30 text-white' : 'bg-zinc-800/30 text-zinc-400 hover:text-white hover:bg-zinc-800/50'
+                      selectedPostId === p.id ? 'bg-red-600/20 border border-red-500/30 text-white' : 'bg-zinc-800/30 text-zinc-400 hover:text-white hover:bg-zinc-800/50'
                     )}
                   >
                     <p className="truncate">{p.content?.slice(0, 80) || `[${p.post_type}]`}</p>
@@ -1739,10 +1738,10 @@ function WalletTab({ userId }) {
     custom_request: 'Custom Request',
   }
   const txTypeColors = {
-    subscription: 'text-indigo-400 bg-indigo-500/10',
+    subscription: 'text-red-400 bg-red-500/10',
     tip: 'text-emerald-400 bg-emerald-500/10',
     ppv_post: 'text-amber-400 bg-amber-500/10',
-    message_unlock: 'text-pink-400 bg-pink-500/10',
+    message_unlock: 'text-red-400 bg-red-500/10',
     payment_request: 'text-purple-400 bg-purple-500/10',
     custom_request: 'text-cyan-400 bg-cyan-500/10',
   }
@@ -1761,7 +1760,7 @@ function WalletTab({ userId }) {
         <div className="bg-zinc-900/30 border border-white/5 rounded-2xl p-5">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs text-zinc-500">Total Balance</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400"><Wallet size={16} /></div>
+            <div className="p-2 rounded-xl bg-red-500/10 text-red-400"><Wallet size={16} /></div>
           </div>
           <p className="text-2xl font-bold text-white">{formatCurrency(w.balance || 0)}</p>
           <p className="text-xs text-zinc-500 mt-1">Lifetime: {formatCurrency(w.total_earned || 0)}</p>
@@ -1978,8 +1977,8 @@ export default function CreatorDashboardPage() {
   if (!profile?.is_creator) {
     return (
       <div className="flex flex-col items-center justify-center h-[60vh] gap-4 px-6 text-center">
-        <div className="p-4 rounded-full bg-indigo-500/10">
-          <DollarSign size={32} className="text-indigo-400" />
+        <div className="p-4 rounded-full bg-red-500/10">
+          <DollarSign size={32} className="text-red-400" />
         </div>
         <h2 className="text-xl font-bold">Creator Dashboard</h2>
         <p className="text-zinc-500 text-sm max-w-sm">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Heart, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react'
+import { Flame, MessageCircle, Share2, Play, Pause, Volume2, VolumeX, ChevronUp, ChevronDown } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { resolvePostMediaUrls } from '../../lib/storage'
 import { useAuthStore } from '../../stores/authStore'
@@ -63,10 +63,10 @@ function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
     setLikeCount(c => wasLiked ? c - 1 : c + 1)
     try {
       if (wasLiked) {
-        const { error } = await supabase.from('likes').delete().match({ post_id: reel.id, user_id: user.id, reaction_type: 'heart' })
+        const { error } = await supabase.from('likes').delete().match({ post_id: reel.id, user_id: user.id, reaction_type: 'fire' })
         if (error) throw error
       } else {
-        const { error } = await supabase.from('likes').insert({ post_id: reel.id, user_id: user.id, reaction_type: 'heart' })
+        const { error } = await supabase.from('likes').insert({ post_id: reel.id, user_id: user.id, reaction_type: 'fire' })
         if (error) throw error
       }
     } catch {
@@ -136,7 +136,7 @@ function ReelCard({ reel, isActive, userLikes, onWatchTime }) {
       <div className="absolute right-3 bottom-20 flex flex-col items-center gap-5 z-20">
         <button onClick={(e) => { e.stopPropagation(); handleLike(); }} className="flex flex-col items-center gap-1 cursor-pointer">
           <div className={cn('p-2 rounded-full', liked ? 'bg-red-500/20' : 'bg-black/30 backdrop-blur-sm')}>
-            <Heart size={22} className={cn(liked ? 'text-red-500 fill-red-500' : 'text-white')} />
+            <Flame size={22} className={cn(liked ? 'text-red-500 fill-red-500' : 'text-white')} />
           </div>
           <span className="text-xs text-white font-medium drop-shadow-md">{formatNumber(likeCount)}</span>
         </button>
@@ -298,8 +298,8 @@ export default function ReelsPage() {
   if (!reels.length) {
     return (
       <div className="flex flex-col items-center justify-center h-[80vh] gap-4 px-6 text-center">
-        <div className="p-4 rounded-full bg-indigo-500/10">
-          <Play size={32} className="text-indigo-400" />
+        <div className="p-4 rounded-full bg-red-500/10">
+          <Play size={32} className="text-red-400" />
         </div>
         <h2 className="text-xl font-bold">No Reels Yet</h2>
         <p className="text-zinc-500 text-sm max-w-sm">

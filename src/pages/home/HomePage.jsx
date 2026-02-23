@@ -91,7 +91,7 @@ export default function HomePage() {
           >
             For You
             {tab === 'foryou' && (
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-red-500 rounded-full" />
             )}
           </button>
           <button
@@ -102,7 +102,7 @@ export default function HomePage() {
           >
             Following & Subscribed
             {tab === 'following' && (
-              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />
+              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-red-500 rounded-full" />
             )}
           </button>
         </div>

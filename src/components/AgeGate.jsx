@@ -72,15 +72,15 @@ export default function AgeGate({ children }) {
     <div className="fixed inset-0 z-[9999] bg-black flex items-center justify-center p-6">
       {/* Subtle background effect */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-indigo-600/5 blur-[150px] rounded-full" />
-        <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-violet-600/5 blur-[120px] rounded-full" />
+        <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-red-600/5 blur-[150px] rounded-full" />
+        <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-orange-600/5 blur-[120px] rounded-full" />
       </div>
 
       <div className="relative w-full max-w-md">
         <div className="bg-zinc-950 border border-zinc-800/50 rounded-3xl p-8 shadow-2xl">
           {/* Icon */}
-          <div className="w-16 h-16 bg-indigo-600/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <ShieldCheck size={32} className="text-indigo-400" />
+          <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <ShieldCheck size={32} className="text-red-400" />
           </div>
 
           {/* Title */}
@@ -102,7 +102,7 @@ export default function AgeGate({ children }) {
               value={dob}
               max={getMaxDob()}
               onChange={(e) => setDob(e.target.value)}
-              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30"
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/30"
             />
           </div>
 
@@ -112,14 +112,14 @@ export default function AgeGate({ children }) {
               type="checkbox"
               checked={agreed}
               onChange={(e) => setAgreed(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              className="mt-0.5 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-red-600 focus:ring-red-500 cursor-pointer"
             />
             <span className="text-xs text-zinc-400 leading-relaxed">
               I confirm I am at least <strong className="text-white">18 years old</strong> and
               I consent to viewing age-restricted content. I agree to the{' '}
-              <a href="/terms" className="text-indigo-400 hover:underline">Terms of Service</a>{' '}
+              <a href="/terms" className="text-red-400 hover:underline">Terms of Service</a>{' '}
               and{' '}
-              <a href="/privacy" className="text-indigo-400 hover:underline">Privacy Policy</a>.
+              <a href="/privacy" className="text-red-400 hover:underline">Privacy Policy</a>.
             </span>
           </label>
 
@@ -135,7 +135,7 @@ export default function AgeGate({ children }) {
           <div className="space-y-3">
             <button
               onClick={handleVerify}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3.5 rounded-xl transition-all active:scale-[0.98] cursor-pointer"
             >
               I Am 18 or Older — Enter
             </button>

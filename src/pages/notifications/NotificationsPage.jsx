@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  Heart, MessageCircle, UserPlus, DollarSign, Video, Bell,
+  Flame, MessageCircle, UserPlus, DollarSign, Video, Bell,
   ShieldCheck, Star, AtSign, Image, Film, Grid3x3, Loader2, Filter
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
@@ -15,15 +15,15 @@ import PullToRefresh from '../../components/ui/PullToRefresh'
 import useSwipeGesture from '../../components/ui/useSwipeGesture'
 
 const notifIcons = {
-  like: { icon: Heart, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-  comment: { icon: MessageCircle, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+  like: { icon: Flame, color: 'text-red-500', bg: 'bg-red-500/10' },
+  comment: { icon: MessageCircle, color: 'text-red-400', bg: 'bg-red-500/10' },
   follow: { icon: UserPlus, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
   subscription: { icon: DollarSign, color: 'text-amber-400', bg: 'bg-amber-500/10' },
   tip: { icon: DollarSign, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  mention: { icon: AtSign, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-  livestream_started: { icon: Video, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-  new_post: { icon: Star, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-  message: { icon: MessageCircle, color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
+  mention: { icon: AtSign, color: 'text-red-400', bg: 'bg-red-500/10' },
+  livestream_started: { icon: Video, color: 'text-red-500', bg: 'bg-red-500/10' },
+  new_post: { icon: Star, color: 'text-red-400', bg: 'bg-red-500/10' },
+  message: { icon: MessageCircle, color: 'text-red-400', bg: 'bg-red-500/10' },
 }
 
 // A7: Priority-based border styling
@@ -36,7 +36,7 @@ const priorityStyles = {
 // Filter tabs
 const FILTER_TABS = [
   { key: null, label: 'All' },
-  { key: 'like', label: 'Likes', icon: Heart },
+  { key: 'like', label: 'Likes', icon: Flame },
   { key: 'comment', label: 'Comments', icon: MessageCircle },
   { key: 'follow', label: 'Follows', icon: UserPlus },
   { key: 'subscription', label: 'Subs', icon: DollarSign },
@@ -145,7 +145,7 @@ function NotificationItem({ notification, onRead }) {
       onClick={() => !notification.is_read && onRead(notification.id)}
       className={cn(
         'flex items-start gap-4 px-5 py-4 border-b border-zinc-800/50 hover:bg-zinc-900/20 transition-colors cursor-pointer block',
-        !notification.is_read && 'bg-indigo-500/[0.03]',
+        !notification.is_read && 'bg-red-500/[0.03]',
         priorityStyles[notification.priority] || ''
       )}
     >
@@ -193,7 +193,7 @@ function NotificationItem({ notification, onRead }) {
       {!notification.is_read && (
         <div className={cn(
           'w-2 h-2 rounded-full mt-2 flex-shrink-0',
-          notification.priority === 'high' ? 'bg-amber-500' : 'bg-indigo-500'
+          notification.priority === 'high' ? 'bg-amber-500' : 'bg-red-500'
         )} />
       )}
     </Wrapper>
@@ -301,7 +301,7 @@ export default function NotificationsPage() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer',
                   activeFilter === tab.key
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-red-600 text-white'
                     : 'bg-zinc-800/50 text-zinc-500 hover:text-zinc-300 border border-zinc-800/50'
                 )}
               >
@@ -310,7 +310,7 @@ export default function NotificationsPage() {
                 {count > 0 && (
                   <span className={cn(
                     'text-[10px] px-1.5 py-0.5 rounded-full ml-0.5',
-                    activeFilter === tab.key ? 'bg-white/20' : 'bg-indigo-500/20 text-indigo-400'
+                    activeFilter === tab.key ? 'bg-white/20' : 'bg-red-500/20 text-red-400'
                   )}>
                     {count}
                   </span>

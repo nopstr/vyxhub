@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { Zap, Mail, Lock, User, AtSign, Eye, EyeOff, Star, ChevronRight, ShieldCheck } from 'lucide-react'
+import { Flame, Mail, Lock, User, AtSign, Eye, EyeOff, Star, ChevronRight, ShieldCheck } from 'lucide-react'
 import { useAuthStore } from '../stores/authStore'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
@@ -119,17 +119,17 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 py-12">
       <div className="fixed inset-0">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/10 blur-[150px] rounded-full" />
-        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-violet-600/10 blur-[120px] rounded-full" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/10 blur-[150px] rounded-full" />
+        <div className="absolute bottom-1/4 right-1/4 w-72 h-72 bg-orange-600/10 blur-[120px] rounded-full" />
       </div>
 
       <div className="relative w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-2xl bg-white shadow-white/10">
-            <Zap className="text-black fill-black" size={32} />
+            <Flame className="text-red-600 fill-red-600" size={32} />
           </div>
-          <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
             HEATLY
           </h1>
           <p className="text-sm text-zinc-500 mt-2">
@@ -142,8 +142,8 @@ export default function AuthPage() {
           {mfaRequired ? (
             <form onSubmit={handleMfaVerify} className="space-y-4">
               <div className="text-center mb-2">
-                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-3">
-                  <ShieldCheck size={24} className="text-indigo-400" />
+                <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mx-auto mb-3">
+                  <ShieldCheck size={24} className="text-red-400" />
                 </div>
                 <h2 className="text-lg font-bold text-white">Two-Factor Authentication</h2>
                 <p className="text-sm text-zinc-500 mt-1">Enter the 6-digit code from your authenticator app</p>
@@ -164,7 +164,7 @@ export default function AuthPage() {
               <button
                 type="button"
                 onClick={() => { setMfaRequired(false); setMfaCode(''); setMfaFactorId(null) }}
-                className="block w-full text-center text-sm text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer"
+                className="block w-full text-center text-sm text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
               >
                 Back to login
               </button>
@@ -205,7 +205,7 @@ export default function AuthPage() {
             {isSignupMode && (
               <div className="space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">
-                  <input type="checkbox" checked={agreedAge} onChange={(e) => setAgreedAge(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                  <input type="checkbox" checked={agreedAge} onChange={(e) => setAgreedAge(e.target.checked)} className="mt-1 w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-red-600 focus:ring-red-500 cursor-pointer" />
                   <span className="text-xs text-zinc-400 leading-relaxed">
                     I confirm that I am <strong className="text-white">18 years or older</strong> and agree to the Terms of Service and Privacy Policy.
                   </span>
@@ -241,10 +241,10 @@ export default function AuthPage() {
           {/* Become a Creator CTA */}
           <Link
             to="/become-creator"
-            className="mt-5 flex items-center justify-between bg-gradient-to-r from-pink-500/10 to-violet-600/10 border border-pink-500/20 rounded-2xl p-4 hover:border-pink-500/40 transition-all group"
+            className="mt-5 flex items-center justify-between bg-gradient-to-r from-red-500/10 to-orange-600/10 border border-red-500/20 rounded-2xl p-4 hover:border-red-500/40 transition-all group"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-violet-600 shadow-lg shadow-pink-500/20">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-red-500 to-orange-600 shadow-lg shadow-red-500/20">
                 <Star size={18} className="text-white" />
               </div>
               <div>
@@ -252,27 +252,27 @@ export default function AuthPage() {
                 <p className="text-xs text-zinc-500">Earn 70% — highest in the industry</p>
               </div>
             </div>
-            <ChevronRight size={18} className="text-zinc-600 group-hover:text-pink-400 transition-colors" />
+            <ChevronRight size={18} className="text-zinc-600 group-hover:text-red-400 transition-colors" />
           </Link>
 
           <div className="mt-5 text-center space-y-2">
             {mode === 'login' && (
               <>
-                <button onClick={() => setMode('forgot')} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer">Forgot password?</button>
+                <button onClick={() => setMode('forgot')} className="text-xs text-zinc-500 hover:text-red-400 transition-colors cursor-pointer">Forgot password?</button>
                 <p className="text-sm text-zinc-500">
                   No account?{' '}
-                  <button onClick={() => setMode('signup')} className="text-indigo-400 font-semibold hover:underline cursor-pointer">Sign up</button>
+                  <button onClick={() => setMode('signup')} className="text-red-400 font-semibold hover:underline cursor-pointer">Sign up</button>
                 </p>
               </>
             )}
             {isSignupMode && (
               <p className="text-sm text-zinc-500">
                 Already have an account?{' '}
-                <button onClick={() => setMode('login')} className="text-indigo-400 font-semibold hover:underline cursor-pointer">Sign in</button>
+                <button onClick={() => setMode('login')} className="text-red-400 font-semibold hover:underline cursor-pointer">Sign in</button>
               </p>
             )}
             {mode === 'forgot' && (
-              <button onClick={() => setMode('login')} className="text-sm text-indigo-400 font-semibold hover:underline cursor-pointer">Back to login</button>
+              <button onClick={() => setMode('login')} className="text-sm text-red-400 font-semibold hover:underline cursor-pointer">Back to login</button>
             )}
           </div>
           </>

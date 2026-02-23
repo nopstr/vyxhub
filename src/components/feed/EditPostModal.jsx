@@ -49,7 +49,7 @@ export default function EditPostModal({ post, onClose, onUpdate }) {
             value={content}
             onChange={(e) => setContent(e.target.value)}
             placeholder="What's on your mind?"
-            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none min-h-[150px]"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/50 resize-none min-h-[150px]"
             autoFocus
           />
 
@@ -64,7 +64,7 @@ export default function EditPostModal({ post, onClose, onUpdate }) {
             <button
               type="submit"
               disabled={isSubmitting || !content.trim() || content === post.content}
-              className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-full transition-colors"
+              className="px-6 py-2 bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium rounded-full transition-colors"
             >
               {isSubmitting ? 'Saving...' : 'Save Changes'}
             </button>

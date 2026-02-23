@@ -89,16 +89,16 @@ function RevenueDashboard() {
           icon={CreditCard}
           label="Platform Earnings"
           value={formatCurrency(stats?.total_platform_fees || 0)}
-          color="text-indigo-400"
-          bg="bg-indigo-500/10"
+          color="text-red-400"
+          bg="bg-red-500/10"
           subtitle={`Revenue – Creator Split`}
         />
         <StatCard
           icon={TrendingUp}
           label="Creator Payouts"
           value={formatCurrency(stats?.total_creator_payouts || 0)}
-          color="text-pink-400"
-          bg="bg-pink-500/10"
+          color="text-red-400"
+          bg="bg-red-500/10"
         />
         <StatCard
           icon={BarChart3}
@@ -247,7 +247,7 @@ function SplitManager() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white text-sm">{user.display_name}</span>
                       <span className="text-xs text-zinc-500">@{user.username}</span>
-                      {user.is_verified && <ShieldCheck size={12} className="text-indigo-400" />}
+                      {user.is_verified && <ShieldCheck size={12} className="text-red-400" />}
                       {user.is_managed && <span className="text-[10px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded">Managed</span>}
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">
@@ -269,7 +269,7 @@ function SplitManager() {
                         value={editingSplit[user.id] ?? (user.revenue_split_override ?? '')}
                         onChange={(e) => setEditingSplit(s => ({ ...s, [user.id]: e.target.value }))}
                         placeholder="70"
-                        className="w-20 bg-zinc-800/50 border border-zinc-700/50 rounded-lg pl-7 pr-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-indigo-500/50"
+                        className="w-20 bg-zinc-800/50 border border-zinc-700/50 rounded-lg pl-7 pr-2 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-red-500/50"
                       />
                     </div>
                     <Button size="sm" onClick={() => handleSaveSplit(user.id)}>
@@ -579,7 +579,7 @@ function AffiliateAdsManager() {
         <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 space-y-4">
           <h4 className="font-bold text-white">{editingAd ? 'Edit Ad' : 'Create Ad'}</h4>
           <Input placeholder="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-          <textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500/50 resize-none" />
+          <textarea placeholder="Description (optional)" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} rows={2} className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-red-500/50 resize-none" />
           <Input placeholder="Feed Image URL (600×400)" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} />
           <Input placeholder="Sidebar Image URL (300×250, optional)" value={form.sidebar_image_url} onChange={e => setForm(f => ({ ...f, sidebar_image_url: e.target.value }))} />
           <Input placeholder="Link URL (affiliate link)" value={form.link_url} onChange={e => setForm(f => ({ ...f, link_url: e.target.value }))} />
@@ -904,7 +904,7 @@ function PayoutQueue() {
                       href={`https://tronscan.org/#/transaction/${p.payout_hash}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-indigo-400 hover:underline font-mono text-[11px] ml-1"
+                      className="text-red-400 hover:underline font-mono text-[11px] ml-1"
                     >
                       {p.payout_hash.slice(0, 16)}... <ExternalLink size={10} className="inline" />
                     </a>

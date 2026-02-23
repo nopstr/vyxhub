@@ -140,14 +140,14 @@ export default function PaymentModal({
             disabled={redirecting}
             className={cn(
               'w-full p-4 rounded-xl border-2 transition-all cursor-pointer text-left',
-              'bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border-indigo-500/40 hover:border-indigo-400/60',
+              'bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/40 hover:border-red-400/60',
               redirecting && 'opacity-70 cursor-wait'
             )}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-                  <CreditCard size={20} className="text-indigo-400" />
+                <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                  <CreditCard size={20} className="text-red-400" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-white">Pay with Card</p>
@@ -155,10 +155,10 @@ export default function PaymentModal({
                 </div>
               </div>
               {redirecting ? (
-                <Loader2 size={18} className="text-indigo-400 animate-spin" />
+                <Loader2 size={18} className="text-red-400 animate-spin" />
               ) : (
                 <div className="flex items-center gap-1">
-                  <span className="text-[10px] px-1.5 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-md font-bold">RECOMMENDED</span>
+                  <span className="text-[10px] px-1.5 py-0.5 bg-red-500/20 text-red-300 rounded-md font-bold">RECOMMENDED</span>
                   <ArrowRight size={16} className="text-zinc-500" />
                 </div>
               )}

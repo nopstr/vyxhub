@@ -139,7 +139,7 @@ export default function SearchOverlay({ open, onClose, initialQuery = '' }) {
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder="Search creators, posts, #hashtags..."
-            className="w-full bg-zinc-900 border border-zinc-700 rounded-2xl pl-12 pr-12 py-4 text-base text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors shadow-2xl"
+            className="w-full bg-zinc-900 border border-zinc-700 rounded-2xl pl-12 pr-12 py-4 text-base text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-red-500/50 transition-colors shadow-2xl"
             autoComplete="off"
             spellCheck={false}
           />
@@ -195,7 +195,7 @@ export default function SearchOverlay({ open, onClose, initialQuery = '' }) {
                       <User size={14} className="text-zinc-400" />
                     )
                   ) : item.item_type === 'hashtag' ? (
-                    <Hash size={14} className="text-indigo-400" />
+                    <Hash size={14} className="text-red-400" />
                   ) : (
                     <Clock size={14} className="text-zinc-500" />
                   )}
@@ -205,7 +205,7 @@ export default function SearchOverlay({ open, onClose, initialQuery = '' }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-medium text-zinc-200 truncate">{item.label}</span>
-                    {item.is_verified && <ShieldCheck size={12} className="text-indigo-400 flex-shrink-0" />}
+                    {item.is_verified && <ShieldCheck size={12} className="text-red-400 flex-shrink-0" />}
                   </div>
                   {item.sublabel && (
                     <span className="text-xs text-zinc-500 truncate block">{item.sublabel}</span>

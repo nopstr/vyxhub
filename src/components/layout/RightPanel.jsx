@@ -60,7 +60,7 @@ function TrendingSection() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
                   <p className="font-bold text-sm text-white truncate">{creator.display_name}</p>
-                  {creator.is_verified && <ShieldCheck size={12} className="text-indigo-400 flex-shrink-0" />}
+                  {creator.is_verified && <ShieldCheck size={12} className="text-red-400 flex-shrink-0" />}
                   {creator.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400 flex-shrink-0" />}
                   {creator.partner_tier === 'blue' && <ShieldCheck size={11} className="text-blue-400 flex-shrink-0" />}
                   {creator.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400 flex-shrink-0" />}
@@ -97,7 +97,7 @@ function TrendingHashtags() {
   return (
     <section>
       <h3 className="font-bold text-sm text-zinc-400 uppercase tracking-wider mb-4 px-1 flex items-center gap-1.5">
-        <Hash size={14} className="text-indigo-400" />
+        <Hash size={14} className="text-red-400" />
         Trending Tags
       </h3>
       <div className="space-y-1">
@@ -180,7 +180,7 @@ function SuggestedCreators() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <span className="text-sm font-bold text-white truncate">{creator.display_name}</span>
-                {creator.is_verified && <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />}
+                {creator.is_verified && <ShieldCheck size={14} className="text-red-400 flex-shrink-0" />}
                 {creator.partner_tier === 'verified' && <ShieldCheck size={13} className="text-emerald-400 flex-shrink-0" />}
                 {creator.partner_tier === 'blue' && <ShieldCheck size={13} className="text-blue-400 flex-shrink-0" />}
                 {creator.partner_tier === 'gold' && <ShieldCheck size={13} className="text-amber-400 flex-shrink-0" />}

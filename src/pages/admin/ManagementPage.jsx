@@ -45,7 +45,7 @@ function ManagedCreators({ onSelect, selectedId }) {
           onClick={() => onSelect(c)}
           className={cn(
             'w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left cursor-pointer',
-            selectedId === c.id ? 'bg-indigo-500/10 border border-indigo-500/30' : 'bg-zinc-900/30 border border-zinc-800/50 hover:bg-zinc-900/50'
+            selectedId === c.id ? 'bg-red-500/10 border border-red-500/30' : 'bg-zinc-900/30 border border-zinc-800/50 hover:bg-zinc-900/50'
           )}
         >
           <Avatar src={c.avatar_url} alt={c.display_name} size="md" />

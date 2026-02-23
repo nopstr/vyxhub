@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  Heart, MessageCircle, Share, Bookmark, MoreHorizontal,
+  MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
   Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet, Crown
@@ -25,13 +25,6 @@ import { cn, formatRelativeTime, formatNumber, haptic } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
 
-const REACTION_TYPES = [
-  { type: 'heart', icon: Heart, label: 'Love', color: 'text-rose-500', bg: 'bg-rose-500/10', fill: true },
-  { type: 'fire', icon: Flame, label: 'Hot', color: 'text-orange-500', bg: 'bg-orange-500/10', fill: true },
-  { type: 'nice', icon: ThumbsUp, label: 'Nice', color: 'text-emerald-500', bg: 'bg-emerald-500/10', fill: false },
-  { type: 'sparkle', icon: Sparkles, label: 'Amazing', color: 'text-indigo-400', bg: 'bg-indigo-500/10', fill: true },
-]
-
 // A2: Render text with clickable hashtags
 function RichContent({ text }) {
   if (!text) return null
@@ -39,7 +32,7 @@ function RichContent({ text }) {
   return parts.map((part, i) => {
     if (/^#[a-zA-Z0-9_]{1,50}$/.test(part)) {
       return (
-        <Link key={i} to={`/explore?tag=${part.slice(1)}`} className="text-indigo-400 hover:text-indigo-300 hover:underline">
+        <Link key={i} to={`/explore?tag=${part.slice(1)}`} className="text-red-400 hover:text-red-300 hover:underline">
           {part}
         </Link>
       )
@@ -401,7 +394,7 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
           draggable={false}
         />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/20 to-violet-900/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-red-900/20 to-orange-900/20" />
       )}
       <div className={cn(
         "relative z-10 flex flex-col items-center text-center bg-black/40 backdrop-blur-xl rounded-3xl border border-white/5",
@@ -412,7 +405,7 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
           compact ? 'w-10 h-10' : 'w-14 h-14 mb-5',
           isPPV
             ? 'bg-gradient-to-br from-amber-500 to-orange-600'
-            : 'bg-gradient-to-br from-indigo-500 to-violet-600'
+            : 'bg-gradient-to-br from-red-500 to-orange-600'
         )}>
           {isPPV ? <DollarSign size={compact ? 18 : 24} className="text-white" /> : <Lock size={compact ? 18 : 24} className="text-white" />}
         </div>
@@ -460,7 +453,7 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
             onClick={handleSubscribe}
             disabled={loading}
             className={cn(
-              "w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50",
+              "w-full bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50",
               compact ? "py-2 text-sm mt-2" : "py-3"
             )}
           >
@@ -554,20 +547,7 @@ export default function PostCard({ post }) {
   const showPaywall = (isLocked && !isSubscribed && !hasPurchased) || (isPPV && !isOwn && !hasPurchased)
   const isBookmarked = post.bookmarks?.some(b => b.user_id === user?.id)
 
-  // Reaction picker state (long-press)
-  const [showReactionPicker, setShowReactionPicker] = useState(false)
-  const longPressTimer = useRef(null)
-  const reactionBtnRef = useRef(null)
-
-  const handleReaction = (reactionType, e) => {
-    e?.stopPropagation()
-    if (!user) return toast.error('Sign in to react to posts')
-    haptic('light')
-    toggleReaction(post.id, user.id, reactionType)
-    setShowReactionPicker(false)
-  }
-
-  // Tap = toggle current reaction (or heart by default)
+  // Tap = toggle current reaction (or fire by default)
   const handleReactionTap = (e) => {
     e?.stopPropagation()
     if (!user) return toast.error('Sign in to react to posts')
@@ -576,45 +556,10 @@ export default function PostCard({ post }) {
       // Remove existing reaction
       toggleReaction(post.id, user.id, userReactionType)
     } else {
-      // Add heart reaction
-      toggleReaction(post.id, user.id, 'heart')
+      // Add fire reaction
+      toggleReaction(post.id, user.id, 'fire')
     }
   }
-
-  // Long-press handlers
-  const handleLongPressStart = useCallback((e) => {
-    e.stopPropagation()
-    longPressTimer.current = setTimeout(() => {
-      haptic('medium')
-      setShowReactionPicker(true)
-    }, 400)
-  }, [])
-
-  const handleLongPressEnd = useCallback((e) => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }, [])
-
-  const handleLongPressCancel = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
-    }
-  }, [])
-
-  // Close picker when clicking outside
-  useEffect(() => {
-    if (!showReactionPicker) return
-    const handleClickOutside = (e) => {
-      if (reactionBtnRef.current && !reactionBtnRef.current.contains(e.target)) {
-        setShowReactionPicker(false)
-      }
-    }
-    document.addEventListener('pointerdown', handleClickOutside)
-    return () => document.removeEventListener('pointerdown', handleClickOutside)
-  }, [showReactionPicker])
 
   const handleComment = (e) => {
     e.stopPropagation()
@@ -739,8 +684,8 @@ export default function PostCard({ post }) {
       {/* Pinned indicator */}
       {post.is_pinned && (
         <div className="flex items-center gap-2 text-xs text-zinc-500 mb-2 ml-12">
-          <Pin size={14} className="text-indigo-400" />
-          <span className="text-indigo-400 font-medium">Pinned</span>
+          <Pin size={14} className="text-red-400" />
+          <span className="text-red-400 font-medium">Pinned</span>
         </div>
       )}
 
@@ -765,7 +710,7 @@ export default function PostCard({ post }) {
               <div className="flex items-center gap-1.5 min-w-0">
                 <Link to={`/@${author.username}`} className="flex items-center gap-1.5 min-w-0 hover:underline">
                   <span className="font-bold text-zinc-100 truncate">{author.display_name}</span>
-                  {author.is_verified && <ShieldCheck size={15} className="text-indigo-400 fill-indigo-400/10 flex-shrink-0" />}
+                  {author.is_verified && <ShieldCheck size={15} className="text-red-400 fill-red-400/10 flex-shrink-0" />}
                   {author.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0" title="Verified Partner" />}
                   {author.partner_tier === 'blue' && <ShieldCheck size={14} className="text-blue-400 flex-shrink-0" title="Blue Partner" />}
                   {author.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" title="Gold Partner" />}
@@ -838,7 +783,7 @@ export default function PostCard({ post }) {
                 </span>
               )}
               {isSet && (
-                <span className="inline-flex items-center gap-1 text-xs font-semibold text-violet-400 bg-violet-500/10 px-2 py-0.5 rounded-md">
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-md">
                   <Grid3x3 size={12} /> Set · {post.media?.length || 0} photos
                 </span>
               )}
@@ -865,7 +810,7 @@ export default function PostCard({ post }) {
                   : editedContent
               }
               {!isContentUnlocked && post.visibility !== 'public' && editedContent.length > 60 && (
-                <span className="text-indigo-400 text-sm ml-1">Subscribe to see full post</span>
+                <span className="text-red-400 text-sm ml-1">Subscribe to see full post</span>
               )}
             </p>
           )}
@@ -921,21 +866,21 @@ export default function PostCard({ post }) {
                       }}
                       className={cn(
                         "relative w-full text-left overflow-hidden rounded-lg border transition-all",
-                        hasVoted || isExpired ? "border-zinc-800 cursor-default" : "border-zinc-700 hover:border-indigo-500/50 cursor-pointer",
-                        isMyVote ? "border-indigo-500/50" : ""
+                        hasVoted || isExpired ? "border-zinc-800 cursor-default" : "border-zinc-700 hover:border-red-500/50 cursor-pointer",
+                        isMyVote ? "border-red-500/50" : ""
                       )}
                     >
                       {(hasVoted || isExpired) && (
                         <div 
                           className={cn(
                             "absolute inset-y-0 left-0 opacity-20 transition-all duration-1000",
-                            isMyVote ? "bg-indigo-500" : "bg-zinc-500"
+                            isMyVote ? "bg-red-500" : "bg-zinc-500"
                           )}
                           style={{ width: `${percent}%` }}
                         />
                       )}
                       <div className="relative flex items-center justify-between px-4 py-2.5">
-                        <span className={cn("text-sm font-medium", isMyVote ? "text-indigo-400" : "text-zinc-300")}>
+                        <span className={cn("text-sm font-medium", isMyVote ? "text-red-400" : "text-zinc-300")}>
                           {opt.option_text}
                         </span>
                         {(hasVoted || isExpired) && (
@@ -959,69 +904,33 @@ export default function PostCard({ post }) {
 
           {/* Actions */}
           <div className="flex items-center gap-1 mt-2 -ml-2">
-            {/* Reaction Button — tap for heart, long-press for picker */}
-            <div className="relative" ref={reactionBtnRef}>
-              {(() => {
-                const activeReaction = userReactionType
-                  ? REACTION_TYPES.find(r => r.type === userReactionType)
-                  : null
-                const Icon = activeReaction?.icon || Heart
-                const isActive = !!activeReaction
-
-                return (
-                  <button
-                    onClick={handleReactionTap}
-                    onPointerDown={handleLongPressStart}
-                    onPointerUp={handleLongPressEnd}
-                    onPointerLeave={handleLongPressCancel}
-                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setShowReactionPicker(true) }}
-                    title={activeReaction?.label || 'Like'}
+            {/* Reaction Button */}
+            <div className="relative">
+              <button
+                onClick={handleReactionTap}
+                title="Like"
+                className={cn(
+                  'flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all group cursor-pointer',
+                  userReactionType ? 'text-red-500' : 'text-zinc-500 hover:bg-zinc-800/50'
+                )}
+              >
+                <div className="relative">
+                  <Flame
+                    size={18}
+                    fill={userReactionType ? 'currentColor' : 'none'}
                     className={cn(
-                      'flex items-center gap-1.5 px-2 py-1.5 rounded-xl transition-all group cursor-pointer',
-                      isActive ? (activeReaction?.color || 'text-rose-500') : 'text-zinc-500 hover:bg-zinc-800/50'
+                      "transition-transform duration-300",
+                      userReactionType ? "scale-110" : "group-hover:scale-110"
                     )}
-                  >
-                    <div className="relative">
-                      <Icon
-                        size={18}
-                        fill={isActive && (activeReaction?.fill !== false) ? 'currentColor' : 'none'}
-                        className={cn(
-                          "transition-transform duration-300",
-                          isActive ? "scale-110" : "group-hover:scale-110"
-                        )}
-                      />
-                      {isActive && (
-                        <div className={cn("absolute inset-0 rounded-full animate-ping opacity-0", activeReaction?.bg)} />
-                      )}
-                    </div>
-                    {totalReactionCount > 0 && (
-                      <span className="text-xs font-semibold">{formatNumber(totalReactionCount)}</span>
-                    )}
-                  </button>
-                )
-              })()}
-
-              {/* Reaction Picker — long-press popup */}
-              {showReactionPicker && (
-                <div className="absolute bottom-full left-0 mb-2 flex items-center gap-1 bg-zinc-900 border border-zinc-700/50 rounded-2xl p-1.5 shadow-xl shadow-black/50 z-50 animate-dropdown-in">
-                  {REACTION_TYPES.map(r => {
-                    const isSelected = userReactionType === r.type
-                    return (
-                      <button
-                        key={r.type}
-                        onClick={(e) => handleReaction(r.type, e)}
-                        title={r.label}
-                        className={cn(
-                          'p-2 rounded-xl transition-all hover:scale-125 cursor-pointer',
-                          isSelected ? cn(r.bg, r.color) : 'hover:bg-zinc-800/80 text-zinc-400 hover:text-white'
-                        )}
-                      >
-                        <r.icon size={20} fill={isSelected && r.fill ? 'currentColor' : 'none'} />
-                      </button>
-                    )
-                  })}
+                  />
+                  {userReactionType && (
+                    <div className="absolute inset-0 rounded-full animate-ping opacity-0 bg-red-500/20" />
+                  )}
                 </div>
-              )}
+                {totalReactionCount > 0 && (
+                  <span className="text-xs font-semibold">{formatNumber(totalReactionCount)}</span>
+                )}
+              </button>
             </div>
 
             {/* Comment Button — subscriber-only */}
@@ -1031,7 +940,7 @@ export default function PostCard({ post }) {
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors group cursor-pointer',
                 !user || (!isOwn && !isSubscribed)
                   ? 'text-zinc-600'
-                  : 'text-zinc-500 hover:text-indigo-400'
+                  : 'text-zinc-500 hover:text-red-400'
               )}
               title={!user ? 'Sign in' : (!isOwn && !isSubscribed) ? 'Subscribe to comment' : 'Comment'}
             >
@@ -1042,7 +951,7 @@ export default function PostCard({ post }) {
 
             <button
               onClick={handleShare}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-500 hover:text-indigo-400 transition-colors group cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-500 hover:text-red-400 transition-colors group cursor-pointer"
             >
               <Share size={18} className="group-hover:scale-110 transition-transform" />
             </button>
@@ -1099,7 +1008,7 @@ export default function PostCard({ post }) {
               onClick={handleBookmark}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors group ml-auto cursor-pointer',
-                isBookmarked ? 'text-indigo-400' : 'text-zinc-500 hover:text-indigo-400'
+                isBookmarked ? 'text-red-400' : 'text-zinc-500 hover:text-red-400'
               )}
             >
               <Bookmark size={18} fill={isBookmarked ? 'currentColor' : 'none'} className="group-hover:scale-110 transition-transform" />

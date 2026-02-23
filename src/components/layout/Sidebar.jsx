@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Search, Bell, Mail, Unlock, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users, Crown, Shield } from 'lucide-react'
+import { Home, Search, Bell, Mail, Unlock, Bookmark, User, Settings, PlusCircle, Flame, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users, Crown, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../ui/Avatar'
@@ -26,7 +26,7 @@ function SidebarLink({ to, icon: Icon, label, count }) {
         cn(
           'group flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200',
           isActive
-            ? 'bg-indigo-600/10 text-white font-bold'
+            ? 'bg-red-600/10 text-white font-bold'
             : 'text-zinc-400 hover:bg-zinc-800/50 hover:text-white'
         )
       }
@@ -36,7 +36,7 @@ function SidebarLink({ to, icon: Icon, label, count }) {
           <div className="relative">
             <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
             {count > 0 && (
-              <div className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-indigo-500 rounded-full flex items-center justify-center">
+              <div className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 rounded-full flex items-center justify-center">
                 <span className="text-[10px] font-bold text-white px-1">
                   {count > 99 ? '99+' : count}
                 </span>
@@ -61,9 +61,9 @@ export default function Sidebar() {
       {/* Logo */}
       <NavLink to="/" className="flex items-center gap-3 px-4 py-3 mb-6">
         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-white/10 flex-shrink-0">
-          <Zap className="text-black fill-black" size={20} />
+          <Flame className="text-red-600 fill-red-600" size={20} />
         </div>
-        <span className="hidden xl:block text-xl font-black tracking-tighter bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
+        <span className="hidden xl:block text-xl font-black tracking-tighter bg-gradient-to-r from-red-500 to-orange-500 bg-clip-text text-transparent">
           HEATLY
         </span>
       </NavLink>
@@ -134,7 +134,7 @@ export default function Sidebar() {
           {profile?.is_creator && (
             <button
               onClick={() => navigate('/')}
-              className="my-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20 cursor-pointer"
+              className="my-4 w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-red-600/20 cursor-pointer"
             >
               <PlusCircle size={20} />
               <span className="hidden xl:inline">Create Post</span>
@@ -158,7 +158,7 @@ export default function Sidebar() {
       ) : (
         <NavLink
           to="/auth"
-          className="my-4 w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-indigo-600/20 cursor-pointer"
+          className="my-4 w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg shadow-red-600/20 cursor-pointer"
         >
           <User size={20} />
           <span className="hidden xl:inline">Sign In</span>

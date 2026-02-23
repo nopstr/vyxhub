@@ -121,7 +121,7 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
         onClick={e => e.stopPropagation()}
       >
         {/* Header with creator info */}
-        <div className="relative bg-gradient-to-br from-indigo-900/40 via-zinc-900 to-violet-900/40 px-5 pt-5 pb-4">
+        <div className="relative bg-gradient-to-br from-red-900/40 via-zinc-900 to-orange-900/40 px-5 pt-5 pb-4">
           <button
             onClick={onClose}
             className="absolute top-3 right-3 text-zinc-400 hover:text-white transition-colors cursor-pointer"
@@ -210,14 +210,14 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
                     onChange={e => setPromoCode(e.target.value.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase())}
                     placeholder="Promo code"
                     maxLength={20}
-                    className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50"
+                    className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg pl-9 pr-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-red-500/50"
                     onKeyDown={e => e.key === 'Enter' && handleValidatePromo()}
                   />
                 </div>
                 <button
                   onClick={handleValidatePromo}
                   disabled={!promoCode.trim() || validatingCode}
-                  className="px-3 py-2 text-sm font-medium text-indigo-400 hover:text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  className="px-3 py-2 text-sm font-medium text-red-400 hover:text-red-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
                   {validatingCode ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
                 </button>
@@ -241,7 +241,7 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
           <button
             onClick={handleSubscribe}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold rounded-xl py-3 transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold rounded-xl py-3 transition-all flex items-center justify-center gap-2 active:scale-[0.98] cursor-pointer disabled:opacity-50"
           >
             {loading ? (
               <Loader2 size={18} className="animate-spin" />

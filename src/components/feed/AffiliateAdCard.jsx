@@ -29,14 +29,14 @@ export default function AffiliateAdCard({ ad }) {
         )}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h4 className="font-bold text-white text-sm group-hover:text-indigo-400 transition-colors">
+            <h4 className="font-bold text-white text-sm group-hover:text-red-400 transition-colors">
               {ad.title}
             </h4>
             {ad.description && (
               <p className="text-zinc-400 text-sm mt-0.5 line-clamp-2">{ad.description}</p>
             )}
           </div>
-          <ExternalLink size={16} className="text-zinc-600 group-hover:text-indigo-400 transition-colors mt-0.5 flex-shrink-0" />
+          <ExternalLink size={16} className="text-zinc-600 group-hover:text-red-400 transition-colors mt-0.5 flex-shrink-0" />
         </div>
       </button>
     </div>
@@ -68,7 +68,7 @@ export function SidebarAd({ ad }) {
             <Megaphone size={10} className="text-zinc-500" />
             <span className="text-[10px] text-zinc-500">Sponsored</span>
           </div>
-          <h4 className="font-bold text-white text-xs group-hover:text-indigo-400 transition-colors">
+          <h4 className="font-bold text-white text-xs group-hover:text-red-400 transition-colors">
             {ad.title}
           </h4>
           {ad.description && (

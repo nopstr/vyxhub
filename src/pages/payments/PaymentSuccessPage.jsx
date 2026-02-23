@@ -105,7 +105,7 @@ export default function PaymentSuccessPage() {
       <div className="w-full max-w-sm text-center space-y-6">
         {status === 'checking' && (
           <>
-            <Loader2 size={48} className="text-indigo-400 animate-spin mx-auto" />
+            <Loader2 size={48} className="text-red-400 animate-spin mx-auto" />
             <div>
               <h2 className="text-xl font-bold text-white">Processing Payment...</h2>
               <p className="text-sm text-zinc-400 mt-2">This usually takes a few seconds</p>

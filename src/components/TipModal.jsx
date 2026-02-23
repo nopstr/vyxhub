@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { X, DollarSign, Heart, Sparkles, Wallet } from 'lucide-react'
+import { X, DollarSign, Flame, Sparkles, Wallet } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { MIN_TIP_AMOUNT, MAX_TIP_AMOUNT, PLATFORM_FEE_PERCENT } from '../lib/constants'
@@ -130,7 +130,7 @@ export default function TipModal({ open, onClose, creator, postId = null }) {
             loading={loading}
             disabled={!isValid}
           >
-            <Heart size={16} className="fill-current" />
+            <Flame size={16} className="fill-current" />
             Send ${isValid ? currentAmount.toFixed(2) : '0.00'} Tip
           </Button>
 

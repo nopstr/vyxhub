@@ -5,7 +5,7 @@ import {
   Camera, Save, Trash2, Eye, EyeOff, Lock,
   DollarSign, Globe, MessageCircle, Droplets, MapPin,
   Link as LinkIcon, Star, Package, ShieldCheck, Zap,
-  Heart, AlertTriangle, KeyRound, Upload, Image, Film, FileText,
+  Flame, AlertTriangle, KeyRound, Upload, Image, Film, FileText,
   CheckCircle, XCircle, Clock, Loader2, Radio, Phone
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
@@ -59,7 +59,7 @@ function Toggle({ checked, onChange, label, description }) {
         onClick={(e) => { e.preventDefault(); onChange(!checked) }}
         className={cn(
           'w-11 h-6 rounded-full transition-colors relative cursor-pointer flex-shrink-0',
-          checked ? 'bg-indigo-600' : 'bg-zinc-700'
+          checked ? 'bg-red-600' : 'bg-zinc-700'
         )}
       >
         <div className={cn(
@@ -75,7 +75,7 @@ function SectionHeader({ icon: Icon, title, description }) {
   return (
     <div className="mb-4">
       <h3 className="flex items-center gap-2 text-base font-bold text-white">
-        {Icon && <Icon size={18} className="text-indigo-400" />}
+        {Icon && <Icon size={18} className="text-red-400" />}
         {title}
       </h3>
       {description && <p className="text-xs text-zinc-500 mt-1">{description}</p>}
@@ -257,7 +257,7 @@ function ProfileSettings() {
           {profile?.banner_url ? (
             <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-indigo-900/30 to-violet-900/30" />
+            <div className="w-full h-full bg-gradient-to-br from-red-900/30 to-orange-900/30" />
           )}
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
             <Camera size={28} className="text-white" />
@@ -352,7 +352,7 @@ function ProfileSettings() {
             <select
               value={form.preferred_language}
               onChange={(e) => setForm(f => ({ ...f, preferred_language: e.target.value }))}
-              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors"
             >
               <option value="en">English</option>
               <option value="es">Español</option>
@@ -376,7 +376,7 @@ function ProfileSettings() {
             <select
               value={form.country_code}
               onChange={(e) => setForm(f => ({ ...f, country_code: e.target.value }))}
-              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm text-zinc-200 focus:outline-none focus:border-red-500 transition-colors"
             >
               <option value="">Auto-detect</option>
               {GEO_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
@@ -388,10 +388,10 @@ function ProfileSettings() {
 
       {/* Password required for name changes */}
       {nameFieldsChanged && (
-        <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 space-y-3">
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 space-y-3">
           <div className="flex items-center gap-2">
-            <Lock size={14} className="text-indigo-400" />
-            <p className="text-sm font-medium text-indigo-300">Password required to change name or username</p>
+            <Lock size={14} className="text-red-400" />
+            <p className="text-sm font-medium text-red-300">Password required to change name or username</p>
           </div>
           <Input
             label="Your Password"
@@ -653,7 +653,7 @@ function AccountSettings() {
       {/* Change Email */}
       <div className="pt-4 border-t border-zinc-800">
         <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-          <Mail size={16} className="text-indigo-400" /> Change Email
+          <Mail size={16} className="text-red-400" /> Change Email
         </h3>
         <div className="space-y-3">
           <Input
@@ -673,7 +673,7 @@ function AccountSettings() {
       {/* Change Password */}
       <div className="pt-4 border-t border-zinc-800">
         <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-          <KeyRound size={16} className="text-indigo-400" /> Change Password
+          <KeyRound size={16} className="text-red-400" /> Change Password
         </h3>
         <div className="space-y-3">
           <Input
@@ -706,7 +706,7 @@ function AccountSettings() {
       {/* Two-Factor Authentication */}
       <div className="pt-4 border-t border-zinc-800">
         <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-          <ShieldCheck size={16} className="text-indigo-400" /> Two-Factor Authentication
+          <ShieldCheck size={16} className="text-red-400" /> Two-Factor Authentication
         </h3>
         {mfaFactors.length > 0 ? (
           <div className="space-y-3">
@@ -737,7 +737,7 @@ function AccountSettings() {
                 />
               </div>
               <p className="text-xs text-zinc-500 text-center mb-1">Or enter this secret manually:</p>
-              <code className="block text-xs text-indigo-400 text-center font-mono break-all bg-zinc-900 rounded-lg p-2">{mfaEnrollData.totp.secret}</code>
+              <code className="block text-xs text-red-400 text-center font-mono break-all bg-zinc-900 rounded-lg p-2">{mfaEnrollData.totp.secret}</code>
             </div>
             <Input
               label="Enter 6-digit verification code"
@@ -772,7 +772,7 @@ function AccountSettings() {
       {/* Active Sessions */}
       <div className="pt-4 border-t border-zinc-800">
         <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-          <Shield size={16} className="text-indigo-400" /> Active Sessions
+          <Shield size={16} className="text-red-400" /> Active Sessions
         </h3>
         {loadingSessions ? (
           <div className="flex items-center gap-2 p-4 text-zinc-500">
@@ -786,13 +786,13 @@ function AccountSettings() {
             {sessions.map(sess => (
               <div key={sess.id} className={cn(
                 "flex items-center justify-between p-3 rounded-xl border",
-                sess.is_current ? "bg-indigo-500/10 border-indigo-500/20" : "bg-zinc-900/30 border-zinc-800/50"
+                sess.is_current ? "bg-red-500/10 border-red-500/20" : "bg-zinc-900/30 border-zinc-800/50"
               )}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-zinc-300 truncate">{sess.device_info || 'Unknown device'}</p>
                     {sess.is_current && (
-                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-400">Current</span>
+                      <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">Current</span>
                     )}
                   </div>
                   <p className="text-xs text-zinc-500 mt-0.5">
@@ -821,7 +821,7 @@ function AccountSettings() {
       {/* Login History */}
       <div className="pt-4 border-t border-zinc-800">
         <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-          <Clock size={16} className="text-indigo-400" /> Login History
+          <Clock size={16} className="text-red-400" /> Login History
         </h3>
         {loadingSessions ? (
           <div className="flex items-center gap-2 p-4 text-zinc-500">
@@ -1041,9 +1041,9 @@ function CreatorSettings() {
   if (!profile?.is_creator) {
     return (
       <div className="space-y-6">
-        <div className="bg-gradient-to-br from-pink-500/10 to-violet-600/10 p-6 rounded-3xl border border-pink-500/20">
+        <div className="bg-gradient-to-br from-red-500/10 to-orange-600/10 p-6 rounded-3xl border border-red-500/20">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-violet-600 rounded-2xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-orange-600 rounded-2xl flex items-center justify-center">
               <Star size={24} className="text-white" />
             </div>
             <div>
@@ -1059,7 +1059,7 @@ function CreatorSettings() {
               { icon: Star, text: 'Fan engagement tools' },
             ].map((item, i) => (
               <div key={i} className="flex items-center gap-2 text-sm text-zinc-300">
-                <item.icon size={14} className="text-pink-400 flex-shrink-0" />
+                <item.icon size={14} className="text-red-400 flex-shrink-0" />
                 <span>{item.text}</span>
               </div>
             ))}
@@ -1068,7 +1068,7 @@ function CreatorSettings() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-1.5">Category</label>
-              <select value={form.creator_category} onChange={(e) => setForm(f => ({ ...f, creator_category: e.target.value }))} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-pink-500/50 cursor-pointer">
+              <select value={form.creator_category} onChange={(e) => setForm(f => ({ ...f, creator_category: e.target.value }))} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50 cursor-pointer">
                 {MODEL_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
@@ -1086,7 +1086,7 @@ function CreatorSettings() {
             </p>
           </div>
 
-          <Button onClick={handleBecomeCreator} loading={saving} className="mt-5 w-full !bg-gradient-to-r !from-pink-500 !to-violet-600">
+          <Button onClick={handleBecomeCreator} loading={saving} className="mt-5 w-full !bg-gradient-to-r !from-red-500 !to-orange-600">
             <Zap size={16} className="fill-current" />
             Activate Creator Profile
           </Button>
@@ -1121,7 +1121,7 @@ function CreatorSettings() {
             onClick={() => setSection(s.id)}
             className={cn(
               'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors cursor-pointer',
-              section === s.id ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-zinc-500 hover:text-zinc-300 bg-zinc-900/30 border border-zinc-800/50'
+              section === s.id ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-zinc-500 hover:text-zinc-300 bg-zinc-900/30 border border-zinc-800/50'
             )}
           >
             <s.icon size={13} />
@@ -1137,7 +1137,7 @@ function CreatorSettings() {
 
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-1.5">Creator Category</label>
-            <select value={form.creator_category} onChange={(e) => setForm(f => ({ ...f, creator_category: e.target.value }))} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer">
+            <select value={form.creator_category} onChange={(e) => setForm(f => ({ ...f, creator_category: e.target.value }))} className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50 cursor-pointer">
               {MODEL_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
@@ -1148,7 +1148,7 @@ function CreatorSettings() {
               value={form.tags}
               onChange={(e) => setForm(f => ({ ...f, tags: e.target.value }))}
               placeholder="fitness, cosplay, lifestyle (comma separated)"
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
               maxLength={200}
             />
             <p className="text-xs text-zinc-500 mt-1">Helps fans discover your content</p>
@@ -1190,7 +1190,7 @@ function CreatorSettings() {
                 step="0.01"
                 value={form.subscription_price}
                 onChange={(e) => setForm(f => ({ ...f, subscription_price: e.target.value }))}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
               />
             </div>
             <p className="text-xs text-zinc-500 mt-1">Monthly price fans pay to access your exclusive content</p>
@@ -1223,7 +1223,7 @@ function CreatorSettings() {
                   onChange={e => setForm(f => ({ ...f, newBenefit: e.target.value }))}
                   placeholder="e.g. Behind-the-scenes content"
                   maxLength={100}
-                  className="flex-1 bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="flex-1 bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   onKeyDown={e => {
                     if (e.key === 'Enter' && form.newBenefit.trim()) {
                       e.preventDefault()
@@ -1239,7 +1239,7 @@ function CreatorSettings() {
                       setForm(f => ({ ...f, subscription_benefits: [...f.subscription_benefits, f.newBenefit.trim()], newBenefit: '' }))
                     }
                   }}
-                  className="px-3 py-2 text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                  className="px-3 py-2 text-sm font-medium bg-red-600 hover:bg-red-500 text-white rounded-lg disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
                 >
                   Add
                 </button>
@@ -1269,7 +1269,7 @@ function CreatorSettings() {
                   step="1"
                   value={form.custom_request_price}
                   onChange={(e) => setForm(f => ({ ...f, custom_request_price: e.target.value }))}
-                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                 />
               </div>
               <p className="text-xs text-zinc-500 mt-1">Starting price for custom content requests</p>
@@ -1305,7 +1305,7 @@ function CreatorSettings() {
                     step="0.5"
                     value={form.message_price}
                     onChange={(e) => setForm(f => ({ ...f, message_price: e.target.value }))}
-                    className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                    className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50"
                   />
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">Non-subscribers pay this once to unlock messaging with you</p>
@@ -1419,7 +1419,7 @@ function CreatorSettings() {
             <select
               value={form.payout_method}
               onChange={(e) => setForm(f => ({ ...f, payout_method: e.target.value }))}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50 cursor-pointer"
             >
               {PAYOUT_METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
             </select>
@@ -1630,7 +1630,7 @@ function NotificationSettings() {
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
                     digestFreq === opt.value
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-red-600 text-white'
                       : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                   )}
                 >
@@ -1827,7 +1827,7 @@ export default function SettingsPage() {
                 className={cn(
                   'flex items-center gap-3 px-5 py-3 text-sm font-medium transition-colors whitespace-nowrap cursor-pointer',
                   tab === t.id
-                    ? 'text-white bg-indigo-500/10 md:border-r-2 md:border-indigo-500'
+                    ? 'text-white bg-red-500/10 md:border-r-2 md:border-red-500'
                     : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/30'
                 )}
               >
@@ -2177,7 +2177,7 @@ function TaxInfoSection() {
           taxInfo.status === 'approved' ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' :
           taxInfo.status === 'rejected' ? 'bg-red-500/5 border-red-500/20 text-red-400' :
           taxInfo.status === 'needs_update' ? 'bg-amber-500/5 border-amber-500/20 text-amber-400' :
-          'bg-indigo-500/5 border-indigo-500/20 text-indigo-400'
+          'bg-red-500/5 border-red-500/20 text-red-400'
         )}>
           Status: {taxInfo.status === 'approved' ? '✓ Approved' : taxInfo.status === 'pending' ? '⏳ Under Review' : taxInfo.status === 'rejected' ? '✗ Rejected' : '⚠ Needs Update'}
           {taxInfo.notes && <p className="mt-1 text-zinc-500">{taxInfo.notes}</p>}
@@ -2200,7 +2200,7 @@ function TaxInfoSection() {
                 onClick={() => setForm(f => ({ ...f, tax_form_type: t.value, is_us_person: t.value === 'w9' }))}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
-                  form.tax_form_type === t.value ? 'bg-indigo-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
+                  form.tax_form_type === t.value ? 'bg-red-600 text-white' : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                 )}
               >
                 {t.label}
@@ -2215,7 +2215,7 @@ function TaxInfoSection() {
           <select
             value={form.tax_classification}
             onChange={e => setForm(f => ({ ...f, tax_classification: e.target.value }))}
-            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+            className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50 cursor-pointer"
           >
             <option value="individual">Individual / Sole Proprietor</option>
             <option value="sole_proprietor">Sole Proprietor</option>

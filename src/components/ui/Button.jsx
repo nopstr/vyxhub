@@ -1,12 +1,12 @@
 import { cn } from '../../lib/utils'
 
 const variants = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-lg shadow-indigo-600/20',
+  primary: 'bg-red-600 text-white hover:bg-red-500 shadow-lg shadow-red-600/20',
   secondary: 'bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-zinc-700',
   danger: 'bg-red-600 text-white hover:bg-red-500',
   ghost: 'text-zinc-400 hover:text-white hover:bg-zinc-800/50',
   outline: 'border border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white',
-  premium: 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white hover:from-indigo-500 hover:to-violet-500 shadow-lg shadow-indigo-600/20',
+  premium: 'bg-gradient-to-r from-red-600 to-orange-600 text-white hover:from-red-500 hover:to-orange-500 shadow-lg shadow-red-600/20',
 }
 
 const sizes = {

@@ -42,7 +42,7 @@ function Comment({ comment, postAuthorId, onReply, depth = 0, canComment }) {
               {comment.author?.display_name || 'User'}
             </Link>
             {isAuthor && (
-              <span className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">CREATOR</span>
+              <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">CREATOR</span>
             )}
             <span className="text-xs text-zinc-600">{formatRelativeTime(comment.created_at)}</span>
             {comment._optimistic && (
@@ -56,7 +56,7 @@ function Comment({ comment, postAuthorId, onReply, depth = 0, canComment }) {
             {canComment && depth === 0 && (
               <button
                 onClick={() => onReply(comment)}
-                className="flex items-center gap-1 text-xs text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer"
+                className="flex items-center gap-1 text-xs text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
               >
                 <Reply size={13} />
                 Reply
@@ -220,7 +220,7 @@ export default function PostDetailPage() {
       <div className="flex flex-col items-center justify-center py-20">
         <h2 className="text-xl font-bold text-zinc-300 mb-2">Post not found</h2>
         <p className="text-sm text-zinc-500 mb-4">This post may have been deleted</p>
-        <button onClick={() => navigate('/')} className="text-sm text-indigo-400 hover:underline cursor-pointer">
+        <button onClick={() => navigate('/')} className="text-sm text-red-400 hover:underline cursor-pointer">
           Go home
         </button>
       </div>
@@ -281,7 +281,7 @@ export default function PostDetailPage() {
               {/* Reply indicator */}
               {replyingTo && (
                 <div className="px-4 pt-2 flex items-center gap-2 text-xs text-zinc-500">
-                  <Reply size={12} className="text-indigo-400" />
+                  <Reply size={12} className="text-red-400" />
                   <span>Replying to <strong className="text-zinc-300">@{replyingTo.author?.username}</strong></span>
                   <button
                     onClick={() => { setReplyingTo(null); setCommentText('') }}
@@ -299,7 +299,7 @@ export default function PostDetailPage() {
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder={replyingTo ? 'Write a reply...' : 'Write a comment...'}
                   maxLength={1000}
-                  className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors"
+                  className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-red-500/50 transition-colors"
                 />
                 <button
                   type="submit"
@@ -307,7 +307,7 @@ export default function PostDetailPage() {
                   className={cn(
                     'p-2.5 rounded-xl transition-all cursor-pointer',
                     commentText.trim() && !submitting
-                      ? 'bg-indigo-600 text-white hover:bg-indigo-500'
+                      ? 'bg-red-600 text-white hover:bg-red-500'
                       : 'bg-zinc-800 text-zinc-600'
                   )}
                 >
@@ -323,7 +323,7 @@ export default function PostDetailPage() {
           )
         ) : (
           <div className="border-t border-zinc-800/50 px-5 py-4 text-center">
-            <Link to="/auth" className="text-sm text-indigo-400 hover:underline">Sign in to comment</Link>
+            <Link to="/auth" className="text-sm text-red-400 hover:underline">Sign in to comment</Link>
           </div>
         )}
       </div>

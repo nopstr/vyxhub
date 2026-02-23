@@ -47,7 +47,7 @@ function CreatorCard({ profile }) {
       className="bg-zinc-900/30 border border-zinc-800/50 rounded-3xl p-5 hover:border-zinc-700/50 transition-all group"
     >
       {/* Banner */}
-      <div className="h-24 rounded-2xl bg-gradient-to-br from-indigo-900/30 to-violet-900/30 mb-4 overflow-hidden relative">
+      <div className="h-24 rounded-2xl bg-gradient-to-br from-red-900/30 to-orange-900/30 mb-4 overflow-hidden relative">
         {profile.banner_url && (
           <img src={profile.banner_url} alt="" className="w-full h-full object-cover" loading="lazy" />
         )}
@@ -63,10 +63,10 @@ function CreatorCard({ profile }) {
         <Avatar src={profile.avatar_url} alt={profile.display_name} size="xl" ring />
         <div className="pt-8 min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <h3 className="font-bold text-white truncate group-hover:text-indigo-300 transition-colors">
+            <h3 className="font-bold text-white truncate group-hover:text-red-300 transition-colors">
               {profile.display_name}
             </h3>
-            {profile.is_verified && <ShieldCheck size={15} className="text-indigo-400 flex-shrink-0" />}
+            {profile.is_verified && <ShieldCheck size={15} className="text-red-400 flex-shrink-0" />}
             {profile.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0" />}
             {profile.partner_tier === 'blue' && <ShieldCheck size={14} className="text-blue-400 flex-shrink-0" />}
             {profile.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" />}
@@ -366,7 +366,7 @@ export default function ExplorePage() {
               onChange={(e) => { setSearch(e.target.value); handleSearchInput(e.target.value) }}
               onFocus={() => setShowSearchOverlay(true)}
               placeholder="Search creators, posts, #hashtags..."
-              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 transition-colors"
+              className="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl pl-12 pr-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-red-500/50 transition-colors"
               readOnly
             />
           </div>
@@ -375,7 +375,7 @@ export default function ExplorePage() {
               onClick={() => setShowFilters(f => !f)}
               className={cn(
                 'p-3 rounded-2xl border transition-colors cursor-pointer',
-                showFilters ? 'bg-indigo-600/20 border-indigo-500/50 text-indigo-400' : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white'
+                showFilters ? 'bg-red-600/20 border-red-500/50 text-red-400' : 'bg-zinc-900/50 border-zinc-800 text-zinc-400 hover:text-white'
               )}
             >
               <SlidersHorizontal size={18} />
@@ -392,7 +392,7 @@ export default function ExplorePage() {
               <SlidersHorizontal size={14} />
               Search Filters
             </h3>
-            <button onClick={() => { resetFilters(); handleFilterSearch() }} className="text-xs text-zinc-500 hover:text-indigo-400 transition-colors cursor-pointer">Reset all</button>
+            <button onClick={() => { resetFilters(); handleFilterSearch() }} className="text-xs text-zinc-500 hover:text-red-400 transition-colors cursor-pointer">Reset all</button>
           </div>
 
           {/* Sort */}
@@ -410,7 +410,7 @@ export default function ExplorePage() {
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
                     filters.sort === opt.value
-                      ? 'bg-indigo-600 text-white'
+                      ? 'bg-red-600 text-white'
                       : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                   )}
                 >
@@ -437,7 +437,7 @@ export default function ExplorePage() {
                     className={cn(
                       'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
                       filters.mediaType === opt.value
-                        ? 'bg-indigo-600 text-white'
+                        ? 'bg-red-600 text-white'
                         : 'bg-zinc-800/50 text-zinc-400 hover:text-white'
                     )}
                   >
@@ -456,7 +456,7 @@ export default function ExplorePage() {
                 type="date"
                 value={filters.dateFrom ? filters.dateFrom.split('T')[0] : ''}
                 onChange={(e) => { setFilter('dateFrom', e.target.value ? new Date(e.target.value).toISOString() : null); setTimeout(handleFilterSearch, 50) }}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-xs text-zinc-300 outline-none focus:border-indigo-500/50"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-xs text-zinc-300 outline-none focus:border-red-500/50"
               />
             </div>
             <div className="flex-1">
@@ -465,7 +465,7 @@ export default function ExplorePage() {
                 type="date"
                 value={filters.dateTo ? filters.dateTo.split('T')[0] : ''}
                 onChange={(e) => { setFilter('dateTo', e.target.value ? new Date(e.target.value).toISOString() : null); setTimeout(handleFilterSearch, 50) }}
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-xs text-zinc-300 outline-none focus:border-indigo-500/50"
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-xs text-zinc-300 outline-none focus:border-red-500/50"
               />
             </div>
           </div>
@@ -476,7 +476,7 @@ export default function ExplorePage() {
               type="checkbox"
               checked={filters.verifiedOnly}
               onChange={(e) => { setFilter('verifiedOnly', e.target.checked); setTimeout(handleFilterSearch, 50) }}
-              className="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-indigo-600 focus:ring-indigo-500/50"
+              className="w-4 h-4 rounded bg-zinc-800 border-zinc-700 text-red-600 focus:ring-red-500/50"
             />
             <span className="text-xs text-zinc-400">Verified only</span>
           </label>
@@ -496,12 +496,12 @@ export default function ExplorePage() {
             <span className="flex items-center justify-center gap-1">
               {t === 'posts' ? <><FileText size={14} /> Posts</> : t === 'hashtags' ? <><Hash size={14} /> Tags</> : t}
               {getTabBadge(t) && (
-                <span className="ml-1 text-[10px] bg-indigo-600/20 text-indigo-400 px-1.5 py-0.5 rounded-full font-bold">
+                <span className="ml-1 text-[10px] bg-red-600/20 text-red-400 px-1.5 py-0.5 rounded-full font-bold">
                   {getTabBadge(t)}
                 </span>
               )}
             </span>
-            {tab === t && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-indigo-500 rounded-full" />}
+            {tab === t && <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-red-500 rounded-full" />}
           </button>
         ))}
       </div>
@@ -516,7 +516,7 @@ export default function ExplorePage() {
               className={cn(
                 'px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all cursor-pointer',
                 selectedCategory === cat.key
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-red-600 text-white'
                   : 'bg-zinc-800/50 text-zinc-400 hover:text-white hover:bg-zinc-700/50'
               )}
             >
@@ -533,11 +533,11 @@ export default function ExplorePage() {
             <Link
               key={tag.hashtag_name}
               to={`/explore?tag=${tag.hashtag_name}`}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold whitespace-nowrap hover:bg-indigo-500/20 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 text-red-400 text-xs font-semibold whitespace-nowrap hover:bg-red-500/20 transition-colors"
             >
               <Hash size={12} />
               {tag.hashtag_name}
-              <span className="text-indigo-500/60">{formatNumber(tag.recent_posts)}</span>
+              <span className="text-red-500/60">{formatNumber(tag.recent_posts)}</span>
             </Link>
           ))}
         </div>
@@ -557,11 +557,11 @@ export default function ExplorePage() {
                     <Link
                       key={ht.id}
                       to={`/explore?tag=${ht.name}`}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-semibold hover:bg-indigo-500/20 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-semibold hover:bg-red-500/20 transition-colors"
                     >
                       <Hash size={14} />
                       {ht.name}
-                      <span className="text-indigo-500/50 text-xs ml-1">{formatNumber(ht.post_count)} posts</span>
+                      <span className="text-red-500/50 text-xs ml-1">{formatNumber(ht.post_count)} posts</span>
                     </Link>
                   ))}
                 </div>
@@ -597,7 +597,7 @@ export default function ExplorePage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-bold text-white truncate">{post.author?.display_name}</span>
-                            {post.author?.is_verified && <ShieldCheck size={12} className="text-indigo-400" />}
+                            {post.author?.is_verified && <ShieldCheck size={12} className="text-red-400" />}
                             {post.author?.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400" />}
                             {post.author?.partner_tier === 'blue' && <ShieldCheck size={11} className="text-blue-400" />}
                             {post.author?.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400" />}
@@ -630,7 +630,7 @@ export default function ExplorePage() {
             {/* Loading more indicator */}
             {searchLoading && (
               <div className="flex justify-center py-6">
-                <Loader2 size={24} className="text-indigo-500 animate-spin" />
+                <Loader2 size={24} className="text-red-500 animate-spin" />
               </div>
             )}
 

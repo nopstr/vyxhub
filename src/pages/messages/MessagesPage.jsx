@@ -120,12 +120,12 @@ function VoicePlayer({ mediaUrls, duration: msgDuration }) {
 
   return (
     <div className="flex items-center gap-3 min-w-[180px]">
-      <button onClick={toggle} className="w-9 h-9 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-indigo-500/30 transition-colors">
-        {playing ? <Pause size={16} className="text-indigo-400" /> : <Play size={16} className="text-indigo-400 ml-0.5" />}
+      <button onClick={toggle} className="w-9 h-9 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0 cursor-pointer hover:bg-red-500/30 transition-colors">
+        {playing ? <Pause size={16} className="text-red-400" /> : <Play size={16} className="text-red-400 ml-0.5" />}
       </button>
       <div className="flex-1 min-w-0">
         <div className="h-1.5 bg-zinc-700 rounded-full overflow-hidden">
-          <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
         </div>
         <p className="text-[10px] text-zinc-500 mt-0.5">{formatDur(msgDuration || 0)}</p>
       </div>
@@ -215,7 +215,7 @@ function ReactionBar({ reactions, messageId, userId }) {
             className={cn(
               'flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full border transition-colors cursor-pointer',
               isMine
-                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300'
+                ? 'bg-red-500/20 border-red-500/40 text-red-300'
                 : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-400 hover:bg-zinc-700/50'
             )}
           >
@@ -416,7 +416,7 @@ function NewMessageModal({ onClose, onSelect }) {
           <div>
             <div className="flex items-center gap-1">
               <span className="text-sm font-semibold text-white">{u.display_name}</span>
-              {u.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+              {u.is_verified && <ShieldCheck size={13} className="text-red-400" />}
               {u.partner_tier === 'verified' && <ShieldCheck size={12} className="text-emerald-400" />}
               {u.partner_tier === 'blue' && <ShieldCheck size={12} className="text-blue-400" />}
               {u.partner_tier === 'gold' && <ShieldCheck size={12} className="text-amber-400" />}
@@ -518,7 +518,7 @@ function ConversationList({ conversations, activeId, onSelect }) {
                   <span className={cn('font-semibold text-sm truncate', isCeo ? 'text-amber-400' : isStaff ? 'text-purple-400' : 'text-white')}>
                     {conv.otherUser?.display_name || 'Unknown'}
                   </span>
-                  {conv.otherUser?.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+                  {conv.otherUser?.is_verified && <ShieldCheck size={13} className="text-red-400" />}
                   {conv.otherUser?.partner_tier === 'verified' && <ShieldCheck size={12} className="text-emerald-400" />}
                   {conv.otherUser?.partner_tier === 'blue' && <ShieldCheck size={12} className="text-blue-400" />}
                   {conv.otherUser?.partner_tier === 'gold' && <ShieldCheck size={12} className="text-amber-400" />}
@@ -532,7 +532,7 @@ function ConversationList({ conversations, activeId, onSelect }) {
               </p>
             </div>
             {conv.unreadCount > 0 && (
-              <div className={cn('min-w-[20px] h-5 rounded-full flex items-center justify-center flex-shrink-0 px-1', isCeo ? 'bg-amber-500' : isStaff ? 'bg-purple-500' : 'bg-indigo-500')}>
+              <div className={cn('min-w-[20px] h-5 rounded-full flex items-center justify-center flex-shrink-0 px-1', isCeo ? 'bg-amber-500' : isStaff ? 'bg-purple-500' : 'bg-red-500')}>
                 <span className="text-[10px] font-bold text-white">{isCeo ? 'CEO' : conv.unreadCount > 99 ? '99+' : conv.unreadCount}</span>
               </div>
             )}
@@ -559,10 +559,10 @@ function PaymentRequestBubble({ msg, isOwn, userId }) {
   return (
     <div className={cn(
       'rounded-2xl overflow-hidden border min-w-[220px] max-w-[300px]',
-      isPaid ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-indigo-500/30 bg-zinc-900/80',
+      isPaid ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-red-500/30 bg-zinc-900/80',
       isOwn ? 'rounded-br-md' : 'rounded-bl-md'
     )}>
-      <div className={cn('px-4 py-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider', isPaid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400')}>
+      <div className={cn('px-4 py-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider', isPaid ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
         {isPaid ? <CheckCircle size={13} /> : <DollarSign size={13} />}
         {isPaid ? 'Payment Complete' : 'Payment Request'}
       </div>
@@ -576,7 +576,7 @@ function PaymentRequestBubble({ msg, isOwn, userId }) {
       {canPay && (
         <div className="px-4 pb-3">
           <button onClick={handlePay} disabled={paying}
-            className="w-full py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
+            className="w-full py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-bold text-sm transition-colors flex items-center justify-center gap-2">
             {paying ? <PageLoader /> : <>Pay Now <ArrowLeft size={14} className="rotate-180" /></>}
           </button>
         </div>
@@ -625,7 +625,7 @@ function PaymentRequestModal({ onClose, onSend }) {
       <div className="fixed inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-          <h3 className="font-bold text-white flex items-center gap-2"><DollarSign size={18} className="text-indigo-400" /> Send Payment Request</h3>
+          <h3 className="font-bold text-white flex items-center gap-2"><DollarSign size={18} className="text-red-400" /> Send Payment Request</h3>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-zinc-800 cursor-pointer"><X size={18} className="text-zinc-500" /></button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
@@ -635,7 +635,7 @@ function PaymentRequestModal({ onClose, onSend }) {
               <DollarSign size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
               <input type="number" min="1" max="5000" step="0.01" value={amount}
                 onChange={(e) => setAmount(e.target.value)} placeholder="25.00" autoFocus
-                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-9 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-red-500/50" />
             </div>
             {amount && parseFloat(amount) > 0 && (
               <p className="text-xs text-zinc-500 mt-1">
@@ -647,7 +647,7 @@ function PaymentRequestModal({ onClose, onSend }) {
             <label className="block text-sm font-medium text-zinc-300 mb-1.5">Note (optional)</label>
             <input type="text" value={note} onChange={(e) => setNote(e.target.value)}
               placeholder="e.g. Custom photo set request" maxLength={200}
-              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50" />
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-red-500/50" />
           </div>
           <Button type="submit" loading={loading} className="w-full" disabled={!amount || parseFloat(amount) < 1}>
             Send Request
@@ -672,7 +672,7 @@ function MessageBubble({ msg, isOwn, userId, otherUser }) {
   const bubbleClass = cn(
     'px-4 py-2.5 rounded-2xl text-sm relative',
     isOwn
-      ? 'bg-indigo-600 text-white rounded-br-md'
+      ? 'bg-red-600 text-white rounded-br-md'
       : isCeoMsg
         ? 'bg-amber-500/15 text-amber-100 border border-amber-500/30 rounded-bl-md'
         : isStaffMsg
@@ -682,7 +682,7 @@ function MessageBubble({ msg, isOwn, userId, otherUser }) {
 
   const timeClass = cn(
     'text-[10px] mt-1',
-    isOwn ? 'text-indigo-200' : isCeoMsg ? 'text-amber-400/60' : isStaffMsg ? 'text-purple-400/60' : 'text-zinc-500'
+    isOwn ? 'text-red-200' : isCeoMsg ? 'text-amber-400/60' : isStaffMsg ? 'text-purple-400/60' : 'text-zinc-500'
   )
 
   return (
@@ -949,7 +949,7 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
                 onClick={handleApproveVoiceVideo}
                 className={cn(
                   'w-9 h-5 rounded-full transition-colors relative',
-                  otherUser?.voice_video_approved ? 'bg-indigo-600' : 'bg-zinc-700'
+                  otherUser?.voice_video_approved ? 'bg-red-600' : 'bg-zinc-700'
                 )}
               >
                 <div className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform', otherUser?.voice_video_approved ? 'translate-x-4.5' : 'translate-x-0.5')} />
@@ -1017,13 +1017,13 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
       {needsPaywall ? (
         <div className="p-4 border-t border-zinc-800/50">
           <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 text-center">
-            <Lock size={24} className="text-indigo-400 mx-auto mb-2" />
+            <Lock size={24} className="text-red-400 mx-auto mb-2" />
             <h4 className="text-sm font-bold text-white mb-1">Message Locked</h4>
             <p className="text-xs text-zinc-500 mb-4">
               Pay <span className="text-white font-semibold">${parseFloat(paywallPrice).toFixed(2)}</span> to unlock messaging with this creator
             </p>
             <button onClick={handleUnlockMessages} disabled={unlocking}
-              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
+              className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2">
               {unlocking ? 'Processing...' : <><CreditCard size={16} /> Unlock for ${parseFloat(paywallPrice).toFixed(2)}</>}
             </button>
           </div>
@@ -1046,7 +1046,7 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
               </div>
             </div>
             <button onClick={handleVoiceStop} disabled={sending}
-              className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white transition-colors cursor-pointer disabled:opacity-40" title="Send voice message">
+              className="p-3 bg-red-600 hover:bg-red-500 rounded-xl text-white transition-colors cursor-pointer disabled:opacity-40" title="Send voice message">
               <Send size={18} />
             </button>
           </div>
@@ -1092,11 +1092,11 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
             {/* Text input */}
             <input type="text" value={text} onChange={handleTextChange}
               placeholder="Type a message..."
-              className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-indigo-500/50 min-w-0" />
+              className="flex-1 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-3 text-sm text-zinc-200 placeholder:text-zinc-600 outline-none focus:border-red-500/50 min-w-0" />
 
             {/* Send */}
             <button type="submit" disabled={(!text.trim() && mediaFiles.length === 0) || sending}
-              className="p-3 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-white disabled:opacity-40 transition-colors cursor-pointer flex-shrink-0">
+              className="p-3 bg-red-600 hover:bg-red-500 rounded-xl text-white disabled:opacity-40 transition-colors cursor-pointer flex-shrink-0">
               <Send size={18} />
             </button>
           </div>
@@ -1219,7 +1219,7 @@ export default function MessagesPage() {
                         <span className={cn('font-bold text-sm', isCeo ? 'text-amber-400' : isStaff ? 'text-purple-400' : '')}>
                           {selectedConv.otherUser.display_name}
                         </span>
-                        {selectedConv.otherUser.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+                        {selectedConv.otherUser.is_verified && <ShieldCheck size={13} className="text-red-400" />}
                         {selectedConv.otherUser.partner_tier === 'verified' && <ShieldCheck size={12} className="text-emerald-400" />}
                         {selectedConv.otherUser.partner_tier === 'blue' && <ShieldCheck size={12} className="text-blue-400" />}
                         {selectedConv.otherUser.partner_tier === 'gold' && <ShieldCheck size={12} className="text-amber-400" />}

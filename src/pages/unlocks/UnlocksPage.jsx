@@ -82,7 +82,7 @@ function CustomRequestsTab({ user }) {
   const getStatusConfig = (status) => {
     switch (status) {
       case 'pending': return { icon: Clock, color: 'text-yellow-400', bg: 'bg-yellow-500/10', label: 'Pending' }
-      case 'accepted': return { icon: CreditCard, color: 'text-indigo-400', bg: 'bg-indigo-500/10', label: 'Awaiting Payment' }
+      case 'accepted': return { icon: CreditCard, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Awaiting Payment' }
       case 'paid': return { icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10', label: 'In Progress' }
       case 'completed': return { icon: CheckCircle, color: 'text-emerald-400', bg: 'bg-emerald-500/10', label: 'Completed' }
       case 'declined': return { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', label: 'Declined' }
@@ -137,7 +137,7 @@ function CustomRequestsTab({ user }) {
                 {req.status === 'accepted' && (
                   <button
                     onClick={() => setPaymentRequest(req)}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl transition-colors"
+                    className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm font-bold rounded-xl transition-colors"
                   >
                     Pay Now
                   </button>
