@@ -337,7 +337,7 @@ function PartnerManager() {
       <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 mb-4">
         <p className="text-sm text-blue-300/70">
           Override partner tiers manually. Overridden users won't be affected by automatic monthly evaluations.
-          Use "Both" to grant both Blue and Gold features simultaneously.
+          Verified is permanent once earned. Blue and Gold can be lost if requirements aren't met.
         </p>
       </div>
 
@@ -366,8 +366,8 @@ function PartnerManager() {
                       <span className={cn(
                         'text-xs px-2 py-0.5 rounded-full uppercase font-bold',
                         user.partner_tier === 'gold' ? 'bg-amber-500/10 text-amber-400' :
-                        user.partner_tier === 'both' ? 'bg-gradient-to-r from-blue-500/10 to-amber-500/10 text-amber-400' :
-                        'bg-blue-500/10 text-blue-400'
+                        user.partner_tier === 'blue' ? 'bg-blue-500/10 text-blue-400' :
+                        'bg-emerald-500/10 text-emerald-400'
                       )}>
                         {user.partner_tier}{user.partner_override ? ' ✦' : ''}
                       </span>
@@ -381,9 +381,9 @@ function PartnerManager() {
                   className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-sm text-zinc-200 cursor-pointer"
                 >
                   <option value="">No Partner</option>
+                  <option value="verified">Verified</option>
                   <option value="blue">Blue</option>
                   <option value="gold">Gold</option>
-                  <option value="both">Both</option>
                 </select>
               </div>
             </div>
@@ -484,7 +484,9 @@ function RoleManager() {
                     <option value="">No Role</option>
                     <option value="admin">Admin</option>
                     <option value="support">Support</option>
+                    <option value="support_lead">Support Lead</option>
                     <option value="manager">Manager</option>
+                    <option value="management_lead">Management Lead</option>
                   </select>
                 </div>
               </div>

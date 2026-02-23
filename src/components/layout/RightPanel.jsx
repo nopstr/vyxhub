@@ -61,8 +61,9 @@ function TrendingSection() {
                 <div className="flex items-center gap-1">
                   <p className="font-bold text-sm text-white truncate">{creator.display_name}</p>
                   {creator.is_verified && <ShieldCheck size={12} className="text-indigo-400 flex-shrink-0" />}
-                  {(creator.partner_tier === 'blue' || creator.partner_tier === 'both') && <ShieldCheck size={11} className="text-blue-400 flex-shrink-0" />}
-                  {(creator.partner_tier === 'gold' || creator.partner_tier === 'both') && <ShieldCheck size={11} className="text-amber-400 flex-shrink-0" />}
+                  {creator.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400 flex-shrink-0" />}
+                  {creator.partner_tier === 'blue' && <ShieldCheck size={11} className="text-blue-400 flex-shrink-0" />}
+                  {creator.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400 flex-shrink-0" />}
                 </div>
                 <p className="text-xs text-zinc-500">@{creator.username}</p>
               </div>
@@ -180,8 +181,9 @@ function SuggestedCreators() {
               <div className="flex items-center gap-1">
                 <span className="text-sm font-bold text-white truncate">{creator.display_name}</span>
                 {creator.is_verified && <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />}
-                {(creator.partner_tier === 'blue' || creator.partner_tier === 'both') && <ShieldCheck size={13} className="text-blue-400 flex-shrink-0" />}
-                {(creator.partner_tier === 'gold' || creator.partner_tier === 'both') && <ShieldCheck size={13} className="text-amber-400 flex-shrink-0" />}
+                {creator.partner_tier === 'verified' && <ShieldCheck size={13} className="text-emerald-400 flex-shrink-0" />}
+                {creator.partner_tier === 'blue' && <ShieldCheck size={13} className="text-blue-400 flex-shrink-0" />}
+                {creator.partner_tier === 'gold' && <ShieldCheck size={13} className="text-amber-400 flex-shrink-0" />}
               </div>
               <span className="text-xs text-zinc-500">@{creator.username}</span>
             </div>

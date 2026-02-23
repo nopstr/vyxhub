@@ -157,7 +157,7 @@ export default function App() {
           {/* Staff routes — role-gated */}
           <Route
             element={
-              <StaffRoute roles={['admin', 'support']}>
+              <StaffRoute roles={['admin', 'support', 'support_lead']}>
                 <Layout />
               </StaffRoute>
             }
@@ -166,7 +166,7 @@ export default function App() {
           </Route>
           <Route
             element={
-              <StaffRoute roles={['admin', 'manager']}>
+              <StaffRoute roles={['admin', 'manager', 'management_lead']}>
                 <Layout />
               </StaffRoute>
             }

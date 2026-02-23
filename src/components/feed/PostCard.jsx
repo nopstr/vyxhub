@@ -766,12 +766,9 @@ export default function PostCard({ post }) {
                 <Link to={`/@${author.username}`} className="flex items-center gap-1.5 min-w-0 hover:underline">
                   <span className="font-bold text-zinc-100 truncate">{author.display_name}</span>
                   {author.is_verified && <ShieldCheck size={15} className="text-indigo-400 fill-indigo-400/10 flex-shrink-0" />}
-                  {(author.partner_tier === 'blue' || author.partner_tier === 'both') && (
-                    <ShieldCheck size={14} className="text-blue-400 fill-blue-400/10 flex-shrink-0" title="Blue Partner" />
-                  )}
-                  {(author.partner_tier === 'gold' || author.partner_tier === 'both') && (
-                    <ShieldCheck size={14} className="text-amber-400 fill-amber-400/10 flex-shrink-0" title="Gold Partner" />
-                  )}
+                  {author.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0" title="Verified Partner" />}
+                  {author.partner_tier === 'blue' && <ShieldCheck size={14} className="text-blue-400 flex-shrink-0" title="Blue Partner" />}
+                  {author.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" title="Gold Partner" />}
                   {author.is_plus && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
                     <Crown size={14} className="text-amber-400 fill-amber-400/10 flex-shrink-0" />
                   )}

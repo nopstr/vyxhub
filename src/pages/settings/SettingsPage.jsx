@@ -1100,7 +1100,7 @@ function CreatorSettings() {
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'messaging', label: 'Messaging', icon: MessageCircle },
     { id: 'privacy', label: 'Privacy & Safety', icon: Shield },
-    ...(profile?.partner_tier ? [{ id: 'partner', label: 'Partner', icon: ShieldCheck }] : []),
+    ...(profile?.is_creator ? [{ id: 'partner', label: 'Partner', icon: ShieldCheck }] : []),
     { id: 'payout', label: 'Payouts', icon: CreditCard },
     { id: 'tax', label: 'Tax Info', icon: FileText },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
@@ -1459,7 +1459,7 @@ function CreatorSettings() {
       )}
 
       {/* Partner Settings */}
-      {section === 'partner' && profile?.partner_tier && (
+      {section === 'partner' && profile?.is_creator && (
         <PartnerSettings profile={profile} />
       )}
 
@@ -1862,8 +1862,8 @@ function PartnerSettings({ profile }) {
   const [saving, setSaving] = useState(false)
 
   const tier = profile?.partner_tier
-  const isBlue = tier === 'blue' || tier === 'gold' || tier === 'both'
-  const isGold = tier === 'gold' || tier === 'both'
+  const isBlue = tier === 'blue' || tier === 'gold'
+  const isGold = tier === 'gold'
 
   useEffect(() => {
     fetchSettings()
@@ -1917,21 +1917,35 @@ function PartnerSettings({ profile }) {
 
       <div className={cn(
         'rounded-2xl p-4 border',
-        isGold ? 'bg-amber-500/5 border-amber-500/20' : 'bg-blue-500/5 border-blue-500/20'
+        isGold ? 'bg-amber-500/5 border-amber-500/20' :
+        isBlue ? 'bg-blue-500/5 border-blue-500/20' :
+        tier === 'verified' ? 'bg-emerald-500/5 border-emerald-500/20' :
+        'bg-zinc-900/50 border-zinc-800/50'
       )}>
-        <p className={cn('text-sm font-medium', isGold ? 'text-amber-400' : 'text-blue-400')}>
-          You're a {tier === 'both' ? 'Blue + Gold' : tier.charAt(0).toUpperCase() + tier.slice(1)} Partner
-        </p>
-        <p className="text-xs text-zinc-500 mt-1">
-          {isGold
-            ? 'You have access to both Livestreaming and 1-on-1 Calls.'
-            : 'You have access to Livestreaming. Reach 1,000 subscribers for Gold features.'
-          }
-        </p>
+        {tier ? (
+          <>
+            <p className={cn('text-sm font-medium',
+              isGold ? 'text-amber-400' : isBlue ? 'text-blue-400' : 'text-emerald-400'
+            )}>
+              You're a {tier.charAt(0).toUpperCase() + tier.slice(1)} Partner
+            </p>
+            <p className="text-xs text-zinc-500 mt-1">
+              {isGold ? 'You have access to Livestreaming, 1-on-1 Calls, and all partner features.'
+                : isBlue ? 'You have access to 1-on-1 Calls and priority support. Reach Gold for Livestreaming.'
+                : 'You have a verified badge and priority in Explore. Grow to unlock more features.'
+              }
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-zinc-300">Not yet a partner</p>
+            <p className="text-xs text-zinc-500 mt-1">Reach 100 subscribers for 3 months to earn Verified status. Visit the Partner page for details.</p>
+          </>
+        )}
       </div>
 
-      {/* Livestream Settings */}
-      {isBlue && (
+      {/* Livestream Settings (Gold only) */}
+      {isGold && (
         <div className="space-y-4">
           <h4 className="text-sm font-bold text-white flex items-center gap-2">
             <Radio size={16} className="text-blue-400" />
@@ -1994,11 +2008,11 @@ function PartnerSettings({ profile }) {
         </div>
       )}
 
-      {/* Call Settings */}
-      {isGold && (
+      {/* Call Settings (Blue+) */}
+      {isBlue && (
         <div className="space-y-4">
           <h4 className="text-sm font-bold text-white flex items-center gap-2">
-            <Phone size={16} className="text-amber-400" />
+            <Phone size={16} className="text-blue-400" />
             1-on-1 Video Calls
           </h4>
 

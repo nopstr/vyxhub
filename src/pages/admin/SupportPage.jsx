@@ -12,7 +12,8 @@ import {
   CheckCircle, XCircle, Eye, UserX, RotateCcw, Filter,
   Flag, Clock, ChevronDown, ChevronUp, ExternalLink,
   Bot, Globe, Gavel, Plus, Trash2, Power, PowerOff,
-  CheckSquare, Square, MinusSquare, Scale
+  CheckSquare, Square, MinusSquare, Scale,
+  Users, Wifi, WifiOff, UserCheck, Headset
 } from 'lucide-react'
 
 // ─── Report Queue (with Bulk Actions) ──────────────────────────────
@@ -244,8 +245,9 @@ function ReportQueue() {
                       <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                         <span>@{report.reported_user?.username}</span>
                         {report.reported_user?.is_verified && <ShieldCheck size={11} className="text-indigo-400" />}
-                        {(report.reported_user?.partner_tier === 'blue' || report.reported_user?.partner_tier === 'both') && <ShieldCheck size={10} className="text-blue-400" />}
-                        {(report.reported_user?.partner_tier === 'gold' || report.reported_user?.partner_tier === 'both') && <ShieldCheck size={10} className="text-amber-400" />}
+                        {report.reported_user?.partner_tier === 'verified' && <ShieldCheck size={10} className="text-emerald-400" />}
+                        {report.reported_user?.partner_tier === 'blue' && <ShieldCheck size={10} className="text-blue-400" />}
+                        {report.reported_user?.partner_tier === 'gold' && <ShieldCheck size={10} className="text-amber-400" />}
                         {report.reported_user?.is_suspended && <span className="text-amber-400">Suspended</span>}
                         {report.reported_user?.is_banned && <span className="text-red-400">Banned</span>}
                       </div>
@@ -480,7 +482,9 @@ function UserModeration() {
                     {user.partner_tier && (
                       <span className={cn(
                         'text-xs px-2 py-0.5 rounded-full flex items-center gap-1',
-                        user.partner_tier === 'gold' || user.partner_tier === 'both' ? 'bg-amber-500/10 text-amber-400' : 'bg-blue-500/10 text-blue-400'
+                        user.partner_tier === 'gold' ? 'bg-amber-500/10 text-amber-400' :
+                        user.partner_tier === 'blue' ? 'bg-blue-500/10 text-blue-400' :
+                        'bg-emerald-500/10 text-emerald-400'
                       )}>
                         <ShieldCheck size={10} /> {user.partner_tier.charAt(0).toUpperCase() + user.partner_tier.slice(1)} Partner
                       </span>
@@ -1336,6 +1340,329 @@ function ModerationLog() {
   )
 }
 
+// ─── Team Overview (Leads + Admin) ─────────────────────────────────
+function TeamOverview({ teamType = 'support' }) {
+  const [teamStatus, setTeamStatus] = useState([])
+  const [activityLog, setActivityLog] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchData = useCallback(async () => {
+    setLoading(true)
+    const [statusRes, logRes] = await Promise.all([
+      supabase.rpc('get_team_status', { p_team_type: teamType }),
+      supabase.rpc('get_team_activity_log', { p_team_type: teamType, p_limit: 50 }),
+    ])
+    if (!statusRes.error) setTeamStatus(statusRes.data || [])
+    if (!logRes.error) setActivityLog(logRes.data || [])
+    setLoading(false)
+  }, [teamType])
+
+  // Heartbeat every 30 seconds
+  useEffect(() => {
+    supabase.rpc('staff_heartbeat')
+    const interval = setInterval(() => supabase.rpc('staff_heartbeat'), 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => {
+    const interval = setInterval(fetchData, 60000)
+    return () => clearInterval(interval)
+  }, [fetchData])
+
+  if (loading) return <PageLoader />
+
+  const onlineMembers = teamStatus.filter(m => m.is_online)
+  const offlineMembers = teamStatus.filter(m => !m.is_online)
+
+  return (
+    <div className="space-y-6">
+      {/* Online Status */}
+      <div>
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <Users size={16} className="text-indigo-400" />
+          Team Members
+          <span className="text-xs text-zinc-500 font-normal">
+            ({onlineMembers.length} online / {teamStatus.length} total)
+          </span>
+        </h3>
+
+        {teamStatus.length === 0 ? (
+          <p className="text-sm text-zinc-500">No team members found.</p>
+        ) : (
+          <div className="space-y-2">
+            {/* Online first, then offline */}
+            {[...onlineMembers, ...offlineMembers].map(member => (
+              <div key={member.user_id} className={cn(
+                'flex items-center gap-3 p-3 rounded-xl border',
+                member.is_online
+                  ? 'bg-emerald-500/5 border-emerald-500/20'
+                  : 'bg-zinc-900/50 border-zinc-800/50'
+              )}>
+                <div className="relative">
+                  <Avatar src={member.avatar_url} username={member.username} size={32} />
+                  <div className={cn(
+                    'absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0a0a]',
+                    member.is_online ? 'bg-emerald-500' : 'bg-zinc-600'
+                  )} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white truncate">
+                      {member.display_name || member.username}
+                    </span>
+                    <span className="text-xs text-zinc-500">@{member.username}</span>
+                    <span className={cn(
+                      'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
+                      member.system_role === 'admin' ? 'bg-red-500/10 text-red-400' :
+                      member.system_role.includes('lead') ? 'bg-purple-500/10 text-purple-400' :
+                      'bg-zinc-800 text-zinc-400'
+                    )}>
+                      {member.system_role.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    {member.is_online
+                      ? <span className="text-emerald-400">Online now</span>
+                      : member.last_seen
+                        ? `Last seen ${formatRelativeTime(member.last_seen)}`
+                        : 'Never seen'}
+                  </p>
+                </div>
+                {member.is_online
+                  ? <Wifi size={14} className="text-emerald-400" />
+                  : <WifiOff size={14} className="text-zinc-600" />
+                }
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Activity Log */}
+      <div>
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <Clock size={16} className="text-indigo-400" />
+          Recent Team Activity
+        </h3>
+
+        {activityLog.length === 0 ? (
+          <p className="text-sm text-zinc-500">No recent activity.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {activityLog.map(action => (
+              <div key={action.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-zinc-900/30">
+                <div className={cn(
+                  'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5',
+                  action.action_type?.includes('ban') ? 'bg-red-500/10' :
+                  action.action_type?.includes('suspend') ? 'bg-amber-500/10' :
+                  action.action_type?.includes('verify') ? 'bg-indigo-500/10' :
+                  action.action_type?.includes('appeal') ? 'bg-purple-500/10' :
+                  action.action_type?.includes('resolve') ? 'bg-emerald-500/10' :
+                  'bg-zinc-800/50'
+                )}>
+                  {action.action_type?.includes('ban') ? <Ban size={13} className="text-red-400" /> :
+                   action.action_type?.includes('suspend') ? <AlertTriangle size={13} className="text-amber-400" /> :
+                   action.action_type?.includes('verify') ? <ShieldCheck size={13} className="text-indigo-400" /> :
+                   action.action_type?.includes('appeal') ? <Scale size={13} className="text-purple-400" /> :
+                   action.action_type?.includes('resolve') ? <CheckCircle size={13} className="text-emerald-400" /> :
+                   <Clock size={13} className="text-zinc-400" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-zinc-200">
+                    <span className="font-medium">{action.moderator_name || 'System'}</span>
+                    <span className="text-zinc-500"> {action.action_type?.replace(/_/g, ' ')} </span>
+                    {action.target_name && (
+                      <span className="font-medium">@{action.target_name}</span>
+                    )}
+                  </div>
+                  {action.reason && (
+                    <p className="text-xs text-zinc-500 mt-0.5 truncate">{action.reason}</p>
+                  )}
+                </div>
+                <span className="text-[10px] text-zinc-600 flex-shrink-0">
+                  {formatRelativeTime(action.created_at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Dedicated Partner Support (Gold partners) ─────────────────────
+function DedicatedPartnerSupport() {
+  const { profile } = useAuthStore()
+  const [assignments, setAssignments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [supportStaff, setSupportStaff] = useState([])
+  const [goldPartners, setGoldPartners] = useState([])
+  const [assigning, setAssigning] = useState(null)
+
+  const isLead = profile?.system_role === 'admin' || profile?.system_role === 'support_lead'
+
+  const fetchAssignments = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase.rpc('get_dedicated_support_assignments')
+    if (!error) setAssignments(data || [])
+    setLoading(false)
+  }, [])
+
+  const fetchStaffAndPartners = useCallback(async () => {
+    if (!isLead) return
+    const [staffRes, partnerRes] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, system_role')
+        .in('system_role', ['support', 'support_lead', 'admin'])
+        .order('display_name'),
+      supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, partner_tier')
+        .eq('partner_tier', 'gold')
+        .order('display_name'),
+    ])
+    if (!staffRes.error) setSupportStaff(staffRes.data || [])
+    if (!partnerRes.error) setGoldPartners(partnerRes.data || [])
+  }, [isLead])
+
+  useEffect(() => { fetchAssignments() }, [fetchAssignments])
+  useEffect(() => { fetchStaffAndPartners() }, [fetchStaffAndPartners])
+
+  const handleAssign = async (partnerId, agentId) => {
+    setAssigning(partnerId)
+    try {
+      const { error } = await supabase.rpc('assign_dedicated_support', {
+        p_partner_id: partnerId,
+        p_agent_id: agentId,
+      })
+      if (error) throw error
+      toast.success('Support agent assigned')
+      fetchAssignments()
+    } catch (err) {
+      toast.error(err.message || 'Failed to assign')
+    } finally {
+      setAssigning(null)
+    }
+  }
+
+  if (loading) return <PageLoader />
+
+  const assignedPartnerIds = new Set(assignments.map(a => a.partner_id))
+  const unassignedGold = goldPartners.filter(p => !assignedPartnerIds.has(p.id))
+
+  return (
+    <div className="space-y-6">
+      {/* Current Assignments */}
+      <div>
+        <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+          <Headset size={16} className="text-amber-400" />
+          Active Assignments
+          <span className="text-xs text-zinc-500 font-normal">({assignments.length})</span>
+        </h3>
+
+        {assignments.length === 0 ? (
+          <p className="text-sm text-zinc-500">No active assignments.</p>
+        ) : (
+          <div className="space-y-2">
+            {assignments.map(a => (
+              <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/50">
+                {/* Partner info */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Avatar src={a.partner_avatar} username={a.partner_username} size={28} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {a.partner_display_name || a.partner_username}
+                    </p>
+                    <p className="text-[10px] text-amber-400">Gold Partner</p>
+                  </div>
+                </div>
+
+                {/* Arrow */}
+                <span className="text-zinc-600 text-xs">→</span>
+
+                {/* Agent info */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Avatar src={a.agent_avatar} username={a.agent_username} size={28} />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white truncate">
+                      {a.agent_display_name || a.agent_username}
+                    </p>
+                    <p className="text-[10px] text-zinc-500">Support Agent</p>
+                  </div>
+                </div>
+
+                <span className="text-[10px] text-zinc-600">
+                  {formatRelativeTime(a.assigned_at)}
+                </span>
+
+                {/* Reassign dropdown for leads */}
+                {isLead && (
+                  <select
+                    className="text-xs bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1 text-zinc-300"
+                    value={a.agent_id}
+                    disabled={assigning === a.partner_id}
+                    onChange={e => handleAssign(a.partner_id, e.target.value)}
+                  >
+                    {supportStaff.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.display_name || s.username}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Unassigned Gold Partners (leads only) */}
+      {isLead && unassignedGold.length > 0 && (
+        <div>
+          <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
+            <UserCheck size={16} className="text-emerald-400" />
+            Unassigned Gold Partners
+            <span className="text-xs text-zinc-500 font-normal">({unassignedGold.length})</span>
+          </h3>
+
+          <div className="space-y-2">
+            {unassignedGold.map(partner => (
+              <div key={partner.id} className="flex items-center gap-3 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                <Avatar src={partner.avatar_url} username={partner.username} size={28} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-white truncate">
+                    {partner.display_name || partner.username}
+                  </p>
+                  <p className="text-[10px] text-amber-400">Gold Partner — needs support agent</p>
+                </div>
+
+                <select
+                  className="text-xs bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1 text-zinc-300"
+                  defaultValue=""
+                  disabled={assigning === partner.id}
+                  onChange={e => {
+                    if (e.target.value) handleAssign(partner.id, e.target.value)
+                  }}
+                >
+                  <option value="" disabled>Assign agent…</option>
+                  {supportStaff.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.display_name || s.username}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Main Support Page ─────────────────────────────────────────────
 const supportTabs = [
   { id: 'reports', label: 'Reports', icon: Flag },
@@ -1346,8 +1673,16 @@ const supportTabs = [
   { id: 'log', label: 'Mod Log', icon: Clock },
 ]
 
+const leadTabs = [
+  { id: 'team', label: 'Team', icon: Users },
+  { id: 'partners', label: 'Partners', icon: Headset },
+]
+
 export default function SupportPage() {
+  const { profile } = useAuthStore()
   const [tab, setTab] = useState('reports')
+  const isLeadOrAdmin = profile?.system_role === 'admin' || profile?.system_role === 'support_lead'
+  const tabs = isLeadOrAdmin ? [...supportTabs, ...leadTabs] : supportTabs
 
   return (
     <div>
@@ -1363,7 +1698,7 @@ export default function SupportPage() {
       <div className="px-5 py-4">
         {/* Tabs */}
         <div className="flex gap-1.5 mb-6 overflow-x-auto pb-1">
-          {supportTabs.map(t => (
+          {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
@@ -1386,6 +1721,8 @@ export default function SupportPage() {
         {tab === 'appeals' && <AppealsQueue />}
         {tab === 'ipbans' && <IPBanManagement />}
         {tab === 'log' && <ModerationLog />}
+        {tab === 'team' && isLeadOrAdmin && <TeamOverview teamType="support" />}
+        {tab === 'partners' && isLeadOrAdmin && <DedicatedPartnerSupport />}
       </div>
     </div>
   )

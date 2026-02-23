@@ -67,8 +67,9 @@ function CreatorCard({ profile }) {
               {profile.display_name}
             </h3>
             {profile.is_verified && <ShieldCheck size={15} className="text-indigo-400 flex-shrink-0" />}
-            {(profile.partner_tier === 'blue' || profile.partner_tier === 'both') && <ShieldCheck size={14} className="text-blue-400 flex-shrink-0" />}
-            {(profile.partner_tier === 'gold' || profile.partner_tier === 'both') && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" />}
+            {profile.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0" />}
+            {profile.partner_tier === 'blue' && <ShieldCheck size={14} className="text-blue-400 flex-shrink-0" />}
+            {profile.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" />}
           </div>
           <p className="text-xs text-zinc-500">@{profile.username}</p>
         </div>
@@ -597,8 +598,9 @@ export default function ExplorePage() {
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-bold text-white truncate">{post.author?.display_name}</span>
                             {post.author?.is_verified && <ShieldCheck size={12} className="text-indigo-400" />}
-                            {(post.author?.partner_tier === 'blue' || post.author?.partner_tier === 'both') && <ShieldCheck size={11} className="text-blue-400" />}
-                            {(post.author?.partner_tier === 'gold' || post.author?.partner_tier === 'both') && <ShieldCheck size={11} className="text-amber-400" />}
+                            {post.author?.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400" />}
+                            {post.author?.partner_tier === 'blue' && <ShieldCheck size={11} className="text-blue-400" />}
+                            {post.author?.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400" />}
                           </div>
                           <span className="text-xs text-zinc-500">@{post.author?.username}</span>
                         </div>

@@ -99,9 +99,7 @@ export default function Sidebar() {
             {profile?.is_creator ? (
               <>
                 <SidebarLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
-                {profile.partner_tier && (
-                  <SidebarLink to="/partner" icon={Shield} label="Partner" />
-                )}
+                <SidebarLink to="/partner" icon={Shield} label="Partner" />
                 <SidebarLink to="/settings" icon={Settings} label="Settings" />
               </>
             ) : (
@@ -115,10 +113,10 @@ export default function Sidebar() {
             {profile?.system_role && (
               <>
                 <div className="h-px bg-zinc-800/50 my-2 mx-4" />
-                {(profile.system_role === 'admin' || profile.system_role === 'support') && (
+                {['admin', 'support', 'support_lead'].includes(profile.system_role) && (
                   <SidebarLink to="/support" icon={Headset} label="Support" />
                 )}
-                {(profile.system_role === 'admin' || profile.system_role === 'manager') && (
+                {['admin', 'manager', 'management_lead'].includes(profile.system_role) && (
                   <SidebarLink to="/management" icon={Users} label="Management" />
                 )}
                 {profile.system_role === 'admin' && (

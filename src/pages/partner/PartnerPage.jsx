@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  ArrowLeft, Shield, Crown, Radio, Video, Phone, Award,
+  ArrowLeft, Shield, Crown, Radio, Phone,
   TrendingUp, Check, Lock, Loader2, ChevronRight, Zap,
-  Settings, Star
+  Settings, Star, DollarSign, BadgeCheck, ShieldCheck
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -12,33 +12,11 @@ import Badge from '../../components/ui/Badge'
 import { cn } from '../../lib/utils'
 import { toast } from 'sonner'
 
-const BLUE_THRESHOLD = 500
-const GOLD_THRESHOLD = 1000
-
-function PartnerBadge({ tier, size = 'md' }) {
-  const sizes = { sm: 14, md: 18, lg: 24 }
-  const s = sizes[size] || sizes.md
-
-  if (!tier) return null
-
-  if (tier === 'both') {
-    return (
-      <div className="flex items-center gap-0.5">
-        <Shield size={s} className="text-blue-400 fill-blue-400/10" />
-        <Shield size={s} className="text-amber-400 fill-amber-400/10" />
-      </div>
-    )
-  }
-
-  return (
-    <Shield
-      size={s}
-      className={cn(
-        tier === 'gold' ? 'text-amber-400 fill-amber-400/10' : 'text-blue-400 fill-blue-400/10'
-      )}
-    />
-  )
-}
+const VERIFIED_SUBS = 100
+const BLUE_SUBS = 500
+const BLUE_REV = 5000
+const GOLD_SUBS = 1000
+const GOLD_REV = 15000
 
 function ProgressRing({ pct, color, children }) {
   const radius = 40
@@ -61,9 +39,7 @@ function ProgressRing({ pct, color, children }) {
   )
 }
 
-function TierCard({ tier, label, threshold, currentSubs, unlocked, features, color, icon: Icon }) {
-  const pct = Math.min(Math.round((currentSubs / threshold) * 100), 100)
-
+function TierCard({ label, requirements, unlocked, permanent, features, color, icon: Icon, badgeVariant }) {
   return (
     <div className={cn(
       'rounded-2xl border p-5 transition-all',
@@ -81,26 +57,19 @@ function TierCard({ tier, label, threshold, currentSubs, unlocked, features, col
           </div>
           <div>
             <h3 className="font-bold text-white text-lg">{label}</h3>
-            <p className="text-xs text-zinc-500">{threshold.toLocaleString()} subscribers for 3 months</p>
+            <div className="space-y-0.5">
+              {requirements.map((r, i) => (
+                <p key={i} className="text-xs text-zinc-500">{r}</p>
+              ))}
+            </div>
           </div>
         </div>
         {unlocked && (
-          <Badge variant={tier === 'gold' ? 'warning' : 'primary'}>Active</Badge>
+          <div className="flex items-center gap-2">
+            {permanent && <span className="text-[10px] text-emerald-400/60 uppercase font-bold tracking-wider">Permanent</span>}
+            <Badge variant={badgeVariant || 'primary'}>Active</Badge>
+          </div>
         )}
-      </div>
-
-      {/* Progress bar */}
-      <div className="mb-4">
-        <div className="flex justify-between text-xs mb-1.5">
-          <span className="text-zinc-400">{currentSubs.toLocaleString()} / {threshold.toLocaleString()} subscribers</span>
-          <span className={unlocked ? `text-${color}-400 font-bold` : 'text-zinc-500'}>{pct}%</span>
-        </div>
-        <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className={cn('h-full rounded-full transition-all duration-1000', unlocked ? `bg-${color}-500` : 'bg-zinc-600')}
-            style={{ width: `${pct}%` }}
-          />
-        </div>
       </div>
 
       {/* Features */}
@@ -120,6 +89,10 @@ function TierCard({ tier, label, threshold, currentSubs, unlocked, features, col
       </div>
     </div>
   )
+}
+
+function formatCurrency(amount) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(amount)
 }
 
 export default function PartnerPage() {
@@ -156,11 +129,21 @@ export default function PartnerPage() {
   const tier = partnerData?.partner_tier
   const progress = partnerData?.progress || {}
   const currentSubs = progress.current_subscribers || 0
+  const currentRevenue = progress.current_revenue || 0
   const snapshots = partnerData?.snapshots || []
-  const settings = partnerData?.settings || {}
 
-  const isBlue = tier === 'blue' || tier === 'gold' || tier === 'both'
-  const isGold = tier === 'gold' || tier === 'both'
+  const isVerified = tier === 'verified' || tier === 'blue' || tier === 'gold'
+  const isBlue = tier === 'blue' || tier === 'gold'
+  const isGold = tier === 'gold'
+
+  const tierLabel = isGold ? 'Gold' : isBlue ? 'Blue' : isVerified ? 'Verified' : null
+  const tierGradient = isGold
+    ? 'from-amber-400 to-orange-400'
+    : isBlue
+      ? 'from-blue-400 to-cyan-400'
+      : isVerified
+        ? 'from-emerald-400 to-teal-400'
+        : 'from-blue-400 to-cyan-400'
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -170,13 +153,21 @@ export default function PartnerPage() {
           <button onClick={() => navigate(-1)} className="text-zinc-400 hover:text-white transition-colors cursor-pointer">
             <ArrowLeft size={20} />
           </button>
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-            <Shield size={16} className="text-white" />
+          <div className={cn(
+            'w-8 h-8 rounded-lg flex items-center justify-center',
+            isGold ? 'bg-gradient-to-br from-amber-500 to-orange-600' :
+            isBlue ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
+            isVerified ? 'bg-gradient-to-br from-emerald-500 to-teal-600' :
+            'bg-gradient-to-br from-zinc-600 to-zinc-700'
+          )}>
+            <ShieldCheck size={16} className="text-white" />
           </div>
           <h1 className="text-xl font-bold text-white">Partner Program</h1>
           {tier && (
             <div className="ml-auto">
-              <PartnerBadge tier={tier} size="md" />
+              <Badge variant={tier === 'gold' ? 'partner-gold' : tier === 'blue' ? 'partner-blue' : 'partner-verified'}>
+                {tierLabel}
+              </Badge>
             </div>
           )}
         </div>
@@ -190,28 +181,30 @@ export default function PartnerPage() {
 
         <div className="relative text-center py-10 px-5">
           <div className="flex items-center justify-center gap-4 mb-5">
-            <ProgressRing pct={progress.blue_pct || 0} color="text-blue-500">
-              <Shield size={28} className="text-blue-400" />
+            <ProgressRing pct={progress.verified_pct || 0} color="text-emerald-500">
+              <ShieldCheck size={22} className="text-emerald-400" />
             </ProgressRing>
-            <ProgressRing pct={progress.gold_pct || 0} color="text-amber-500">
-              <Shield size={28} className="text-amber-400" />
+            <ProgressRing pct={progress.blue_subs_pct || 0} color="text-blue-500">
+              <ShieldCheck size={22} className="text-blue-400" />
+            </ProgressRing>
+            <ProgressRing pct={progress.gold_subs_pct || 0} color="text-amber-500">
+              <ShieldCheck size={22} className="text-amber-400" />
             </ProgressRing>
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">
             {tier ? (
-              <>You're a <span className={cn(
-                'bg-clip-text text-transparent bg-gradient-to-r',
-                isGold ? 'from-amber-400 to-orange-400' : 'from-blue-400 to-cyan-400'
-              )}>{isGold ? 'Gold' : 'Blue'} Partner</span></>
+              <>You're a <span className={cn('bg-clip-text text-transparent bg-gradient-to-r', tierGradient)}>
+                {tierLabel} Partner
+              </span></>
             ) : (
-              <>Become a <span className="bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">Partner</span></>
+              <>Become a <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Partner</span></>
             )}
           </h2>
           <p className="text-zinc-400 max-w-md mx-auto">
             {tier
-              ? 'Unlock exclusive creator tools and features as you grow your audience.'
-              : 'Grow your subscriber base to unlock livestreaming, 1-on-1 calls, and exclusive partner features.'
+              ? 'Unlock exclusive creator tools and features as you grow your audience and revenue.'
+              : 'Grow your subscriber base and revenue to unlock badges, priority features, calls, and livestreaming.'
             }
           </p>
         </div>
@@ -219,50 +212,61 @@ export default function PartnerPage() {
 
       {/* Current Stats */}
       <div className="px-5 mb-6">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
             <p className="text-2xl font-black text-white">{currentSubs.toLocaleString()}</p>
-            <p className="text-xs text-zinc-500 mt-1">Active Subscribers</p>
+            <p className="text-xs text-zinc-500 mt-1">Subscribers</p>
           </div>
           <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
-            <p className="text-2xl font-black text-white">{BLUE_THRESHOLD - currentSubs > 0 ? (BLUE_THRESHOLD - currentSubs).toLocaleString() : '✓'}</p>
-            <p className="text-xs text-zinc-500 mt-1">{currentSubs >= BLUE_THRESHOLD ? 'Blue Qualified' : 'To Blue'}</p>
+            <p className="text-2xl font-black text-white">{formatCurrency(currentRevenue)}</p>
+            <p className="text-xs text-zinc-500 mt-1">This Month</p>
           </div>
           <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
-            <p className="text-2xl font-black text-white">{GOLD_THRESHOLD - currentSubs > 0 ? (GOLD_THRESHOLD - currentSubs).toLocaleString() : '✓'}</p>
-            <p className="text-xs text-zinc-500 mt-1">{currentSubs >= GOLD_THRESHOLD ? 'Gold Qualified' : 'To Gold'}</p>
+            <p className="text-2xl font-black text-white">
+              {currentSubs >= VERIFIED_SUBS ? '✓' : (VERIFIED_SUBS - currentSubs).toLocaleString()}
+            </p>
+            <p className="text-xs text-zinc-500 mt-1">{currentSubs >= VERIFIED_SUBS ? 'Verified ✓' : 'To Verified'}</p>
+          </div>
+          <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
+            <p className="text-2xl font-black text-white">
+              {currentSubs >= BLUE_SUBS ? '✓' : (BLUE_SUBS - currentSubs).toLocaleString()}
+            </p>
+            <p className="text-xs text-zinc-500 mt-1">{currentSubs >= BLUE_SUBS ? 'Blue ✓' : 'To Blue'}</p>
           </div>
         </div>
       </div>
 
-      {/* Subscriber History */}
+      {/* Subscriber & Revenue History */}
       {snapshots.length > 0 && (
         <div className="px-5 mb-6">
           <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-3">Monthly History</h3>
           <div className="flex gap-2">
             {snapshots.slice().reverse().map((s, i) => {
-              const pct = Math.min((s.count / GOLD_THRESHOLD) * 100, 100)
+              const subPct = Math.min((s.count / GOLD_SUBS) * 100, 100)
               return (
                 <div key={i} className="flex-1 text-center">
                   <div className="h-20 bg-zinc-900/50 rounded-lg relative overflow-hidden border border-zinc-800/50">
                     <div
                       className={cn(
                         'absolute bottom-0 left-0 right-0 rounded-b-lg transition-all',
-                        s.count >= GOLD_THRESHOLD ? 'bg-amber-500/30' :
-                        s.count >= BLUE_THRESHOLD ? 'bg-blue-500/30' : 'bg-zinc-700/30'
+                        s.count >= GOLD_SUBS ? 'bg-amber-500/30' :
+                        s.count >= BLUE_SUBS ? 'bg-blue-500/30' :
+                        s.count >= VERIFIED_SUBS ? 'bg-emerald-500/30' : 'bg-zinc-700/30'
                       )}
-                      style={{ height: `${pct}%` }}
+                      style={{ height: `${subPct}%` }}
                     />
                     <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-zinc-300">
                       {s.count >= 1000 ? `${(s.count / 1000).toFixed(1)}k` : s.count}
                     </span>
                   </div>
                   <p className="text-[10px] text-zinc-600 mt-1">{s.month?.slice(5)}</p>
+                  <p className="text-[10px] text-zinc-700">{s.revenue > 0 ? formatCurrency(s.revenue) : ''}</p>
                 </div>
               )
             })}
           </div>
           <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-600">
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500/40" /> ≥100</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500/40" /> ≥500</span>
             <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500/40" /> ≥1,000</span>
           </div>
@@ -272,84 +276,67 @@ export default function PartnerPage() {
       {/* Tier Cards */}
       <div className="px-5 mb-6 space-y-4">
         <TierCard
-          tier="blue"
-          label="Blue Partner"
-          threshold={BLUE_THRESHOLD}
-          currentSubs={currentSubs}
-          unlocked={isBlue}
-          color="blue"
-          icon={Radio}
+          label="Verified Partner"
+          requirements={['100 subscribers for 3 consecutive months']}
+          unlocked={isVerified}
+          permanent={isVerified}
+          color="emerald"
+          icon={BadgeCheck}
+          badgeVariant="success"
           features={[
-            'Go Live — Livestream to your subscribers',
-            'Blue Partner badge on your profile',
+            'Green verified checkmark badge',
             'Priority in Explore & trending',
-            'Early access to new features',
+            'Permanent status — once earned, never lost',
           ]}
         />
         <TierCard
-          tier="gold"
-          label="Gold Partner"
-          threshold={GOLD_THRESHOLD}
-          currentSubs={currentSubs}
-          unlocked={isGold}
-          color="amber"
+          label="Blue Partner"
+          requirements={['500 subscribers + $5,000 revenue/month for 3 months']}
+          unlocked={isBlue}
+          permanent={false}
+          color="blue"
           icon={Phone}
+          badgeVariant="primary"
           features={[
-            'Everything in Blue Partner',
+            'Everything in Verified',
             '1-on-1 Video Calls with subscribers',
-            'Gold Partner badge on your profile',
-            'Dedicated account manager',
-            'Custom revenue splits (negotiable)',
+            'Blue partner checkmark badge',
+            'Priority support',
+          ]}
+        />
+        <TierCard
+          label="Gold Partner"
+          requirements={['1,000 subscribers + $15,000 revenue/month for 3 months']}
+          unlocked={isGold}
+          permanent={false}
+          color="amber"
+          icon={Radio}
+          badgeVariant="warning"
+          features={[
+            'Everything in Verified & Blue',
+            'Livestreaming to your subscribers',
+            'Gold partner checkmark badge',
+            'Dedicated partner support agent',
+            'Apply for Heatly-managed account',
           ]}
         />
       </div>
 
-      {/* Partner Settings (only shown if partner) */}
-      {tier && (
+      {/* Partner Features (only shown if blue+) */}
+      {tier && tier !== 'verified' && (
         <div className="px-5 mb-6">
           <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
             <Settings size={18} className="text-zinc-400" />
             Partner Features
           </h3>
 
-          {/* Livestreaming Section */}
+          {/* 1-on-1 Calls Section (Blue+) */}
           {isBlue && (
             <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 mb-3">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center">
-                    <Radio size={20} className="text-blue-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm">Livestreaming</h4>
-                    <p className="text-xs text-zinc-500">Go live for your subscribers</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => toast.info('Livestreaming is coming soon! We\'ll notify you when it launches.')}
-                  className={cn(
-                    'px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer',
-                    'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30'
-                  )}
-                >
-                  <Radio size={14} className="inline mr-1.5" />
-                  Go Live
-                </button>
-              </div>
-              <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3 text-sm text-blue-300/70">
-                <Zap size={14} className="inline mr-1" />
-                Livestreaming is launching soon. You'll be among the first to access it as a partner.
-              </div>
-            </div>
-          )}
-
-          {/* 1-on-1 Calls Section */}
-          {isGold && (
-            <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 mb-3">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
-                    <Phone size={20} className="text-amber-400" />
+                    <Phone size={20} className="text-blue-400" />
                   </div>
                   <div>
                     <h4 className="font-bold text-white text-sm">1-on-1 Video Calls</h4>
@@ -357,19 +344,61 @@ export default function PartnerPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => toast.info('1-on-1 calls are coming soon! We\'ll notify you when it launches.')}
-                  className={cn(
-                    'px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer',
-                    'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30'
-                  )}
+                  onClick={() => toast.info('1-on-1 calls are coming soon!')}
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 border border-blue-500/30"
                 >
                   <Phone size={14} className="inline mr-1.5" />
                   Coming Soon
                 </button>
               </div>
+              <div className="bg-blue-500/5 border border-blue-500/10 rounded-xl p-3 text-sm text-blue-300/70">
+                <Zap size={14} className="inline mr-1" />
+                1-on-1 video calls will be available in messages. Blue Partners will be first to access them.
+              </div>
+            </div>
+          )}
+
+          {/* Livestreaming Section (Gold only) */}
+          {isGold && (
+            <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 mb-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                    <Radio size={20} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm">Livestreaming</h4>
+                    <p className="text-xs text-zinc-500">Go live for your subscribers</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => toast.info('Livestreaming is coming soon!')}
+                  className="px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30"
+                >
+                  <Radio size={14} className="inline mr-1.5" />
+                  Go Live
+                </button>
+              </div>
               <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-3 text-sm text-amber-300/70">
                 <Zap size={14} className="inline mr-1" />
-                1-on-1 video calls will be available in messages. Gold Partners will be first to access them.
+                Livestreaming is launching soon. Gold Partners will be the first to access it.
+              </div>
+            </div>
+          )}
+
+          {/* Dedicated Support (Gold only) */}
+          {isGold && (
+            <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 mb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-amber-500/10 rounded-xl flex items-center justify-center">
+                    <Crown size={20} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-white text-sm">Dedicated Partner Support</h4>
+                    <p className="text-xs text-zinc-500">A dedicated support agent is assigned to your account</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -381,11 +410,30 @@ export default function PartnerPage() {
         <h3 className="text-lg font-bold text-white mb-4">FAQ</h3>
         <div className="space-y-3">
           {[
-            { q: 'How do I become a partner?', a: 'Maintain 500+ active subscribers for 3 consecutive months to unlock Blue Partner, or 1000+ for Gold Partner. The system evaluates your status automatically at the start of each month.' },
-            { q: 'What counts as an active subscriber?', a: 'Any user with a non-expired, active subscription to your profile. Cancelled subscriptions count until they expire.' },
-            { q: 'Can I lose my partner status?', a: 'Yes. If your subscriber count drops below the threshold for 3 consecutive months, your partner status will be downgraded. Your content and settings are preserved.' },
-            { q: 'When is livestreaming available?', a: 'Livestreaming is in development and will launch for Blue Partners first. You\'ll be notified when it\'s ready.' },
-            { q: 'When are 1-on-1 calls available?', a: '1-on-1 video calls are launching for Gold Partners. Stay tuned for the announcement.' },
+            {
+              q: 'How do I become a Verified Partner?',
+              a: 'Maintain 100+ active subscribers for 3 consecutive months. The system evaluates your status automatically at the start of each month. Once earned, Verified status is permanent.'
+            },
+            {
+              q: 'How do I reach Blue Partner?',
+              a: 'Maintain 500+ active subscribers and $5,000+ in monthly revenue for 3 consecutive months. Blue unlocks 1-on-1 calls and priority support. This status can be lost if you drop below thresholds.'
+            },
+            {
+              q: 'How do I reach Gold Partner?',
+              a: 'Maintain 1,000+ active subscribers and $15,000+ in monthly revenue for 3 consecutive months. Gold unlocks livestreaming, dedicated support, and the ability to apply for a Heatly-managed account.'
+            },
+            {
+              q: 'Can I lose my partner status?',
+              a: 'Verified status is permanent once earned. Blue and Gold can be lost if your subscriber count or revenue drops below the threshold for 3 consecutive months. You\'ll always keep Verified as a baseline.'
+            },
+            {
+              q: 'What counts as an active subscriber?',
+              a: 'Any user with a non-expired, active subscription to your profile. Cancelled subscriptions count until they expire.'
+            },
+            {
+              q: 'What is a Heatly-managed account?',
+              a: 'Gold Partners can apply to have Heatly\'s team manage their content scheduling, optimization, and growth strategy. A dedicated team member handles your account.'
+            },
           ].map((item, i) => (
             <details key={i} className="group p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50">
               <summary className="cursor-pointer text-sm font-medium text-white flex items-center justify-between list-none">
