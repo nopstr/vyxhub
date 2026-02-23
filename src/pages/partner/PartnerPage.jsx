@@ -18,19 +18,14 @@ const BLUE_REV = 5000
 const GOLD_SUBS = 1000
 const GOLD_REV = 15000
 
-function ProgressBar({ label, pct, achieved, color, bgColor, textColor, sublabel }) {
+function ProgressBar({ label, pct, color, sublabel }) {
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className={cn('text-sm font-bold', achieved ? textColor : 'text-zinc-400')}>{label}</span>
-          {achieved && (
-            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-semibold', bgColor, textColor)}>Achieved</span>
-          )}
-        </div>
+        <span className="text-xs font-medium text-zinc-400">{label}</span>
         <span className="text-xs text-zinc-500">{sublabel}</span>
       </div>
-      <div className="h-3 bg-zinc-800/80 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-zinc-800/80 rounded-full overflow-hidden">
         <div
           className={cn('h-full rounded-full transition-all duration-1000 ease-out', color)}
           style={{ width: `${Math.min(pct, 100)}%` }}
@@ -40,7 +35,7 @@ function ProgressBar({ label, pct, achieved, color, bgColor, textColor, sublabel
   )
 }
 
-function TierCard({ label, requirements, unlocked, permanent, features, color, icon: Icon, badgeVariant }) {
+function TierCard({ label, requirements, unlocked, permanent, features, color, icon: Icon, badgeVariant, bars }) {
   return (
     <div className={cn(
       'rounded-2xl border p-5 transition-all',
@@ -72,6 +67,15 @@ function TierCard({ label, requirements, unlocked, permanent, features, color, i
           </div>
         )}
       </div>
+
+      {/* Progress Bars */}
+      {bars && bars.length > 0 && (
+        <div className="space-y-2.5 mb-4">
+          {bars.map((bar, i) => (
+            <ProgressBar key={i} {...bar} />
+          ))}
+        </div>
+      )}
 
       {/* Features */}
       <div className="space-y-2">
@@ -199,39 +203,6 @@ export default function PartnerPage() {
         </div>
       </div>
 
-      {/* Progress Bars */}
-      <div className="px-5 mb-6">
-        <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 space-y-4">
-          <ProgressBar
-            label="Verified"
-            pct={progress.verified_pct || 0}
-            achieved={isVerified}
-            color="bg-emerald-500"
-            bgColor="bg-emerald-500/15"
-            textColor="text-emerald-400"
-            sublabel={`${currentSubs.toLocaleString()} / ${VERIFIED_SUBS.toLocaleString()} subs`}
-          />
-          <ProgressBar
-            label="Blue"
-            pct={progress.blue_subs_pct || 0}
-            achieved={isBlue}
-            color="bg-blue-500"
-            bgColor="bg-blue-500/15"
-            textColor="text-blue-400"
-            sublabel={`${currentSubs.toLocaleString()} / ${BLUE_SUBS.toLocaleString()} subs  ·  ${formatCurrency(currentRevenue)} / ${formatCurrency(BLUE_REV)}`}
-          />
-          <ProgressBar
-            label="Gold"
-            pct={progress.gold_subs_pct || 0}
-            achieved={isGold}
-            color="bg-amber-500"
-            bgColor="bg-amber-500/15"
-            textColor="text-amber-400"
-            sublabel={`${currentSubs.toLocaleString()} / ${GOLD_SUBS.toLocaleString()} subs  ·  ${formatCurrency(currentRevenue)} / ${formatCurrency(GOLD_REV)}`}
-          />
-        </div>
-      </div>
-
       {/* Subscriber & Revenue History */}
       {snapshots.length > 0 && (
         <div className="px-5 mb-6">
@@ -279,6 +250,12 @@ export default function PartnerPage() {
           color="emerald"
           icon={BadgeCheck}
           badgeVariant="success"
+          bars={[{
+            label: 'Subscribers',
+            pct: progress.verified_pct || 0,
+            color: 'bg-emerald-500',
+            sublabel: `${currentSubs.toLocaleString()} / ${VERIFIED_SUBS.toLocaleString()}`,
+          }]}
           features={[
             'Green verified checkmark badge',
             'Priority in Explore & trending',
@@ -293,6 +270,10 @@ export default function PartnerPage() {
           color="blue"
           icon={Phone}
           badgeVariant="primary"
+          bars={[
+            { label: 'Subscribers', pct: progress.blue_subs_pct || 0, color: 'bg-blue-500', sublabel: `${currentSubs.toLocaleString()} / ${BLUE_SUBS.toLocaleString()}` },
+            { label: 'Revenue', pct: currentRevenue > 0 ? Math.min((currentRevenue / BLUE_REV) * 100, 100) : 0, color: 'bg-blue-500', sublabel: `${formatCurrency(currentRevenue)} / ${formatCurrency(BLUE_REV)}` },
+          ]}
           features={[
             'Everything in Verified',
             '1-on-1 Video Calls with subscribers',
@@ -308,6 +289,10 @@ export default function PartnerPage() {
           color="amber"
           icon={Radio}
           badgeVariant="warning"
+          bars={[
+            { label: 'Subscribers', pct: progress.gold_subs_pct || 0, color: 'bg-amber-500', sublabel: `${currentSubs.toLocaleString()} / ${GOLD_SUBS.toLocaleString()}` },
+            { label: 'Revenue', pct: currentRevenue > 0 ? Math.min((currentRevenue / GOLD_REV) * 100, 100) : 0, color: 'bg-amber-500', sublabel: `${formatCurrency(currentRevenue)} / ${formatCurrency(GOLD_REV)}` },
+          ]}
           features={[
             'Everything in Verified & Blue',
             'Livestreaming to your subscribers',

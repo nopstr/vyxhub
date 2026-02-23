@@ -50,7 +50,7 @@ export default async function handler(req, res) {
     }
 
     // ── 2. Validate request ─────────────────────────────────────────
-    const { amount, payment_type, metadata = {}, is_recurring = false } = req.body
+    const { amount, payment_type, metadata = {}, is_recurring = false, idempotency_key } = req.body
 
     if (!amount || amount < 1 || amount > 10000) {
       return res.status(400).json({ error: 'Amount must be between $1 and $10,000' })
@@ -63,26 +63,96 @@ export default async function handler(req, res) {
     // Subscriptions are always recurring
     const recurring = is_recurring || payment_type === 'subscription'
 
-    // ── 3. Create payment session in DB ─────────────────────────────
-    const { data: session, error: sessionErr } = await supabase
+    // ── 3. Check Idempotency ────────────────────────────────────────
+    if (idempotency_key) {
+      const { data: existingSession } = await supabase
+        .from('payment_sessions')
+        .select('id, status')
+        .eq('user_id', user.id)
+        .filter('metadata->>idempotency_key', 'eq', idempotency_key)
+        .single()
+
+      if (existingSession) {
+        // If we already have a session for this key, just return it
+        // We don't need to recreate the Segpay URL since the session ID is the same
+        // and the frontend will just redirect to the same place
+        const pricingId = recurring ? SEGPAY_RECURRING_PRICING_ID : SEGPAY_DYNAMIC_PRICING_ID
+        const customData = JSON.stringify({
+          session_id: existingSession.id,
+          user_id: user.id,
+          payment_type,
+        })
+        
+        const params = new URLSearchParams({
+          'dynamicPricingID': pricingId,
+          'dynamicAmount': parseFloat(amount).toFixed(2),
+          'dynamicCurrencyCode': 'USD',
+          'dynamicDescription': getDescription(payment_type, metadata),
+          'x-custom': customData,
+          'successURL': `${APP_URL}/payment/success?session=${existingSession.id}`,
+          'declineURL': `${APP_URL}/payment/cancel?session=${existingSession.id}`,
+        })
+
+        if (recurring) {
+          params.set('dynamicInitialAmount', parseFloat(amount).toFixed(2))
+          params.set('dynamicRecurringAmount', parseFloat(amount).toFixed(2))
+          params.set('dynamicInitialPeriod', '30')
+          params.set('dynamicRecurringPeriod', '30')
+        }
+
+        return res.status(200).json({
+          success: true,
+          session_id: existingSession.id,
+          redirect_url: `${SEGPAY_BASE}/po${SEGPAY_PACKAGE_ID}.htm?${params.toString()}`,
+          payment_method: 'segpay',
+          idempotent_replay: true
+        })
+      }
+    }
+
+    // ── 4. Create payment session in DB ─────────────────────────────
+    const sessionMetadata = { ...metadata }
+    if (idempotency_key) sessionMetadata.idempotency_key = idempotency_key
+
+    let session
+    const { data: newSession, error: sessionErr } = await supabase
       .from('payment_sessions')
       .insert({
         user_id: user.id,
         payment_method: 'segpay',
         payment_type,
         usd_amount: parseFloat(amount).toFixed(2),
-        metadata,
+        metadata: sessionMetadata,
         status: 'pending'
       })
       .select('id')
       .single()
 
     if (sessionErr) {
-      console.error('Failed to create session:', sessionErr)
-      return res.status(500).json({ error: 'Failed to create payment session' })
+      // 23505 is PostgreSQL unique violation
+      if (sessionErr.code === '23505' && idempotency_key) {
+        const { data: existingSession } = await supabase
+          .from('payment_sessions')
+          .select('id')
+          .eq('user_id', user.id)
+          .filter('metadata->>idempotency_key', 'eq', idempotency_key)
+          .single()
+          
+        if (existingSession) {
+          session = existingSession
+        } else {
+          console.error('Failed to recover from unique violation:', sessionErr)
+          return res.status(500).json({ error: 'Failed to create payment session' })
+        }
+      } else {
+        console.error('Failed to create session:', sessionErr)
+        return res.status(500).json({ error: 'Failed to create payment session' })
+      }
+    } else {
+      session = newSession
     }
 
-    // ── 4. Build Segpay URL ─────────────────────────────────────────
+    // ── 5. Build Segpay URL ─────────────────────────────────────────
     const pricingId = recurring ? SEGPAY_RECURRING_PRICING_ID : SEGPAY_DYNAMIC_PRICING_ID
 
     if (!SEGPAY_PACKAGE_ID || !pricingId) {
@@ -117,7 +187,7 @@ export default async function handler(req, res) {
 
     const segpayUrl = `${SEGPAY_BASE}/po${SEGPAY_PACKAGE_ID}.htm?${params.toString()}`
 
-    // ── 5. Return redirect URL ──────────────────────────────────────
+    // ── 6. Return redirect URL ──────────────────────────────────────
     return res.status(200).json({
       success: true,
       session_id: session.id,

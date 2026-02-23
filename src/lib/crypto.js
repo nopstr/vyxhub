@@ -122,7 +122,7 @@ export async function fetchMinAmounts() {
 /**
  * Create a crypto payment via our API
  */
-export async function createCryptoPayment({ accessToken, usdAmount, cryptoCurrency, paymentType, metadata }) {
+export async function createCryptoPayment({ accessToken, usdAmount, cryptoCurrency, paymentType, metadata, idempotencyKey }) {
   const res = await fetch('/api/crypto/create-payment', {
     method: 'POST',
     headers: {
@@ -134,6 +134,7 @@ export async function createCryptoPayment({ accessToken, usdAmount, cryptoCurren
       crypto_currency: cryptoCurrency,
       payment_type: paymentType,
       metadata: metadata || {},
+      idempotency_key: idempotencyKey,
     }),
   })
 

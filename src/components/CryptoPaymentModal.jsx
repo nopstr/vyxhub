@@ -54,6 +54,7 @@ export default function CryptoPaymentModal({
   const [copied, setCopied] = useState(null)
   const [timeLeft, setTimeLeft] = useState(null)
   const [error, setError] = useState(null)
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   // Refs for cleanup
   const channelRef = useRef(null)
@@ -123,6 +124,7 @@ export default function CryptoPaymentModal({
         cryptoCurrency: crypto.id,
         paymentType,
         metadata,
+        idempotencyKey,
       })
 
       if (!mountedRef.current) return

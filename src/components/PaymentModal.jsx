@@ -30,6 +30,7 @@ export default function PaymentModal({
   const { user, session } = useAuthStore()
   const [method, setMethod] = useState(null)  // null | 'card' | 'crypto'
   const [redirecting, setRedirecting] = useState(false)
+  const [idempotencyKey] = useState(() => crypto.randomUUID())
 
   // Support alternate prop names
   const isVisible = open ?? isOpen
@@ -57,6 +58,7 @@ export default function PaymentModal({
           payment_type: paymentType,
           metadata,
           is_recurring: paymentType === 'subscription',
+          idempotency_key: idempotencyKey,
         }),
       })
 

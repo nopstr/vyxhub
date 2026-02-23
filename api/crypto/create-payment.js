@@ -69,7 +69,7 @@ export default async function handler(req, res) {
     }
 
     // -- Validate request body --
-    const { usd_amount, crypto_currency, payment_type, metadata } = req.body
+    const { usd_amount, crypto_currency, payment_type, metadata, idempotency_key } = req.body
 
     if (!usd_amount || parseFloat(usd_amount) <= 0) {
       return res.status(400).json({ error: 'Invalid USD amount' })
@@ -81,6 +81,30 @@ export default async function handler(req, res) {
 
     if (!VALID_PAYMENT_TYPES.includes(payment_type)) {
       return res.status(400).json({ error: `Invalid payment type: ${payment_type}` })
+    }
+
+    // -- Check Idempotency --
+    if (idempotency_key) {
+      const { data: existingPayment } = await supabase
+        .from('crypto_payments')
+        .select('*')
+        .eq('user_id', user.id)
+        .filter('payment_metadata->>idempotency_key', 'eq', idempotency_key)
+        .single()
+
+      if (existingPayment) {
+        return res.status(200).json({
+          success: true,
+          payment_id: existingPayment.id,
+          provider_payment_id: existingPayment.provider_payment_id,
+          pay_address: existingPayment.pay_address,
+          pay_amount: existingPayment.crypto_amount,
+          pay_currency: existingPayment.crypto_currency,
+          usd_amount: existingPayment.usd_amount,
+          status: existingPayment.status,
+          idempotent_replay: true
+        })
+      }
     }
 
     const nowpaymentsCurrency = CRYPTO_TO_NOWPAYMENTS[crypto_currency]
@@ -151,12 +175,16 @@ export default async function handler(req, res) {
     const expiresAt = npData.expiration_estimate_date
       || new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30 min fallback
 
-    const { data: cryptoPayment, error: dbError } = await supabase
+    const paymentMetadata = { ...metadata }
+    if (idempotency_key) paymentMetadata.idempotency_key = idempotency_key
+
+    let cryptoPayment
+    const { data: newCryptoPayment, error: dbError } = await supabase
       .from('crypto_payments')
       .insert({
         user_id: user.id,
         payment_type,
-        payment_metadata: metadata || {},
+        payment_metadata: paymentMetadata,
         usd_amount: parseFloat(usd_amount),
         crypto_currency,
         crypto_amount: npData.pay_amount,
@@ -179,8 +207,26 @@ export default async function handler(req, res) {
       .single()
 
     if (dbError) {
-      console.error('Database error:', dbError)
-      return res.status(500).json({ error: 'Failed to record payment' })
+      if (dbError.code === '23505' && idempotency_key) {
+        const { data: existingPayment } = await supabase
+          .from('crypto_payments')
+          .select('*')
+          .eq('user_id', user.id)
+          .filter('payment_metadata->>idempotency_key', 'eq', idempotency_key)
+          .single()
+          
+        if (existingPayment) {
+          cryptoPayment = existingPayment
+        } else {
+          console.error('Failed to recover from unique violation:', dbError)
+          return res.status(500).json({ error: 'Failed to record payment' })
+        }
+      } else {
+        console.error('Database error:', dbError)
+        return res.status(500).json({ error: 'Failed to record payment' })
+      }
+    } else {
+      cryptoPayment = newCryptoPayment
     }
 
     // -- Return payment details to frontend --

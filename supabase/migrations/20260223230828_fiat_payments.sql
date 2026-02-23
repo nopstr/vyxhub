@@ -173,66 +173,10 @@ BEGIN
     'amount', sess.usd_amount
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- 4. Handle Segpay rebill (subscription renewal with payment)
-CREATE OR REPLACE FUNCTION process_segpay_rebill(
-  p_segpay_subscription_id TEXT,
-  p_segpay_transaction_id TEXT,
-  p_amount NUMERIC(10,2)
-) RETURNS JSONB
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-  v_sub RECORD;
-  v_fee_rate NUMERIC(5,4);
-  v_fee NUMERIC(12,2);
-  v_net NUMERIC(12,2);
-  v_tx_id UUID;
-BEGIN
-  -- Service role only
-  IF current_setting('request.jwt.claims', true)::jsonb ->> 'role' != 'service_role' THEN
-    RAISE EXCEPTION 'Service role required';
-  END IF;
-
-  -- Find the subscription by Segpay subscription ID
-  SELECT * INTO v_sub FROM subscriptions
-  WHERE segpay_subscription_id = p_segpay_subscription_id
-    AND status = 'active'
-  FOR UPDATE;
-
-  IF NOT FOUND THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Subscription not found');
-  END IF;
-
-  -- Extend subscription by 30 days
-  UPDATE subscriptions
-  SET expires_at = GREATEST(expires_at, NOW()) + INTERVAL '30 days',
-      price_paid = p_amount,
-      updated_at = NOW()
-  WHERE id = v_sub.id;
-
-  -- Calculate fees and credit wallet
-  v_fee_rate := get_creator_fee_rate(v_sub.creator_id);
-  v_fee := ROUND(p_amount * v_fee_rate, 2);
-  v_net := p_amount - v_fee;
-
-  -- Record transaction
-  INSERT INTO transactions (from_user_id, to_user_id, transaction_type, amount, platform_fee, net_amount, status)
-  VALUES (v_sub.subscriber_id, v_sub.creator_id, 'subscription', p_amount, v_fee, v_net, 'completed')
-  RETURNING id INTO v_tx_id;
-
-  -- Credit creator wallet
-  PERFORM credit_wallet(v_sub.creator_id, v_tx_id, 'subscription', p_amount, v_sub.subscriber_id);
-
-  -- Record in payment_sessions for audit trail
-  INSERT INTO payment_sessions (user_id, payment_method, payment_type, usd_amount, metadata, segpay_transaction_id, segpay_subscription_id, status, is_processed, completed_at)
-  VALUES (v_sub.subscriber_id, 'segpay', 'subscription', p_amount,
-    jsonb_build_object('creator_id', v_sub.creator_id, 'rebill', true),
-    p_segpay_transaction_id, p_segpay_subscription_id, 'completed', true, NOW());
-
-  RETURN jsonb_build_object('success', true, 'subscription_id', v_sub.id, 'new_expires_at', (v_sub.expires_at + INTERVAL '30 days'));
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- (Moved to 20260223230829_fix_segpay_idempotency.sql to include idempotency checks)
 
 -- 5. Handle Segpay cancellation
 CREATE OR REPLACE FUNCTION process_segpay_cancel(
@@ -263,9 +207,10 @@ BEGIN
 
   RETURN jsonb_build_object('success', true, 'subscription_id', v_sub.id, 'expires_at', v_sub.expires_at);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- 6. Fix subscription renewal: only auto-extend Segpay subscriptions, expire the rest
+DROP FUNCTION IF EXISTS process_subscription_renewals();
 CREATE OR REPLACE FUNCTION process_subscription_renewals()
 RETURNS TABLE(renewed INTEGER, expired INTEGER)
 LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -300,7 +245,7 @@ BEGIN
 
   RETURN QUERY SELECT v_renewed, v_expired;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- 7. Get payment session status (for polling from success page)
 CREATE OR REPLACE FUNCTION get_payment_session(p_session_id UUID)
@@ -325,4 +270,4 @@ BEGIN
     'metadata', sess.metadata
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
