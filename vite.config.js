@@ -40,8 +40,8 @@ export default defineConfig({
       }
     }),
     sentryVitePlugin({
-      org: process.env.SENTRY_ORG || "vyxhub",
-      project: process.env.SENTRY_PROJECT || "vyxhub-web",
+      org: process.env.SENTRY_ORG || "heatly",
+      project: process.env.SENTRY_PROJECT || "heatly-web",
       authToken: process.env.SENTRY_AUTH_TOKEN,
     }),
   ],

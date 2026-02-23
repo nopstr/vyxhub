@@ -1,5 +1,5 @@
 """
-VyxHub ML Feed Training Endpoint
+Heatly ML Feed Training Endpoint
 Vercel Serverless Function (Python)
 
 Trains a logistic regression model on user engagement data and writes
@@ -305,7 +305,7 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({
-            'service': 'VyxHub ML Feed Training',
+            'service': 'Heatly ML Feed Training',
             'method': 'POST /api/train',
             'auth': 'Bearer <TRAIN_API_KEY>',
             'body': {

@@ -23,7 +23,7 @@ export default function PrivacyPolicyPage() {
         <section>
           <h2 className="text-lg font-bold text-white">1. Introduction</h2>
           <p>
-            {APP_NAME} ("we", "us", "our") operates the website at vyxhub.vercel.app (the "Platform").
+            {APP_NAME} ("we", "us", "our") operates the website at heatly.vip (the "Platform").
             This Privacy Policy explains how we collect, use, disclose, and safeguard your information
             when you visit our Platform. By using the Platform, you consent to the data practices
             described in this policy.

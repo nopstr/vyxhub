@@ -1,6 +1,6 @@
 export const APP_NAME = 'Heatly'
 export const APP_DESCRIPTION = 'Premium adult content platform'
-export const APP_URL = 'https://vyxhub.vercel.app'
+export const APP_URL = 'https://heatly.vip'
 export const REFERRAL_DOMAIN = 'https://heatly.vip'
 
 export const PLATFORM_FEE_PERCENT = 30

@@ -21,7 +21,7 @@ const SEGPAY_PACKAGE_ID = process.env.SEGPAY_PACKAGE_ID
 const SEGPAY_DYNAMIC_PRICING_ID = process.env.SEGPAY_DYNAMIC_PRICING_ID
 const SEGPAY_RECURRING_PRICING_ID = process.env.SEGPAY_RECURRING_PRICING_ID
 const SEGPAY_BASE = 'https://secure2.segpay.com/billing'
-const APP_URL = process.env.APP_URL || 'https://vyxhub.vercel.app'
+const APP_URL = process.env.APP_URL || 'https://heatly.vip'
 
 const VALID_TYPES = ['subscription', 'tip', 'ppv_post', 'message_unlock', 'payment_request', 'plus_subscription', 'custom_request']
 
@@ -133,13 +133,13 @@ export default async function handler(req, res) {
 
 function getDescription(type, metadata) {
   switch (type) {
-    case 'subscription': return `VyxHub subscription`
-    case 'tip': return `VyxHub tip`
-    case 'ppv_post': return `VyxHub content unlock`
-    case 'message_unlock': return `VyxHub message access`
-    case 'payment_request': return `VyxHub payment`
-    case 'plus_subscription': return `VyxHub Plus`
-    case 'custom_request': return `VyxHub custom request`
-    default: return 'VyxHub payment'
+    case 'subscription': return `Heatly subscription`
+    case 'tip': return `Heatly tip`
+    case 'ppv_post': return `Heatly content unlock`
+    case 'message_unlock': return `Heatly message access`
+    case 'payment_request': return `Heatly payment`
+    case 'plus_subscription': return `Heatly Plus`
+    case 'custom_request': return `Heatly custom request`
+    default: return 'Heatly payment'
   }
 }

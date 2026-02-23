@@ -59,11 +59,13 @@ ALTER TABLE platform_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE affiliate_ads ENABLE ROW LEVEL SECURITY;
 
 -- Platform subscriptions: users can see their own
+DROP POLICY IF EXISTS "Users can view own platform subscriptions" ON platform_subscriptions;
 CREATE POLICY "Users can view own platform subscriptions"
   ON platform_subscriptions FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Platform subscriptions: service role inserts (via RPCs)
+DROP POLICY IF EXISTS "Service can manage platform subscriptions" ON platform_subscriptions;
 CREATE POLICY "Service can manage platform subscriptions"
   ON platform_subscriptions FOR ALL
   USING (auth.uid() = user_id OR EXISTS (
@@ -71,11 +73,13 @@ CREATE POLICY "Service can manage platform subscriptions"
   ));
 
 -- Affiliate ads: anyone can read active ads
+DROP POLICY IF EXISTS "Anyone can view active affiliate ads" ON affiliate_ads;
 CREATE POLICY "Anyone can view active affiliate ads"
   ON affiliate_ads FOR SELECT
   USING (is_active = TRUE AND (starts_at IS NULL OR starts_at <= NOW()) AND (ends_at IS NULL OR ends_at > NOW()));
 
 -- Affiliate ads: only admins can manage
+DROP POLICY IF EXISTS "Admins can manage affiliate ads" ON affiliate_ads;
 CREATE POLICY "Admins can manage affiliate ads"
   ON affiliate_ads FOR ALL
   USING (EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND system_role = 'admin'));
@@ -205,6 +209,7 @@ $$;
 
 -- ─── 9. GET AFFILIATE ADS ───────────────────────────────────────────────────
 
+DROP FUNCTION IF EXISTS get_affiliate_ads(TEXT, INT);
 CREATE OR REPLACE FUNCTION get_affiliate_ads(
   p_placement TEXT DEFAULT 'feed',
   p_limit INT DEFAULT 3

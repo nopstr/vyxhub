@@ -17,7 +17,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://agoekmugbrswrdjscwek.s
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY
 const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY
 const NOWPAYMENTS_BASE = 'https://api.nowpayments.io/v1'
-const APP_URL = process.env.APP_URL || 'https://vyxhub.vercel.app'
+const APP_URL = process.env.APP_URL || 'https://heatly.vip'
 
 // Map our internal crypto IDs to NOWPayments currency codes
 const CRYPTO_TO_NOWPAYMENTS = {
@@ -125,7 +125,7 @@ export default async function handler(req, res) {
         pay_currency: nowpaymentsCurrency,
         ipn_callback_url: `${APP_URL}/api/crypto/webhook`,
         order_id: orderId,
-        order_description: `VyxHub ${payment_type} payment`,
+        order_description: `Heatly ${payment_type} payment`,
         is_fee_paid_by_user: true, // User pays the network transaction fee
       }),
     })

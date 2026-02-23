@@ -22,7 +22,7 @@ const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY
 const NOWPAYMENTS_EMAIL = process.env.NOWPAYMENTS_EMAIL
 const NOWPAYMENTS_PASSWORD = process.env.NOWPAYMENTS_PASSWORD
 const NOWPAYMENTS_BASE = 'https://api.nowpayments.io/v1'
-const APP_URL = process.env.APP_URL || 'https://vyxhub.vercel.app'
+const APP_URL = process.env.APP_URL || 'https://heatly.vip'
 
 export default async function handler(req, res) {
   // CORS
@@ -162,7 +162,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        payout_description: `VyxHub creator payout #${payout_id.slice(0, 8)}`,
+        payout_description: `Heatly creator payout #${payout_id.slice(0, 8)}`,
         ipn_callback_url: `${APP_URL}/api/crypto/payout-webhook`,
         withdrawals: [{
           address: walletAddress,
