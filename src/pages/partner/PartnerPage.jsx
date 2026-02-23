@@ -18,22 +18,23 @@ const BLUE_REV = 5000
 const GOLD_SUBS = 1000
 const GOLD_REV = 15000
 
-function ProgressRing({ pct, color, children }) {
-  const radius = 40
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference - (Math.min(pct, 100) / 100) * circumference
-
+function ProgressBar({ label, pct, achieved, color, bgColor, textColor, sublabel }) {
   return (
-    <div className="relative w-24 h-24">
-      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="6" className="text-zinc-800" />
-        <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round"
-          className={color} strokeDasharray={circumference} strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 1s ease-out' }}
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className={cn('text-sm font-bold', achieved ? textColor : 'text-zinc-400')}>{label}</span>
+          {achieved && (
+            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full font-semibold', bgColor, textColor)}>Achieved</span>
+          )}
+        </div>
+        <span className="text-xs text-zinc-500">{sublabel}</span>
+      </div>
+      <div className="h-3 bg-zinc-800/80 rounded-full overflow-hidden">
+        <div
+          className={cn('h-full rounded-full transition-all duration-1000 ease-out', color)}
+          style={{ width: `${Math.min(pct, 100)}%` }}
         />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        {children}
       </div>
     </div>
   )
@@ -180,22 +181,10 @@ export default function PartnerPage() {
         <div className="absolute top-20 right-1/4 w-64 h-64 bg-amber-500/8 blur-[100px] rounded-full" />
 
         <div className="relative text-center py-10 px-5">
-          <div className="flex items-center justify-center gap-4 mb-5">
-            <ProgressRing pct={progress.verified_pct || 0} color="text-emerald-500">
-              <ShieldCheck size={22} className="text-emerald-400" />
-            </ProgressRing>
-            <ProgressRing pct={progress.blue_subs_pct || 0} color="text-blue-500">
-              <ShieldCheck size={22} className="text-blue-400" />
-            </ProgressRing>
-            <ProgressRing pct={progress.gold_subs_pct || 0} color="text-amber-500">
-              <ShieldCheck size={22} className="text-amber-400" />
-            </ProgressRing>
-          </div>
-
           <h2 className="text-2xl sm:text-3xl font-black text-white mb-2">
             {tier ? (
-              <>You're a <span className={cn('bg-clip-text text-transparent bg-gradient-to-r', tierGradient)}>
-                {tierLabel} Partner
+              <>You're <span className={cn('bg-clip-text text-transparent bg-gradient-to-r', tierGradient)}>
+                {tierLabel === 'Verified' ? 'Verified' : `a ${tierLabel} Partner`}
               </span></>
             ) : (
               <>Become a <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">Partner</span></>
@@ -210,29 +199,36 @@ export default function PartnerPage() {
         </div>
       </div>
 
-      {/* Current Stats */}
+      {/* Progress Bars */}
       <div className="px-5 mb-6">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
-            <p className="text-2xl font-black text-white">{currentSubs.toLocaleString()}</p>
-            <p className="text-xs text-zinc-500 mt-1">Subscribers</p>
-          </div>
-          <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
-            <p className="text-2xl font-black text-white">{formatCurrency(currentRevenue)}</p>
-            <p className="text-xs text-zinc-500 mt-1">This Month</p>
-          </div>
-          <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
-            <p className="text-2xl font-black text-white">
-              {currentSubs >= VERIFIED_SUBS ? '✓' : (VERIFIED_SUBS - currentSubs).toLocaleString()}
-            </p>
-            <p className="text-xs text-zinc-500 mt-1">{currentSubs >= VERIFIED_SUBS ? 'Verified ✓' : 'To Verified'}</p>
-          </div>
-          <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-center">
-            <p className="text-2xl font-black text-white">
-              {currentSubs >= BLUE_SUBS ? '✓' : (BLUE_SUBS - currentSubs).toLocaleString()}
-            </p>
-            <p className="text-xs text-zinc-500 mt-1">{currentSubs >= BLUE_SUBS ? 'Blue ✓' : 'To Blue'}</p>
-          </div>
+        <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 space-y-4">
+          <ProgressBar
+            label="Verified"
+            pct={progress.verified_pct || 0}
+            achieved={isVerified}
+            color="bg-emerald-500"
+            bgColor="bg-emerald-500/15"
+            textColor="text-emerald-400"
+            sublabel={`${currentSubs.toLocaleString()} / ${VERIFIED_SUBS.toLocaleString()} subs`}
+          />
+          <ProgressBar
+            label="Blue"
+            pct={progress.blue_subs_pct || 0}
+            achieved={isBlue}
+            color="bg-blue-500"
+            bgColor="bg-blue-500/15"
+            textColor="text-blue-400"
+            sublabel={`${currentSubs.toLocaleString()} / ${BLUE_SUBS.toLocaleString()} subs  ·  ${formatCurrency(currentRevenue)} / ${formatCurrency(BLUE_REV)}`}
+          />
+          <ProgressBar
+            label="Gold"
+            pct={progress.gold_subs_pct || 0}
+            achieved={isGold}
+            color="bg-amber-500"
+            bgColor="bg-amber-500/15"
+            textColor="text-amber-400"
+            sublabel={`${currentSubs.toLocaleString()} / ${GOLD_SUBS.toLocaleString()} subs  ·  ${formatCurrency(currentRevenue)} / ${formatCurrency(GOLD_REV)}`}
+          />
         </div>
       </div>
 
@@ -276,7 +272,7 @@ export default function PartnerPage() {
       {/* Tier Cards */}
       <div className="px-5 mb-6 space-y-4">
         <TierCard
-          label="Verified Partner"
+          label="Verified"
           requirements={['100 subscribers for 3 consecutive months']}
           unlocked={isVerified}
           permanent={isVerified}
