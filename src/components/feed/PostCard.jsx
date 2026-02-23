@@ -20,7 +20,7 @@ import ReportModal from '../ReportModal'
 import TipModal from '../TipModal'
 import SubscribeModal from '../SubscribeModal'
 import EditPostModal from './EditPostModal'
-import CryptoPaymentModal from '../CryptoPaymentModal'
+import PaymentModal from '../PaymentModal'
 import { cn, formatRelativeTime, formatNumber, haptic } from '../../lib/utils'
 import { toast } from 'sonner'
 import { supabase } from '../../lib/supabase'
@@ -496,9 +496,9 @@ function PaywallGate({ creator, post, compact = false, onReplay }) {
         />
       )}
 
-      {/* Crypto Payment Modal (PPV) */}
+      {/* Payment Modal (PPV) */}
       {showCryptoModal && (
-        <CryptoPaymentModal
+        <PaymentModal
           open={showCryptoModal}
           onClose={() => setShowCryptoModal(false)}
           amount={parseFloat(post.price)}
@@ -766,6 +766,12 @@ export default function PostCard({ post }) {
                 <Link to={`/@${author.username}`} className="flex items-center gap-1.5 min-w-0 hover:underline">
                   <span className="font-bold text-zinc-100 truncate">{author.display_name}</span>
                   {author.is_verified && <ShieldCheck size={15} className="text-indigo-400 fill-indigo-400/10 flex-shrink-0" />}
+                  {(author.partner_tier === 'blue' || author.partner_tier === 'both') && (
+                    <ShieldCheck size={14} className="text-blue-400 fill-blue-400/10 flex-shrink-0" title="Blue Partner" />
+                  )}
+                  {(author.partner_tier === 'gold' || author.partner_tier === 'both') && (
+                    <ShieldCheck size={14} className="text-amber-400 fill-amber-400/10 flex-shrink-0" title="Gold Partner" />
+                  )}
                   {author.is_plus && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
                     <Crown size={14} className="text-amber-400 fill-amber-400/10 flex-shrink-0" />
                   )}
@@ -1059,7 +1065,7 @@ export default function PostCard({ post }) {
               </button>
             )}
 
-            {/* Direct Subscribe — for VyxHub+ creators, shown to non-subscribers */}
+            {/* Direct Subscribe — for Heatly+ creators, shown to non-subscribers */}
             {!isOwn && !isSubscribed && author.is_creator && author.is_plus && author.plus_tier === 'creator' && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
               <button
                 onClick={(e) => {
@@ -1135,7 +1141,7 @@ export default function PostCard({ post }) {
         />
       )}
 
-      {/* Inline Subscribe Modal (for VyxHub+ creator posts) */}
+      {/* Inline Subscribe Modal (for Heatly+ creator posts) */}
       {showSubscribeInline && (
         <SubscribeModal
           open={showSubscribeInline}

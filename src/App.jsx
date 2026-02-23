@@ -38,8 +38,15 @@ const PrivacyPolicyPage = lazy(() => import('./pages/legal/PrivacyPolicyPage'))
 const TermsPage = lazy(() => import('./pages/legal/TermsPage'))
 const CompliancePage = lazy(() => import('./pages/legal/CompliancePage'))
 
-// VyxHub+
+// Heatly+
 const PlusPage = lazy(() => import('./pages/plus/PlusPage'))
+
+// Partner
+const PartnerPage = lazy(() => import('./pages/partner/PartnerPage'))
+
+// Payment return pages
+const PaymentSuccessPage = lazy(() => import('./pages/payments/PaymentSuccessPage'))
+const PaymentCancelPage = lazy(() => import('./pages/payments/PaymentCancelPage'))
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuthStore()
@@ -143,6 +150,7 @@ export default function App() {
             <Route path="bookmarks" element={<BookmarksPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="dashboard" element={<CreatorDashboardPage />} />
+            <Route path="partner" element={<PartnerPage />} />
             <Route path="compose" element={<HomePage />} />
           </Route>
 
@@ -173,6 +181,18 @@ export default function App() {
             }
           >
             <Route path="admin" element={<AdminPage />} />
+          </Route>
+
+          {/* Payment return pages — require auth for session polling */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="payment/success" element={<PaymentSuccessPage />} />
+            <Route path="payment/cancel" element={<PaymentCancelPage />} />
           </Route>
 
           {/* Reels - public full-screen layout */}

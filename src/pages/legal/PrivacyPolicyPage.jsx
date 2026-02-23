@@ -131,7 +131,7 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-lg font-bold text-white">10. Contact</h2>
           <p>
             For privacy-related questions or to exercise your data rights, contact us at:{' '}
-            <strong className="text-white">privacy@vyxhub.com</strong>
+            <strong className="text-white">office@heatly.vip</strong>
           </p>
         </section>
 

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Search, Bell, Mail, Unlock, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users, Crown } from 'lucide-react'
+import { Home, Search, Bell, Mail, Unlock, Bookmark, User, Settings, PlusCircle, Zap, TrendingUp, Video, LayoutDashboard, Star, ShieldAlert, Headset, Users, Crown, Shield } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import Avatar from '../ui/Avatar'
@@ -64,7 +64,7 @@ export default function Sidebar() {
           <Zap className="text-black fill-black" size={20} />
         </div>
         <span className="hidden xl:block text-xl font-black tracking-tighter bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-          VYXHUB
+          HEATLY
         </span>
       </NavLink>
 
@@ -92,13 +92,16 @@ export default function Sidebar() {
               />
             ))}
 
-            {/* VyxHub+ */}
-            <SidebarLink to="/plus" icon={Crown} label="VyxHub+" />
+            {/* Heatly+ */}
+            <SidebarLink to="/plus" icon={Crown} label="Heatly+" />
 
             <div className="h-px bg-zinc-800/50 my-2 mx-4" />
             {profile?.is_creator ? (
               <>
                 <SidebarLink to="/dashboard" icon={LayoutDashboard} label="Dashboard" />
+                {profile.partner_tier && (
+                  <SidebarLink to="/partner" icon={Shield} label="Partner" />
+                )}
                 <SidebarLink to="/settings" icon={Settings} label="Settings" />
               </>
             ) : (

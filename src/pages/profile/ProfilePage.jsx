@@ -354,6 +354,12 @@ export default function ProfilePage() {
           <div className="flex items-center gap-2 mb-1">
             <h1 className="text-2xl font-black text-white">{profile.display_name}</h1>
             {profile.is_verified && <ShieldCheck size={20} className="text-indigo-400 fill-indigo-400/10" />}
+            {(profile.partner_tier === 'blue' || profile.partner_tier === 'both') && (
+              <ShieldCheck size={20} className="text-blue-400 fill-blue-400/10" title="Blue Partner" />
+            )}
+            {(profile.partner_tier === 'gold' || profile.partner_tier === 'both') && (
+              <ShieldCheck size={20} className="text-amber-400 fill-amber-400/10" title="Gold Partner" />
+            )}
             {profile.is_plus && profile.plus_expires_at && new Date(profile.plus_expires_at) > new Date() && (
               <Crown size={18} className="text-amber-400 fill-amber-400/10" />
             )}

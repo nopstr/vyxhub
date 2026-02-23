@@ -103,7 +103,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-bold text-white">8. DMCA Policy</h2>
           <p>
             We respect intellectual property rights and respond to valid DMCA takedown notices.
-            To submit a takedown request, contact <strong className="text-white">compliance@vyxhub.com</strong> with
+            To submit a takedown request, contact <strong className="text-white">office@heatly.vip</strong> with
             the required information as specified under 17 U.S.C. § 512(c).
           </p>
         </section>
@@ -147,7 +147,7 @@ export default function TermsPage() {
           <h2 className="text-lg font-bold text-white">13. Contact</h2>
           <p>
             Questions about these Terms? Contact us at{' '}
-            <strong className="text-white">legal@vyxhub.com</strong>
+            <strong className="text-white">office@heatly.vip</strong>
           </p>
         </section>
 

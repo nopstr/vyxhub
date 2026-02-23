@@ -6,7 +6,7 @@ import {
   DollarSign, Globe, MessageCircle, Droplets, MapPin,
   Link as LinkIcon, Star, Package, ShieldCheck, Zap,
   Heart, AlertTriangle, KeyRound, Upload, Image, Film, FileText,
-  CheckCircle, XCircle, Clock, Loader2
+  CheckCircle, XCircle, Clock, Loader2, Radio, Phone
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -28,9 +28,9 @@ const MODEL_CATEGORIES = [
 ]
 
 const PAYOUT_METHODS = [
+  { value: 'crypto', label: 'Cryptocurrency (USDT TRC-20)' },
   { value: 'bank_transfer', label: 'Bank Transfer (ACH/SEPA)' },
   { value: 'paypal', label: 'PayPal' },
-  { value: 'crypto', label: 'Cryptocurrency (USDT/BTC)' },
   { value: 'wise', label: 'Wise (TransferWise)' },
 ]
 
@@ -957,8 +957,9 @@ function CreatorSettings() {
     allow_voice_from_users: profile?.allow_voice_from_users ?? false,
     watermark_enabled: profile?.watermark_enabled ?? false,
     geoblocking_regions: profile?.geoblocking_regions || [],
-    payout_method: profile?.payout_method || 'bank_transfer',
+    payout_method: profile?.payout_method || 'crypto',
     payout_email: profile?.payout_email || '',
+    payout_wallet_address: profile?.payout_wallet_address || '',
     amazon_wishlist_url: profile?.amazon_wishlist_url || '',
     subscription_benefits: profile?.subscription_benefits || [],
     newBenefit: '',
@@ -1003,6 +1004,7 @@ function CreatorSettings() {
         geoblocking_regions: form.geoblocking_regions,
         payout_method: form.payout_method,
         payout_email: form.payout_email,
+        payout_wallet_address: form.payout_wallet_address,
         amazon_wishlist_url: form.amazon_wishlist_url,
         subscription_benefits: form.subscription_benefits,
       })
@@ -1098,6 +1100,7 @@ function CreatorSettings() {
     { id: 'pricing', label: 'Pricing', icon: DollarSign },
     { id: 'messaging', label: 'Messaging', icon: MessageCircle },
     { id: 'privacy', label: 'Privacy & Safety', icon: Shield },
+    ...(profile?.partner_tier ? [{ id: 'partner', label: 'Partner', icon: ShieldCheck }] : []),
     { id: 'payout', label: 'Payouts', icon: CreditCard },
     { id: 'tax', label: 'Tax Info', icon: FileText },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
@@ -1422,20 +1425,42 @@ function CreatorSettings() {
             </select>
           </div>
 
-          <Input
-            label="Payout Email / Account"
-            icon={Mail}
-            type="email"
-            value={form.payout_email}
-            onChange={(e) => setForm(f => ({ ...f, payout_email: e.target.value }))}
-            placeholder="your@paypal.com or bank email"
-          />
+          {form.payout_method === 'crypto' ? (
+            <>
+              <Input
+                label="USDT Wallet Address (TRC-20)"
+                icon={Zap}
+                type="text"
+                value={form.payout_wallet_address}
+                onChange={(e) => setForm(f => ({ ...f, payout_wallet_address: e.target.value }))}
+                placeholder="T... (Tron TRC-20 address)"
+              />
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
+                <h4 className="text-sm font-medium text-amber-400 mb-1">Crypto Payouts</h4>
+                <p className="text-xs text-zinc-400">Payouts are sent as <span className="text-white font-medium">USDT (TRC-20)</span> to your Tron wallet address. Make sure the address is correct — crypto transactions are irreversible. Network fees apply.</p>
+              </div>
+            </>
+          ) : (
+            <Input
+              label={form.payout_method === 'paypal' ? 'PayPal Email' : form.payout_method === 'wise' ? 'Wise Email' : 'Bank Email / Account'}
+              icon={Mail}
+              type="email"
+              value={form.payout_email}
+              onChange={(e) => setForm(f => ({ ...f, payout_email: e.target.value }))}
+              placeholder={form.payout_method === 'paypal' ? 'your@paypal.com' : form.payout_method === 'wise' ? 'your@email.com' : 'your bank email'}
+            />
+          )}
 
           <div className="bg-zinc-900/50 rounded-2xl p-4 border border-zinc-800/50">
             <h4 className="text-sm font-medium text-zinc-300 mb-2">Payout Schedule</h4>
-            <p className="text-xs text-zinc-500">Payouts are processed weekly on Fridays. Minimum payout threshold is $50.00. Earnings from the previous period will be included in the next cycle.</p>
+            <p className="text-xs text-zinc-500">Payouts are processed once per month. Minimum payout threshold is $50.00. Funds are held for 30 days before becoming available.</p>
           </div>
         </div>
+      )}
+
+      {/* Partner Settings */}
+      {section === 'partner' && profile?.partner_tier && (
+        <PartnerSettings profile={profile} />
       )}
 
       {/* Danger Zone */}
@@ -1817,6 +1842,220 @@ export default function SettingsPage() {
         <div className="flex-1 p-6 max-w-xl">
           {content[tab]}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Partner Settings (within Creator Settings) ─────────────────────────────
+
+function PartnerSettings({ profile }) {
+  const [settings, setSettings] = useState({
+    livestream_enabled: false,
+    livestream_price: 0,
+    livestream_notify_followers: true,
+    calls_enabled: false,
+    call_price_per_minute: 5,
+    call_availability: 'offline',
+  })
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  const tier = profile?.partner_tier
+  const isBlue = tier === 'blue' || tier === 'gold' || tier === 'both'
+  const isGold = tier === 'gold' || tier === 'both'
+
+  useEffect(() => {
+    fetchSettings()
+  }, [])
+
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_partner_status', { p_user_id: profile.id })
+      if (error) throw error
+      if (data?.settings) {
+        setSettings(s => ({ ...s, ...data.settings }))
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const { error } = await supabase.rpc('update_partner_settings', {
+        p_livestream_enabled: settings.livestream_enabled,
+        p_livestream_price: settings.livestream_price,
+        p_livestream_notify: settings.livestream_notify_followers,
+        p_calls_enabled: settings.calls_enabled,
+        p_call_price: settings.call_price_per_minute,
+        p_call_availability: settings.call_availability,
+      })
+      if (error) throw error
+      toast.success('Partner settings saved')
+    } catch (err) {
+      toast.error(err.message || 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-8">
+        <Loader2 size={24} className="text-zinc-500 animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader icon={ShieldCheck} title="Partner Features" description="Configure your partner-exclusive features" />
+
+      <div className={cn(
+        'rounded-2xl p-4 border',
+        isGold ? 'bg-amber-500/5 border-amber-500/20' : 'bg-blue-500/5 border-blue-500/20'
+      )}>
+        <p className={cn('text-sm font-medium', isGold ? 'text-amber-400' : 'text-blue-400')}>
+          You're a {tier === 'both' ? 'Blue + Gold' : tier.charAt(0).toUpperCase() + tier.slice(1)} Partner
+        </p>
+        <p className="text-xs text-zinc-500 mt-1">
+          {isGold
+            ? 'You have access to both Livestreaming and 1-on-1 Calls.'
+            : 'You have access to Livestreaming. Reach 1,000 subscribers for Gold features.'
+          }
+        </p>
+      </div>
+
+      {/* Livestream Settings */}
+      {isBlue && (
+        <div className="space-y-4">
+          <h4 className="text-sm font-bold text-white flex items-center gap-2">
+            <Radio size={16} className="text-blue-400" />
+            Livestreaming
+          </h4>
+
+          <div className="flex items-center justify-between p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl">
+            <div>
+              <p className="text-sm font-medium text-zinc-200">Enable Livestreaming</p>
+              <p className="text-xs text-zinc-500">Allow fans to watch your livestreams</p>
+            </div>
+            <button
+              onClick={() => setSettings(s => ({ ...s, livestream_enabled: !s.livestream_enabled }))}
+              className={cn(
+                'w-11 h-6 rounded-full transition-colors cursor-pointer relative',
+                settings.livestream_enabled ? 'bg-blue-500' : 'bg-zinc-700'
+              )}
+            >
+              <div className={cn(
+                'w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform',
+                settings.livestream_enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+              )} />
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Livestream Price (per stream)</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={settings.livestream_price}
+                onChange={(e) => setSettings(s => ({ ...s, livestream_price: parseFloat(e.target.value) || 0 }))}
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-8 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              />
+            </div>
+            <p className="text-xs text-zinc-600 mt-1">Set to $0 for free livestreams (subscribers only)</p>
+          </div>
+
+          <div className="flex items-center justify-between p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl">
+            <div>
+              <p className="text-sm font-medium text-zinc-200">Notify Followers</p>
+              <p className="text-xs text-zinc-500">Send a notification when you go live</p>
+            </div>
+            <button
+              onClick={() => setSettings(s => ({ ...s, livestream_notify_followers: !s.livestream_notify_followers }))}
+              className={cn(
+                'w-11 h-6 rounded-full transition-colors cursor-pointer relative',
+                settings.livestream_notify_followers ? 'bg-blue-500' : 'bg-zinc-700'
+              )}
+            >
+              <div className={cn(
+                'w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform',
+                settings.livestream_notify_followers ? 'translate-x-[22px]' : 'translate-x-0.5'
+              )} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Call Settings */}
+      {isGold && (
+        <div className="space-y-4">
+          <h4 className="text-sm font-bold text-white flex items-center gap-2">
+            <Phone size={16} className="text-amber-400" />
+            1-on-1 Video Calls
+          </h4>
+
+          <div className="flex items-center justify-between p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl">
+            <div>
+              <p className="text-sm font-medium text-zinc-200">Enable Video Calls</p>
+              <p className="text-xs text-zinc-500">Allow fans to book paid video calls with you</p>
+            </div>
+            <button
+              onClick={() => setSettings(s => ({ ...s, calls_enabled: !s.calls_enabled }))}
+              className={cn(
+                'w-11 h-6 rounded-full transition-colors cursor-pointer relative',
+                settings.calls_enabled ? 'bg-amber-500' : 'bg-zinc-700'
+              )}
+            >
+              <div className={cn(
+                'w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform',
+                settings.calls_enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
+              )} />
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Price per Minute</label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
+              <input
+                type="number"
+                min="1"
+                step="0.50"
+                value={settings.call_price_per_minute}
+                onChange={(e) => setSettings(s => ({ ...s, call_price_per_minute: parseFloat(e.target.value) || 1 }))}
+                className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl pl-8 pr-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500/50"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-1.5">Availability Status</label>
+            <select
+              value={settings.call_availability}
+              onChange={(e) => setSettings(s => ({ ...s, call_availability: e.target.value }))}
+              className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl px-4 py-2.5 text-sm text-zinc-200 focus:outline-none focus:ring-2 focus:ring-amber-500/50 cursor-pointer"
+            >
+              <option value="online">Online — Available for calls</option>
+              <option value="busy">Busy — Not available right now</option>
+              <option value="offline">Offline — Not accepting calls</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      <div className="pt-4 border-t border-zinc-800/50">
+        <Button onClick={handleSave} loading={saving}>
+          <Save size={16} />
+          Save Partner Settings
+        </Button>
       </div>
     </div>
   )

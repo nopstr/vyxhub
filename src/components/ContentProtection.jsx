@@ -25,7 +25,7 @@ export default function ContentProtection({ children }) {
 
   useEffect(() => {
     // ─── Inject global protection styles ────────────────────────────
-    const styleId = 'vyxhub-content-protection'
+    const styleId = 'heatly-content-protection'
     if (!document.getElementById(styleId)) {
       const style = document.createElement('style')
       style.id = styleId

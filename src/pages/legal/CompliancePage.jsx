@@ -72,7 +72,7 @@ export default function CompliancePage() {
           <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-4 mt-3">
             <p className="font-medium text-white">{APP_NAME} — Custodian of Records</p>
             <p className="text-zinc-500 text-xs mt-1">
-              Contact: compliance@vyxhub.com
+              Contact: office@heatly.vip
             </p>
           </div>
         </section>
@@ -91,7 +91,7 @@ export default function CompliancePage() {
           <p>
             To request removal of content you believe violates your rights, or to
             report content that may not comply with applicable law, please contact
-            our compliance team at <strong className="text-white">compliance@vyxhub.com</strong>.
+            our compliance team at <strong className="text-white">office@heatly.vip</strong>.
           </p>
         </section>
 

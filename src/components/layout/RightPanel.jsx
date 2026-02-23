@@ -61,6 +61,8 @@ function TrendingSection() {
                 <div className="flex items-center gap-1">
                   <p className="font-bold text-sm text-white truncate">{creator.display_name}</p>
                   {creator.is_verified && <ShieldCheck size={12} className="text-indigo-400 flex-shrink-0" />}
+                  {(creator.partner_tier === 'blue' || creator.partner_tier === 'both') && <ShieldCheck size={11} className="text-blue-400 flex-shrink-0" />}
+                  {(creator.partner_tier === 'gold' || creator.partner_tier === 'both') && <ShieldCheck size={11} className="text-amber-400 flex-shrink-0" />}
                 </div>
                 <p className="text-xs text-zinc-500">@{creator.username}</p>
               </div>
@@ -178,6 +180,8 @@ function SuggestedCreators() {
               <div className="flex items-center gap-1">
                 <span className="text-sm font-bold text-white truncate">{creator.display_name}</span>
                 {creator.is_verified && <ShieldCheck size={14} className="text-indigo-400 flex-shrink-0" />}
+                {(creator.partner_tier === 'blue' || creator.partner_tier === 'both') && <ShieldCheck size={13} className="text-blue-400 flex-shrink-0" />}
+                {(creator.partner_tier === 'gold' || creator.partner_tier === 'both') && <ShieldCheck size={13} className="text-amber-400 flex-shrink-0" />}
               </div>
               <span className="text-xs text-zinc-500">@{creator.username}</span>
             </div>
@@ -192,7 +196,7 @@ function SidebarAds() {
   const profile = useAuthStore((s) => s.profile)
   const [ads, setAds] = useState([])
 
-  // VyxHub+ users don't see ads
+  // Heatly+ users don't see ads
   const isPlus = profile?.is_plus && profile?.plus_expires_at && new Date(profile.plus_expires_at) > new Date()
 
   useEffect(() => {
@@ -254,7 +258,7 @@ export default function RightPanel() {
         className="w-full flex items-center gap-2 bg-zinc-900/50 border border-zinc-800 rounded-2xl px-4 py-2.5 mb-8 text-sm text-zinc-600 hover:border-zinc-700 transition-colors cursor-pointer"
       >
         <Search size={16} className="text-zinc-500" />
-        <span className="flex-1 text-left">Search VyxHub...</span>
+        <span className="flex-1 text-left">Search Heatly...</span>
         <kbd className="hidden md:inline-flex items-center gap-0.5 text-[10px] text-zinc-600 bg-zinc-800/50 px-1.5 py-0.5 rounded">
           <Command size={10} />K
         </kbd>
@@ -275,7 +279,7 @@ export default function RightPanel() {
           <span className="hover:text-zinc-400 cursor-pointer">DMCA</span>
           <span>·</span>
           <span className="hover:text-zinc-400 cursor-pointer">Support</span>
-          <p className="mt-2">© 2026 VyxHub</p>
+          <p className="mt-2">© 2026 Heatly</p>
         </div>
       </div>
       </aside>

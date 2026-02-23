@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore'
 import { MIN_TIP_AMOUNT, MAX_TIP_AMOUNT, PLATFORM_FEE_PERCENT } from '../lib/constants'
 import { cn, haptic } from '../lib/utils'
 import Button from './ui/Button'
-import CryptoPaymentModal from './CryptoPaymentModal'
+import PaymentModal from './PaymentModal'
 import { toast } from 'sonner'
 
 const QUICK_AMOUNTS = [1, 5, 10, 25, 50, 100]
@@ -140,9 +140,9 @@ export default function TipModal({ open, onClose, creator, postId = null }) {
           </p>
         </div>
 
-        {/* Crypto Payment Modal */}
+        {/* Payment Modal */}
         {showCrypto && (
-          <CryptoPaymentModal
+          <PaymentModal
             open={showCrypto}
             onClose={() => setShowCrypto(false)}
             amount={currentAmount}

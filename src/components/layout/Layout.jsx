@@ -22,7 +22,7 @@ export default function Layout() {
               <Link to="/terms" className="hover:text-zinc-400 transition-colors">Terms</Link>
               <Link to="/privacy" className="hover:text-zinc-400 transition-colors">Privacy</Link>
               <Link to="/2257" className="hover:text-zinc-400 transition-colors">2257 Compliance</Link>
-              <span className="ml-auto">&copy; {new Date().getFullYear()} VyxHub</span>
+              <span className="ml-auto">&copy; {new Date().getFullYear()} Heatly</span>
             </div>
           </footer>
         </main>

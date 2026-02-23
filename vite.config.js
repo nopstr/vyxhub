@@ -16,8 +16,8 @@ export default defineConfig({
       filename: 'sw.js',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.png'],
       manifest: {
-        name: 'VyxHub',
-        short_name: 'VyxHub',
+        name: 'Heatly',
+        short_name: 'Heatly',
         description: 'The ultimate creator platform',
         theme_color: '#050505',
         background_color: '#050505',

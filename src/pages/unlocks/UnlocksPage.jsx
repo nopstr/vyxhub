@@ -6,7 +6,7 @@ import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import { PageLoader } from '../../components/ui/Spinner'
 import { Unlock, FileText, CheckCircle, Clock, XCircle, CreditCard, ExternalLink } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import CryptoPaymentModal from '../../components/CryptoPaymentModal'
+import PaymentModal from '../../components/PaymentModal'
 import { formatDistanceToNow } from 'date-fns'
 
 function PurchasedPostsTab({ user }) {
@@ -169,7 +169,7 @@ function CustomRequestsTab({ user }) {
       )}
 
       {paymentRequest && (
-        <CryptoPaymentModal
+        <PaymentModal
           open={!!paymentRequest}
           onClose={() => setPaymentRequest(null)}
           amount={paymentRequest.price}

@@ -226,7 +226,7 @@ export const useNotificationStore = create((set, get) => ({
 
           // Show browser notification if permitted
           if (Notification.permission === 'granted' && document.hidden) {
-            const title = actor?.display_name || 'VyxHub'
+            const title = actor?.display_name || 'Heatly'
             const body = payload.new.message || getDefaultMessage(payload.new.notification_type)
             new Notification(title, {
               body,

@@ -17,7 +17,7 @@ import {
 import { formatMessageTime, cn, formatCurrency } from '../../lib/utils'
 import { CEO_USERNAME, PLATFORM_FEE_PERCENT, ALLOWED_IMAGE_TYPES, ALLOWED_VIDEO_TYPES } from '../../lib/constants'
 import { toast } from 'sonner'
-import CryptoPaymentModal from '../../components/CryptoPaymentModal'
+import PaymentModal from '../../components/PaymentModal'
 
 // ─── Quick Emoji Reactions ──────────────────────────────────────────────────
 const QUICK_REACTIONS = ['❤️', '😂', '😮', '😢', '🔥', '👍']
@@ -417,6 +417,8 @@ function NewMessageModal({ onClose, onSelect }) {
             <div className="flex items-center gap-1">
               <span className="text-sm font-semibold text-white">{u.display_name}</span>
               {u.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+              {(u.partner_tier === 'blue' || u.partner_tier === 'both') && <ShieldCheck size={12} className="text-blue-400" />}
+              {(u.partner_tier === 'gold' || u.partner_tier === 'both') && <ShieldCheck size={12} className="text-amber-400" />}
             </div>
             <span className="text-xs text-zinc-500">@{u.username}</span>
           </div>
@@ -516,6 +518,8 @@ function ConversationList({ conversations, activeId, onSelect }) {
                     {conv.otherUser?.display_name || 'Unknown'}
                   </span>
                   {conv.otherUser?.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+                  {(conv.otherUser?.partner_tier === 'blue' || conv.otherUser?.partner_tier === 'both') && <ShieldCheck size={12} className="text-blue-400" />}
+                  {(conv.otherUser?.partner_tier === 'gold' || conv.otherUser?.partner_tier === 'both') && <ShieldCheck size={12} className="text-amber-400" />}
                   {isCeo && <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full ml-1">CEO</span>}
                   {isStaff && !isCeo && <span className="text-[9px] font-bold bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full ml-1">STAFF</span>}
                 </div>
@@ -576,7 +580,7 @@ function PaymentRequestBubble({ msg, isOwn, userId }) {
         </div>
       )}
       {showCrypto && (
-        <CryptoPaymentModal
+        <PaymentModal
           open={showCrypto}
           onClose={() => setShowCrypto(false)}
           amount={parseFloat(msg.payment_amount)}
@@ -1107,9 +1111,9 @@ function MessageThread({ conversationId, userId, otherUser, conversation }) {
         <MessageSearchModal userId={userId} conversationId={conversationId} onClose={() => setShowSearch(false)} />
       )}
 
-      {/* Crypto Payment Modal for Unlocking */}
+      {/* Payment Modal for Unlocking */}
       {showUnlockCrypto && (
-        <CryptoPaymentModal
+        <PaymentModal
           open={showUnlockCrypto}
           onClose={() => setShowUnlockCrypto(false)}
           amount={paywallPrice}
@@ -1214,6 +1218,8 @@ export default function MessagesPage() {
                           {selectedConv.otherUser.display_name}
                         </span>
                         {selectedConv.otherUser.is_verified && <ShieldCheck size={13} className="text-indigo-400" />}
+                        {(selectedConv.otherUser.partner_tier === 'blue' || selectedConv.otherUser.partner_tier === 'both') && <ShieldCheck size={12} className="text-blue-400" />}
+                        {(selectedConv.otherUser.partner_tier === 'gold' || selectedConv.otherUser.partner_tier === 'both') && <ShieldCheck size={12} className="text-amber-400" />}
                         {isCeo && <span className="text-[9px] font-bold bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full">CEO</span>}
                         {isStaff && !isCeo && <span className="text-[9px] font-bold bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded-full">STAFF</span>}
                       </div>
@@ -1297,7 +1303,7 @@ export default function MessagesPage() {
                   if (error) throw error
                   
                   if (data?.plus_bypass) {
-                    toast.success('Messages unlocked for free with VyxHub+!')
+                    toast.success('Messages unlocked for free with Heatly+!')
                     handleNewMessage(paywallUser)
                     setPaywallUser(null)
                   } else {
@@ -1322,9 +1328,9 @@ export default function MessagesPage() {
         </div>
       )}
 
-      {/* Crypto Payment Modal */}
+      {/* Payment Modal */}
       {showCryptoModal && paywallUser && (
-        <CryptoPaymentModal
+        <PaymentModal
           open={showCryptoModal}
           onClose={() => setShowCryptoModal(false)}
           amount={paywallUser.message_price}

@@ -13,7 +13,7 @@ export default function ReferralRedirect() {
     // We don't know the creator's UUID yet — store the username in the cookie.
     // AuthPage will resolve username → id after signup via a lightweight query.
     if (cleanUsername) {
-      document.cookie = `vyxhub_ref=${encodeURIComponent(cleanUsername)};path=/;max-age=86400;SameSite=Lax`
+      document.cookie = `heatly_ref=${encodeURIComponent(cleanUsername)};path=/;max-age=86400;SameSite=Lax`
     }
   }, [cleanUsername])
 

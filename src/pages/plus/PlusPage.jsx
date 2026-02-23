@@ -7,7 +7,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import Button from '../../components/ui/Button'
-import CryptoPaymentModal from '../../components/CryptoPaymentModal'
+import PaymentModal from '../../components/PaymentModal'
 import { toast } from 'sonner'
 import { cn } from '../../lib/utils'
 import { supabase } from '../../lib/supabase'
@@ -15,7 +15,7 @@ import { PLUS_USER_PRICE, PLUS_CREATOR_PRICE, PLUS_FEE_PERCENT, PLATFORM_FEE_PER
 
 const USER_BENEFITS = [
   { icon: Eye, title: 'No Platform Ads', description: 'Browse your feed without any sponsored or affiliate ads' },
-  { icon: Crown, title: 'VyxHub+ Badge', description: 'Stand out with an exclusive gold badge on your profile and posts' },
+  { icon: Crown, title: 'Heatly+ Badge', description: 'Stand out with an exclusive gold badge on your profile and posts' },
   { icon: MessageSquare, title: 'Free DM Unlock', description: 'Message any creator without paying DM unlock fees' },
   { icon: ShieldCheck, title: 'Priority Support', description: 'Get faster responses from our support team' },
 ]
@@ -24,7 +24,7 @@ const CREATOR_BENEFITS = [
   { icon: Eye, title: 'No Platform Ads', description: 'Browse your feed without any sponsored or affiliate ads' },
   { icon: TrendingUp, title: 'Algorithm Boost', description: '35% more reach in the feed — your content gets seen by more people' },
   { icon: Percent, title: `Reduced Fee (${PLUS_FEE_PERCENT}%)`, description: `Pay only ${PLUS_FEE_PERCENT}% platform fee instead of ${PLATFORM_FEE_PERCENT}% — keep more of what you earn` },
-  { icon: Crown, title: 'VyxHub+ Creator Badge', description: 'Exclusive creator badge that builds trust and credibility' },
+  { icon: Crown, title: 'Heatly+ Creator Badge', description: 'Exclusive creator badge that builds trust and credibility' },
   { icon: Star, title: 'Priority in Discovery', description: '30% boost in Explore trending — new fans find you faster' },
   { icon: BarChart3, title: 'Advanced Analytics', description: 'Deep insights into your audience, engagement, and revenue trends' },
   { icon: MessageSquare, title: 'Free DM Unlock', description: 'Message anyone without paying DM unlock fees' },
@@ -59,7 +59,7 @@ export default function PlusPage() {
   const benefitsList = isCreator ? [
     '35% algorithm boost — more reach',
     `Only ${PLUS_FEE_PERCENT}% platform fee (save 5%)`,
-    'VyxHub+ Creator badge',
+    'Heatly+ Creator badge',
     '30% priority in Explore trending',
     'Advanced analytics dashboard',
     'No platform ads in your feed',
@@ -67,7 +67,7 @@ export default function PlusPage() {
     'Priority support queue',
   ] : [
     'No platform ads in your feed',
-    'Exclusive VyxHub+ gold badge',
+    'Exclusive Heatly+ gold badge',
     'Free DM unlock with any creator',
     'Priority support queue',
   ]
@@ -84,7 +84,7 @@ export default function PlusPage() {
 
   const handleCryptoSuccess = async () => {
     setShowCrypto(false)
-    toast.success('Welcome to VyxHub+! Your premium benefits are now active.')
+    toast.success('Welcome to Heatly+! Your premium benefits are now active.')
     if (user?.id) {
       await fetchProfile(user.id)
     }
@@ -116,7 +116,7 @@ export default function PlusPage() {
           <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
             <Crown size={16} className="text-white" />
           </div>
-          <h1 className="text-xl font-bold text-white">VyxHub+</h1>
+          <h1 className="text-xl font-bold text-white">Heatly+</h1>
           {isPlus ? (
             <span className="ml-auto px-3 py-1 bg-amber-500/10 rounded-full text-amber-400 text-xs font-bold border border-amber-500/30">
               Active
@@ -153,7 +153,7 @@ export default function PlusPage() {
           <p className="text-zinc-400 max-w-md mx-auto">
             {isCreator
               ? 'More reach, lower fees, and a creator badge that builds trust. Stand out from the crowd.'
-              : 'No ads, free DM access, and a badge that stands out. The premium VyxHub experience.'
+              : 'No ads, free DM access, and a badge that stands out. The premium Heatly experience.'
             }
           </p>
         </div>
@@ -187,7 +187,7 @@ export default function PlusPage() {
               {isCreator ? <Sparkles size={24} className="text-white" /> : <Crown size={24} className="text-white" />}
             </div>
             <h3 className="text-xl font-bold text-white">
-              VyxHub+ {isCreator ? 'Creator' : ''}
+              Heatly+ {isCreator ? 'Creator' : ''}
             </h3>
             <div className="mt-2">
               <span className="text-3xl font-black text-white">${price}</span>
@@ -228,7 +228,7 @@ export default function PlusPage() {
             <div className="space-y-2 text-sm text-zinc-400">
               <div className="flex justify-between">
                 <span>Plan</span>
-                <span className="text-white font-medium">VyxHub+ {isCreator ? 'Creator' : ''}</span>
+                <span className="text-white font-medium">Heatly+ {isCreator ? 'Creator' : ''}</span>
               </div>
               <div className="flex justify-between">
                 <span>Renews</span>
@@ -257,14 +257,14 @@ export default function PlusPage() {
         <h3 className="text-lg font-bold text-white mb-4">FAQ</h3>
         <div className="space-y-3">
           {[
-            { q: 'How do I pay?', a: 'VyxHub+ is paid via cryptocurrency. We support 10+ popular cryptos including Bitcoin, Ethereum, USDT, and more.' },
+            { q: 'How do I pay?', a: 'Heatly+ is paid via cryptocurrency. We support 10+ popular cryptos including Bitcoin, Ethereum, USDT, and more.' },
             { q: 'What happens when I cancel?', a: 'Your premium benefits stay active until the end of your billing period. No prorated refunds.' },
             ...(isCreator ? [
-              { q: 'How much do I save on fees?', a: `VyxHub+ creators pay ${PLUS_FEE_PERCENT}% platform fee instead of ${PLATFORM_FEE_PERCENT}%. That\'s 5% more in your pocket on every transaction.` },
+              { q: 'How much do I save on fees?', a: `Heatly+ creators pay ${PLUS_FEE_PERCENT}% platform fee instead of ${PLATFORM_FEE_PERCENT}%. That\'s 5% more in your pocket on every transaction.` },
               { q: 'How does the algorithm boost work?', a: 'Your posts get a 35% boost in the For You feed and 30% priority in Explore trending, meaning more people discover your content.' },
             ] : [
-              { q: 'What does free DM unlock mean?', a: 'Normally, creators can set a price to message them. With VyxHub+, you can message any creator for free — no unlock fees.' },
-              { q: 'Will I see any ads?', a: 'No. VyxHub+ members get a completely ad-free experience — no sponsored posts, no banners, nothing.' },
+              { q: 'What does free DM unlock mean?', a: 'Normally, creators can set a price to message them. With Heatly+, you can message any creator for free — no unlock fees.' },
+              { q: 'Will I see any ads?', a: 'No. Heatly+ members get a completely ad-free experience — no sponsored posts, no banners, nothing.' },
             ]),
           ].map((item, i) => (
             <details key={i} className="group p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50">
@@ -278,12 +278,12 @@ export default function PlusPage() {
         </div>
       </div>
 
-      {/* Crypto Payment Modal */}
+      {/* Payment Modal */}
       {showCrypto && (
-        <CryptoPaymentModal
-          isOpen={showCrypto}
+        <PaymentModal
+          open={showCrypto}
           onClose={() => setShowCrypto(false)}
-          amountUsd={price}
+          amount={price}
           paymentType="plus_subscription"
           metadata={{ tier, user_id: user?.id }}
           onSuccess={handleCryptoSuccess}

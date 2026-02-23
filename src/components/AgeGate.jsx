@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ShieldCheck, AlertTriangle } from 'lucide-react'
 
-const AGE_VERIFIED_KEY = 'vyxhub_age_verified'
+const AGE_VERIFIED_KEY = 'heatly_age_verified'
 const MIN_AGE = 18
 
 function getMaxDob() {

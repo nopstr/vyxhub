@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useSubscriptionCache } from '../stores/subscriptionCache'
 import Avatar from './ui/Avatar'
 import Badge from './ui/Badge'
-import CryptoPaymentModal from './CryptoPaymentModal'
+import PaymentModal from './PaymentModal'
 import { toast } from 'sonner'
 import { haptic } from '../lib/utils'
 
@@ -259,9 +259,9 @@ export default function SubscribeModal({ open, onClose, creator, onSubscribed })
         </div>
       </div>
 
-      {/* Crypto Payment Modal */}
+      {/* Payment Modal */}
       {showCrypto && (
-        <CryptoPaymentModal
+        <PaymentModal
           open={showCrypto}
           onClose={() => setShowCrypto(false)}
           amount={effectivePrice}

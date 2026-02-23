@@ -167,7 +167,7 @@ export const useAuthStore = create((set, get) => ({
   },
 
   enrollMfa: async () => {
-    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', issuer: 'VyxHub' })
+    const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', issuer: 'Heatly' })
     if (error) throw error
     return data // { id, type, totp: { qr_code, secret, uri } }
   },

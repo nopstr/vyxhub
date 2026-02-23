@@ -9,6 +9,8 @@ export default function Badge({ children, variant = 'default', className }) {
     warning: 'bg-amber-500/20 text-amber-400',
     live: 'bg-rose-600 text-white animate-pulse',
     premium: 'bg-gradient-to-r from-indigo-500/20 to-violet-500/20 text-indigo-300',
+    'partner-blue': 'bg-blue-500/20 text-blue-400',
+    'partner-gold': 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-400',
   }
 
   return (

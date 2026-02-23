@@ -39,7 +39,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: blob: data:; media-src 'self' https: blob:; connect-src 'self' https://agoekmugbrswrdjscwek.supabase.co wss://agoekmugbrswrdjscwek.supabase.co https://*.ingest.de.sentry.io https://ipapi.co; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' https: blob: data:; media-src 'self' https: blob:; connect-src 'self' https://agoekmugbrswrdjscwek.supabase.co wss://agoekmugbrswrdjscwek.supabase.co https://*.ingest.de.sentry.io https://ipapi.co; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://secure2.segpay.com;"
         }
       ]
     }

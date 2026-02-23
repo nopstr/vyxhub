@@ -1,7 +1,7 @@
-export const APP_NAME = 'VyxHub'
+export const APP_NAME = 'Heatly'
 export const APP_DESCRIPTION = 'Premium adult content platform'
 export const APP_URL = 'https://vyxhub.vercel.app'
-export const REFERRAL_DOMAIN = 'https://vyxhub.com'
+export const REFERRAL_DOMAIN = 'https://heatly.vip'
 
 export const PLATFORM_FEE_PERCENT = 30
 export const REFERRAL_EARNING_PERCENT = 80
@@ -40,10 +40,10 @@ export const VISIBILITY_OPTIONS = [
 export const MANAGED_CREATOR_SPLIT = 60 // managed creators keep 60%
 export const MANAGED_PLATFORM_CUT = 40 // platform takes 40% for managed
 
-// VyxHub+ Premium
+// Heatly+ Premium
 export const PLUS_USER_PRICE = 4.99
 export const PLUS_CREATOR_PRICE = 9.99
-export const PLUS_FEE_PERCENT = 25 // VyxHub+ creators pay 25% instead of 30%
+export const PLUS_FEE_PERCENT = 25 // Heatly+ creators pay 25% instead of 30%
 
 export const CEO_USERNAME = 'ceo_steve_b'
 

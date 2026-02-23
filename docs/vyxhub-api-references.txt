@@ -1,0 +1,169 @@
+VyxHub → Heatly — API / Config / External Account References
+=============================================================
+These files still contain "vyxhub" references that require external
+account changes (new domains, API keys, project renames, email setup, etc).
+They were intentionally NOT renamed in the automated frontend rebrand.
+
+Updated: February 23, 2026
+
+
+─── API ENDPOINTS ──────────────────────────────────────────────────────────
+
+1. api/crypto/create-payment.js
+   Line 20:  APP_URL = 'https://vyxhub.vercel.app'
+   Line 128: order_description: `VyxHub ${payment_type} payment`
+   → Change APP_URL after Vercel project rename, update order descriptions
+
+2. api/crypto/create-payout.js
+   Line 25:  APP_URL = 'https://vyxhub.vercel.app'
+   Line 165: payout_description: `VyxHub creator payout #...`
+   → Change APP_URL after Vercel project rename, update payout descriptions
+
+3. api/payments/create-session.js
+   Line 24:  APP_URL = 'https://vyxhub.vercel.app'
+   Lines 136-143: All payment descriptions say "VyxHub ..."
+   → Change APP_URL after Vercel project rename, update all descriptions
+
+4. api/train.py
+   Line 2:   VyxHub ML Feed Training Endpoint
+   Line 308: 'service': 'VyxHub ML Feed Training'
+   → Cosmetic, change when convenient
+
+
+─── SENTRY ────────────────────────────────────────────────────────────────
+
+5. vite.config.js
+   Line 43: org: process.env.SENTRY_ORG || "vyxhub"
+   Line 44: project: process.env.SENTRY_PROJECT || "vyxhub-web"
+   → Create new Sentry org/project named "heatly", or set SENTRY_ORG and
+     SENTRY_PROJECT env vars in Vercel dashboard
+
+6. src/main.jsx
+   Line 29: tracePropagationTargets: ["localhost", /^https:\/\/vyxhub\.vercel\.app\/api/]
+   → Update regex after Vercel project rename
+
+
+─── SUPABASE CONFIG ───────────────────────────────────────────────────────
+
+7. supabase/config.toml
+   Line 5:   project_id = "vyxhub"
+   Line 154: site_url = "https://vyxhub.vercel.app"
+   Line 156: additional_redirect_urls = ["https://vyxhub.vercel.app", ...]
+   → Update after Vercel project rename (also update in Supabase dashboard
+     under Auth > URL Configuration)
+
+
+─── SUPABASE MIGRATIONS (already applied to DB) ──────────────────────────
+
+These are already applied. Changing the SQL files won't affect the running
+database. If you need to update these values in the DB, run new migrations.
+
+8. supabase/migrations/20260214000000_initial_schema.sql
+   Line 1: -- VyxHub Database Schema (comment only)
+
+9. supabase/migrations/20260218400000_seed_models_and_posts.sql
+   Lines 13-48: Test user emails like luna@vyxhub.test, jade@vyxhub.test, etc.
+   → Only matters if re-seeding; test emails can stay
+
+10. supabase/migrations/20260220960005_recreate_ceo_account.sql
+    Lines 34,47,70,81,89: steve@vyxhub.com, bio 'CEO @ VyxHub'
+    → Need to update CEO email in Supabase Auth dashboard
+
+11. supabase/migrations/20260220960006_fix_ceo_auth.sql
+    Lines 38,51: steve@vyxhub.com
+    → Same as above
+
+12. supabase/migrations/20260220960007_recreate_ceo_auth.sql
+    Lines 44,54: steve@vyxhub.com
+    → Same as above
+
+13. supabase/migrations/20260221100000_notification_system_v2.sql
+    Lines 308,313,316,333,463,465,479: VyxHub in email templates, URLs
+    → Run a new migration to update email template HTML/text:
+      - "VyxHub" → "Heatly"
+      - "vyxhub.vercel.app" → new domain
+      - "VyxHub Daily Digest" → "Heatly Daily Digest"
+
+14. supabase/migrations/20260222500000_vyxhub_plus.sql
+    Multiple lines: Comments referencing "VyxHub+" in SQL
+    → Comments only; no runtime impact
+
+15. supabase/migrations/20260222700000_secure_payment_rpcs.sql
+    Line 370: Comment "VyxHub+ users get free DM unlock"
+    → Comment only; no runtime impact
+
+
+─── DOMAIN / URL REFERENCES IN FRONTEND ───────────────────────────────────
+
+16. src/lib/constants.js
+    Line 3: APP_URL = 'https://vyxhub.vercel.app'
+    Line 4: REFERRAL_DOMAIN = 'https://vyxhub.com'
+    → Update APP_URL after Vercel rename
+    → Update REFERRAL_DOMAIN when you have heatly.vip domain (DONE)
+
+17. src/pages/dashboard/CreatorDashboardPage.jsx
+    Line 1303: referralUrl = `https://vyxhub.com/r/@${profile?.username}`
+    → Will auto-fix once REFERRAL_DOMAIN in constants.js is updated
+      (OR refactor to use REFERRAL_DOMAIN constant)
+
+18. src/pages/legal/PrivacyPolicyPage.jsx
+    Line 26: "operates the website at vyxhub.vercel.app"
+    → Update to new domain after Vercel rename
+
+19. index.html
+    Line 14: og:url content="https://vyxhub.vercel.app"
+    Line 17: og:image content="https://vyxhub.vercel.app/og-image.png"
+    → Update to new domain after Vercel rename
+
+
+─── EMAIL ADDRESSES (need to create) ─────────────────────────────────────
+
+Already renamed in code from @vyxhub.com → @heatly.vip. You need to:
+
+20. Set up this email address on the heatly.vip domain:
+    - office@heatly.vip  (used in CompliancePage, TermsPage, PrivacyPolicyPage)
+    - steve@heatly.vip   (CEO account — update in Supabase Auth)
+
+
+─── PACKAGE FILES ─────────────────────────────────────────────────────────
+
+21. package.json
+    Line 2: "name": "vyxhub"  (already renamed to "heatly")
+
+22. package-lock.json
+    Lines 2,8: "name": "vyxhub"
+    → Will auto-update on next `npm install`
+
+
+─── DOCUMENTATION ─────────────────────────────────────────────────────────
+
+23. ARCHITECTURE.md
+    Lines 1,4,7,8,10: VyxHub references and URLs
+    → Update when you have the new domain
+
+24. docs/assessment/*.txt and *.md
+    All document headers say "VyxHub ..."
+    → Cosmetic; update when convenient
+
+
+─── VERCEL PROJECT ────────────────────────────────────────────────────────
+
+25. Vercel Dashboard
+    → Rename project from "vyxhub" to "heatly" in Vercel settings
+    → This will change the URL from vyxhub.vercel.app to heatly.vercel.app
+    → Then update all URL references listed above
+    → Add custom domain heatly.com if purchased
+
+
+─── SUMMARY OF ACTIONS ────────────────────────────────────────────────────
+
+Priority order:
+1. Purchase heatly.vip domain (DONE)
+2. Rename Vercel project → heatly
+3. Update Supabase Auth URL config (site_url, redirect_urls)
+4. Update all APP_URL / domain references listed above
+5. Create email addresses (office@heatly.vip, steve@heatly.vip)
+6. Create new Sentry org/project or update env vars
+7. Update CEO account email in Supabase Auth
+8. Run new migration to update email notification templates
+9. Update ARCHITECTURE.md and docs

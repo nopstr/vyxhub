@@ -11,7 +11,8 @@ import {
   ShieldAlert, DollarSign, Users, TrendingUp, BarChart3,
   Search, Save, Crown, Percent, UserCheck, Eye, CreditCard,
   ChevronLeft, ChevronRight, ShieldCheck, Settings, Megaphone,
-  Plus, Trash2, ExternalLink, Image as ImageIcon, Link2, ToggleLeft, ToggleRight
+  Plus, Trash2, ExternalLink, Image as ImageIcon, Link2, ToggleLeft, ToggleRight,
+  Wallet, Check, X, Clock, Send, AlertCircle, Copy, Loader2, ExternalLink as ExtLink
 } from 'lucide-react'
 
 // ─── Revenue Dashboard ──────────────────────────────────────────────
@@ -291,6 +292,102 @@ function SplitManager() {
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Partner Management ─────────────────────────────────────────────
+function PartnerManager() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [searching, setSearching] = useState(false)
+
+  const handleSearch = async () => {
+    const q = query.trim()
+    if (q.length < 2) return
+    setSearching(true)
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, partner_tier, partner_override, subscriber_count, is_creator')
+      .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+      .limit(20)
+    setResults(data || [])
+    setSearching(false)
+  }
+
+  const handleSetPartner = async (userId, tier) => {
+    try {
+      const { error } = await supabase.rpc('admin_set_partner_tier', {
+        p_target_user_id: userId,
+        p_tier: tier || null,
+        p_override: !!tier
+      })
+      if (error) throw error
+      toast.success(tier ? `Partner tier set to ${tier}` : 'Partner status removed')
+      handleSearch()
+    } catch (err) {
+      toast.error(err.message || 'Failed')
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded-2xl p-4 mb-4">
+        <p className="text-sm text-blue-300/70">
+          Override partner tiers manually. Overridden users won't be affected by automatic monthly evaluations.
+          Use "Both" to grant both Blue and Gold features simultaneously.
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          placeholder="Search creators to manage partner status..."
+          icon={Search}
+        />
+        <Button onClick={handleSearch} loading={searching}>Search</Button>
+      </div>
+
+      {results.length > 0 && (
+        <div className="space-y-2">
+          {results.map(user => (
+            <div key={user.id} className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4">
+              <div className="flex items-center gap-3">
+                <Avatar src={user.avatar_url} alt={user.display_name} size="md" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-white text-sm">{user.display_name}</span>
+                    <span className="text-xs text-zinc-500">@{user.username}</span>
+                    {user.partner_tier && (
+                      <span className={cn(
+                        'text-xs px-2 py-0.5 rounded-full uppercase font-bold',
+                        user.partner_tier === 'gold' ? 'bg-amber-500/10 text-amber-400' :
+                        user.partner_tier === 'both' ? 'bg-gradient-to-r from-blue-500/10 to-amber-500/10 text-amber-400' :
+                        'bg-blue-500/10 text-blue-400'
+                      )}>
+                        {user.partner_tier}{user.partner_override ? ' ✦' : ''}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-zinc-600">{user.subscriber_count || 0} subscribers</span>
+                </div>
+                <select
+                  value={user.partner_tier || ''}
+                  onChange={(e) => handleSetPartner(user.id, e.target.value || null)}
+                  className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg px-3 py-1.5 text-sm text-zinc-200 cursor-pointer"
+                >
+                  <option value="">No Partner</option>
+                  <option value="blue">Blue</option>
+                  <option value="gold">Gold</option>
+                  <option value="both">Both</option>
+                </select>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -580,7 +677,302 @@ function AffiliateAdsManager() {
   )
 }
 
-// ─── VyxHub+ Stats ──────────────────────────────────────────────────
+// ─── Payout Queue ───────────────────────────────────────────────────
+function PayoutQueue() {
+  const [payouts, setPayouts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [processing, setProcessing] = useState({}) // { payoutId: 'approving' | 'rejecting' }
+  const [filter, setFilter] = useState('pending') // pending | all
+  const [rejectNote, setRejectNote] = useState({}) // { payoutId: 'note text' }
+  const { session } = useAuthStore()
+
+  const fetchPayouts = async () => {
+    setLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('admin_get_pending_payouts')
+      if (error) throw error
+      setPayouts(data || [])
+    } catch (err) {
+      toast.error('Failed to load payouts')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { fetchPayouts() }, [])
+
+  const handleApprovePayout = async (payout) => {
+    if (!confirm(`Send ${formatCurrency(payout.amount)} USDT to ${payout.payout_wallet_address || payout.payout_email}?`)) return
+
+    setProcessing(p => ({ ...p, [payout.id]: 'approving' }))
+    try {
+      const token = session?.access_token
+      if (!token) throw new Error('No session')
+
+      if (payout.payout_method === 'crypto' && payout.payout_wallet_address) {
+        // Auto-payout via NOWPayments
+        const res = await fetch('/api/crypto/create-payout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ payout_id: payout.id })
+        })
+
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Payout failed')
+
+        if (data.method === 'nowpayments') {
+          toast.success(`USDT payout initiated! Withdrawal ID: ${data.withdrawal_id}`)
+        } else if (data.method === 'manual_fallback') {
+          toast.success('Approved (manual payout required — NP credentials not configured)')
+        } else {
+          toast.success('Payout approved (manual transfer)')
+        }
+      } else {
+        // Manual approve for non-crypto payouts
+        const { error } = await supabase.rpc('admin_process_payout', {
+          p_payout_id: payout.id,
+          p_action: 'approve',
+          p_note: 'Approved from admin panel'
+        })
+        if (error) throw error
+        toast.success('Payout approved')
+      }
+
+      fetchPayouts()
+    } catch (err) {
+      toast.error(err.message || 'Failed to process payout')
+    } finally {
+      setProcessing(p => ({ ...p, [payout.id]: null }))
+    }
+  }
+
+  const handleRejectPayout = async (payoutId) => {
+    const note = rejectNote[payoutId] || ''
+    if (!confirm('Reject this payout? Funds will be refunded to creator wallet.')) return
+
+    setProcessing(p => ({ ...p, [payoutId]: 'rejecting' }))
+    try {
+      const { error } = await supabase.rpc('admin_process_payout', {
+        p_payout_id: payoutId,
+        p_action: 'reject',
+        p_note: note || 'Rejected from admin panel'
+      })
+      if (error) throw error
+      toast.success('Payout rejected, funds refunded')
+      setRejectNote(n => ({ ...n, [payoutId]: '' }))
+      fetchPayouts()
+    } catch (err) {
+      toast.error(err.message || 'Failed to reject payout')
+    } finally {
+      setProcessing(p => ({ ...p, [payoutId]: null }))
+    }
+  }
+
+  const copyAddress = (addr) => {
+    navigator.clipboard.writeText(addr)
+    toast.success('Address copied')
+  }
+
+  const filtered = filter === 'pending'
+    ? payouts.filter(p => ['pending', 'processing'].includes(p.status))
+    : payouts
+
+  const pendingCount = payouts.filter(p => p.status === 'pending').length
+  const pendingTotal = payouts.filter(p => p.status === 'pending').reduce((s, p) => s + parseFloat(p.amount), 0)
+
+  if (loading) return <div className="py-12 text-center text-zinc-500 text-sm">Loading payouts...</div>
+
+  const statusBadge = (status) => {
+    const styles = {
+      pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+      processing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
+    }
+    return (
+      <span className={cn('px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase border', styles[status] || styles.pending)}>
+        {status}
+      </span>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
+          <p className="text-xs text-zinc-500">Pending Payouts</p>
+          <p className="text-2xl font-black text-amber-400">{pendingCount}</p>
+        </div>
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4">
+          <p className="text-xs text-zinc-500">Pending Total</p>
+          <p className="text-2xl font-black text-amber-400">{formatCurrency(pendingTotal)}</p>
+        </div>
+      </div>
+
+      {/* Filter */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setFilter('pending')}
+          className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+            filter === 'pending' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'text-zinc-500 bg-zinc-900/30 border border-zinc-800/50'
+          )}
+        >
+          Pending {pendingCount > 0 && `(${pendingCount})`}
+        </button>
+        <button
+          onClick={() => setFilter('all')}
+          className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer',
+            filter === 'all' ? 'bg-zinc-700/50 text-zinc-300 border border-zinc-600/30' : 'text-zinc-500 bg-zinc-900/30 border border-zinc-800/50'
+          )}
+        >
+          All ({payouts.length})
+        </button>
+      </div>
+
+      {/* Payout list */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-zinc-500 text-sm">
+          {filter === 'pending' ? 'No pending payouts' : 'No payouts found'}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(p => (
+            <div key={p.id} className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-4 space-y-3">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Avatar url={p.creator_avatar} username={p.creator_username} size={36} />
+                  <div>
+                    <p className="text-sm font-bold text-white">{p.creator_display_name || p.creator_username}</p>
+                    <p className="text-xs text-zinc-500">@{p.creator_username}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-black text-white">{formatCurrency(p.amount)}</p>
+                  {statusBadge(p.status)}
+                </div>
+              </div>
+
+              {/* Details */}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-zinc-500">Method:</span>{' '}
+                  <span className="text-zinc-300 font-medium">
+                    {p.payout_method === 'crypto' ? '🪙 USDT (TRC-20)' : p.payout_method}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-zinc-500">Requested:</span>{' '}
+                  <span className="text-zinc-300">{new Date(p.created_at).toLocaleDateString()}</span>
+                </div>
+                {p.payout_wallet_address && (
+                  <div className="col-span-2">
+                    <span className="text-zinc-500">Wallet:</span>{' '}
+                    <span className="text-zinc-300 font-mono text-[11px]">
+                      {p.payout_wallet_address.slice(0, 10)}...{p.payout_wallet_address.slice(-8)}
+                    </span>
+                    <button
+                      onClick={() => copyAddress(p.payout_wallet_address)}
+                      className="ml-1.5 text-zinc-500 hover:text-zinc-300 cursor-pointer inline-flex"
+                    >
+                      <Copy size={11} />
+                    </button>
+                  </div>
+                )}
+                {p.payout_email && p.payout_method !== 'crypto' && (
+                  <div className="col-span-2">
+                    <span className="text-zinc-500">Email:</span>{' '}
+                    <span className="text-zinc-300">{p.payout_email}</span>
+                  </div>
+                )}
+                {p.nowpayments_payout_id && (
+                  <div className="col-span-2">
+                    <span className="text-zinc-500">NP Payout:</span>{' '}
+                    <span className="text-zinc-300 font-mono text-[11px]">#{p.nowpayments_payout_id}</span>
+                  </div>
+                )}
+                {p.payout_hash && (
+                  <div className="col-span-2">
+                    <span className="text-zinc-500">TX Hash:</span>{' '}
+                    <a
+                      href={`https://tronscan.org/#/transaction/${p.payout_hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-400 hover:underline font-mono text-[11px] ml-1"
+                    >
+                      {p.payout_hash.slice(0, 16)}... <ExternalLink size={10} className="inline" />
+                    </a>
+                  </div>
+                )}
+                {p.admin_note && (
+                  <div className="col-span-2">
+                    <span className="text-zinc-500">Note:</span>{' '}
+                    <span className="text-zinc-400 italic">{p.admin_note}</span>
+                  </div>
+                )}
+                {p.processed_at && (
+                  <div>
+                    <span className="text-zinc-500">Processed:</span>{' '}
+                    <span className="text-zinc-300">{new Date(p.processed_at).toLocaleDateString()}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              {p.status === 'pending' && (
+                <div className="space-y-2 pt-1 border-t border-zinc-800/50">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={() => handleApprovePayout(p)}
+                      loading={processing[p.id] === 'approving'}
+                      disabled={!!processing[p.id]}
+                      className="flex-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    >
+                      <Send size={13} className="mr-1" />
+                      {p.payout_method === 'crypto' ? 'Send USDT' : 'Approve'}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => handleRejectPayout(p.id)}
+                      loading={processing[p.id] === 'rejecting'}
+                      disabled={!!processing[p.id]}
+                      className="flex-1"
+                    >
+                      <X size={13} className="mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                  <input
+                    type="text"
+                    value={rejectNote[p.id] || ''}
+                    onChange={(e) => setRejectNote(n => ({ ...n, [p.id]: e.target.value }))}
+                    placeholder="Optional note (shown to creator on rejection)"
+                    className="w-full bg-zinc-800/30 border border-zinc-700/30 rounded-lg px-3 py-1.5 text-xs text-zinc-300 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-600"
+                  />
+                </div>
+              )}
+
+              {p.status === 'processing' && (
+                <div className="flex items-center gap-2 text-xs text-blue-400 bg-blue-500/5 border border-blue-500/20 rounded-xl px-3 py-2">
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Payout in progress via NOWPayments...</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Heatly+ Stats ──────────────────────────────────────────────────
 function PlusStats() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -605,7 +997,7 @@ function PlusStats() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-zinc-400">VyxHub+ subscription overview</p>
+      <p className="text-sm text-zinc-400">Heatly+ subscription overview</p>
       <div className="grid grid-cols-2 gap-3">
         {cards.map((c, i) => (
           <div key={i} className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50">
@@ -624,8 +1016,10 @@ function PlusStats() {
 // ─── Main Admin Page ────────────────────────────────────────────────
 const adminTabs = [
   { id: 'revenue', label: 'Revenue', icon: DollarSign },
+  { id: 'payouts', label: 'Payouts', icon: Wallet },
   { id: 'splits', label: 'Splits', icon: Percent },
   { id: 'roles', label: 'Roles', icon: Settings },
+  { id: 'partners', label: 'Partners', icon: ShieldCheck },
   { id: 'ads', label: 'Ads', icon: Megaphone },
   { id: 'plus', label: 'Plus', icon: Crown },
 ]
@@ -678,8 +1072,10 @@ export default function AdminPage() {
         </div>
 
         {tab === 'revenue' && <RevenueDashboard />}
+        {tab === 'payouts' && <PayoutQueue />}
         {tab === 'splits' && <SplitManager />}
         {tab === 'roles' && <RoleManager />}
+        {tab === 'partners' && <PartnerManager />}
         {tab === 'ads' && <AffiliateAdsManager />}
         {tab === 'plus' && <PlusStats />}
       </div>

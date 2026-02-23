@@ -844,7 +844,7 @@ function EarningsExportTab({ userId }) {
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
-        a.download = `vyxhub-earnings-${new Date().toISOString().split('T')[0]}.csv`
+        a.download = `heatly-earnings-${new Date().toISOString().split('T')[0]}.csv`
         a.click()
         URL.revokeObjectURL(url)
         toast.success(`Exported ${data.length} transactions`)
@@ -1300,7 +1300,7 @@ function ReferralsTab({ userId }) {
     }
   }
 
-  const referralUrl = `https://vyxhub.com/r/@${profile?.username}`
+  const referralUrl = `https://heatly.vip/r/@${profile?.username}`
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralUrl)

@@ -62,7 +62,7 @@ function HeroSection({ onStart }) {
         </h1>
 
         <p className="text-base text-zinc-400 max-w-md mx-auto leading-relaxed mb-8">
-          Join thousands of creators earning on VyxHub — the platform that pays you what you deserve.
+          Join thousands of creators earning on Heatly — the platform that pays you what you deserve.
         </p>
 
         <button

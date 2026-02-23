@@ -92,7 +92,7 @@ export default function AuthPage() {
         })
         
         // Check for referral cookie and record it (cookie stores username from /r/@username link)
-        const referrerUsername = getCookie('vyxhub_ref')
+        const referrerUsername = getCookie('heatly_ref')
         if (referrerUsername && signUpResult?.user?.id) {
           try {
             await supabase.rpc('record_referral_by_username', {
@@ -100,10 +100,10 @@ export default function AuthPage() {
               p_referred_user_id: signUpResult.user.id,
             })
           } catch (_) { /* non-blocking */ }
-          deleteCookie('vyxhub_ref')
+          deleteCookie('heatly_ref')
         }
         
-        toast.success('Welcome to VyxHub!')
+        toast.success('Welcome to Heatly!')
         navigate('/')
       } else {
         await resetPassword(email)
@@ -130,7 +130,7 @@ export default function AuthPage() {
             <Zap className="text-black fill-black" size={32} />
           </div>
           <h1 className="text-3xl font-black tracking-tighter bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-            VYXHUB
+            HEATLY
           </h1>
           <p className="text-sm text-zinc-500 mt-2">
             {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your account' : 'Reset your password'}

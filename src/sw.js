@@ -177,15 +177,15 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data?.json() ?? {}
   } catch {
-    data = { title: 'VyxHub', body: event.data?.text() || 'You have a new notification' }
+    data = { title: 'Heatly', body: event.data?.text() || 'You have a new notification' }
   }
 
-  const title = data.title || 'VyxHub'
+  const title = data.title || 'Heatly'
   const options = {
     body: data.body || 'You have a new notification',
     icon: '/pwa-192x192.png',
     badge: '/pwa-192x192.png',
-    tag: data.tag || 'vyxhub-notification',
+    tag: data.tag || 'heatly-notification',
     renotify: true,
     data: {
       url: data.url || '/',

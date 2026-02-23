@@ -244,6 +244,8 @@ function ReportQueue() {
                       <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                         <span>@{report.reported_user?.username}</span>
                         {report.reported_user?.is_verified && <ShieldCheck size={11} className="text-indigo-400" />}
+                        {(report.reported_user?.partner_tier === 'blue' || report.reported_user?.partner_tier === 'both') && <ShieldCheck size={10} className="text-blue-400" />}
+                        {(report.reported_user?.partner_tier === 'gold' || report.reported_user?.partner_tier === 'both') && <ShieldCheck size={10} className="text-amber-400" />}
                         {report.reported_user?.is_suspended && <span className="text-amber-400">Suspended</span>}
                         {report.reported_user?.is_banned && <span className="text-red-400">Banned</span>}
                       </div>
@@ -473,6 +475,14 @@ function UserModeration() {
                     {user.is_verified && (
                       <span className="text-xs bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full flex items-center gap-1">
                         <ShieldCheck size={10} /> Verified
+                      </span>
+                    )}
+                    {user.partner_tier && (
+                      <span className={cn(
+                        'text-xs px-2 py-0.5 rounded-full flex items-center gap-1',
+                        user.partner_tier === 'gold' || user.partner_tier === 'both' ? 'bg-amber-500/10 text-amber-400' : 'bg-blue-500/10 text-blue-400'
+                      )}>
+                        <ShieldCheck size={10} /> {user.partner_tier.charAt(0).toUpperCase() + user.partner_tier.slice(1)} Partner
                       </span>
                     )}
                     {user.is_creator && (

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Cookie, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-const CONSENT_KEY = 'vyxhub_cookie_consent'
+const CONSENT_KEY = 'heatly_cookie_consent'
 
 /**
  * GDPR/CCPA cookie consent banner.
