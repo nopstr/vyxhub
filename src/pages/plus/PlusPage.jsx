@@ -19,7 +19,7 @@ import { useNavigate } from 'react-router-dom'
 // UI Icons from lucide-react
 import {
   Crown, ShieldCheck, MessageSquare, TrendingUp,
-  BarChart3, Percent, Star, Eye, Sparkles, Check,
+  BarChart3, Star, Eye, Sparkles, Check,
   ChevronRight, ArrowLeft
 } from 'lucide-react'
 // Global state store for authentication and user profile data
@@ -34,7 +34,7 @@ import { cn } from '../../lib/utils'
 // Supabase client for database interactions
 import { supabase } from '../../lib/supabase'
 // Global constants for pricing and fees
-import { PLUS_USER_PRICE, PLUS_CREATOR_PRICE, PLUS_FEE_PERCENT, PLATFORM_FEE_PERCENT } from '../../lib/constants'
+import { PLUS_USER_PRICE, PLUS_CREATOR_PRICE } from '../../lib/constants'
 
 /**
  * Array of benefits displayed to regular users.
@@ -52,14 +52,12 @@ const USER_BENEFITS = [
  * Creators get additional perks like algorithm boosts and reduced platform fees.
  */
 const CREATOR_BENEFITS = [
-  { icon: Eye, title: 'No Platform Ads', description: 'Browse your feed without any sponsored or affiliate ads' },
+  { icon: Crown, title: 'Heatly+ Creator Badge', description: 'Exclusive yellow crown badge that builds trust and credibility with fans' },
+  { icon: Eye, title: 'No Platform Ads', description: 'Browse your feed without any sponsored or affiliate ads cluttering your experience' },
   { icon: TrendingUp, title: 'Algorithm Boost', description: '35% more reach in the feed — your content gets seen by more people' },
-  { icon: Percent, title: `Reduced Fee (${PLUS_FEE_PERCENT}%)`, description: `Pay only ${PLUS_FEE_PERCENT}% platform fee instead of ${PLATFORM_FEE_PERCENT}% — keep more of what you earn` },
-  { icon: Crown, title: 'Heatly+ Creator Badge', description: 'Exclusive creator badge that builds trust and credibility' },
   { icon: Star, title: 'Priority in Discovery', description: '30% boost in Explore trending — new fans find you faster' },
-  { icon: BarChart3, title: 'Advanced Analytics', description: 'Deep insights into your audience, engagement, and revenue trends' },
-  { icon: MessageSquare, title: 'Free DM Unlock', description: 'Message anyone without paying DM unlock fees' },
-  { icon: ShieldCheck, title: 'Priority Support', description: 'Get faster responses from our support team' },
+  { icon: BarChart3, title: 'Advanced Analytics', description: 'Deep insights into your audience demographics, engagement patterns, and revenue trends' },
+  { icon: ShieldCheck, title: 'Priority Support', description: 'Get faster, dedicated responses from our support team' },
 ]
 
 /**
@@ -113,13 +111,11 @@ export default function PlusPage() {
   const benefits = isCreator ? CREATOR_BENEFITS : USER_BENEFITS
   // Select the appropriate array of short benefit strings for the pricing card
   const benefitsList = isCreator ? [
+    'Heatly+ Creator badge (yellow crown)',
+    'No platform ads in your feed',
     '35% algorithm boost — more reach',
-    `Only ${PLUS_FEE_PERCENT}% platform fee (save 5%)`,
-    'Heatly+ Creator badge',
     '30% priority in Explore trending',
     'Advanced analytics dashboard',
-    'No platform ads in your feed',
-    'Free DM unlock with anyone',
     'Priority support queue',
   ] : [
     'No platform ads in your feed',
@@ -340,8 +336,8 @@ export default function PlusPage() {
             { q: 'How do I pay?', a: 'Heatly+ is paid via cryptocurrency. We support 10+ popular cryptos including Bitcoin, Ethereum, USDT, and more.' },
             { q: 'What happens when I cancel?', a: 'Your premium benefits stay active until the end of your billing period. No prorated refunds.' },
             ...(isCreator ? [
-              { q: 'How much do I save on fees?', a: `Heatly+ creators pay ${PLUS_FEE_PERCENT}% platform fee instead of ${PLATFORM_FEE_PERCENT}%. That\'s 5% more in your pocket on every transaction.` },
               { q: 'How does the algorithm boost work?', a: 'Your posts get a 35% boost in the For You feed and 30% priority in Explore trending, meaning more people discover your content.' },
+              { q: 'What are Advanced Analytics?', a: 'You get deep insights including earnings trends, subscriber growth over time, revenue breakdown by type, top-performing posts, and engagement rate tracking.' },
             ] : [
               { q: 'What does free DM unlock mean?', a: 'Normally, creators can set a price to message them. With Heatly+, you can message any creator for free — no unlock fees.' },
               { q: 'Will I see any ads?', a: 'No. Heatly+ members get a completely ad-free experience — no sponsored posts, no banners, nothing.' },

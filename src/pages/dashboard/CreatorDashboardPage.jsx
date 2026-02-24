@@ -1092,7 +1092,7 @@ function PromotionsTab({ userId }) {
                     <input
                       type="range"
                       min={5}
-                      max={90}
+                      max={50}
                       step={5}
                       value={discountPercent}
                       onChange={e => setDiscountPercent(Number(e.target.value))}
@@ -1162,9 +1162,9 @@ function PromotionsTab({ userId }) {
               <input
                 type="number"
                 value={codeDiscount}
-                onChange={e => setCodeDiscount(Math.min(100, Math.max(5, parseInt(e.target.value) || 5)))}
+                onChange={e => setCodeDiscount(Math.min(50, Math.max(5, parseInt(e.target.value) || 5)))}
                 min={5}
-                max={100}
+                max={50}
                 className="w-full px-3 py-2 rounded-xl bg-zinc-800/50 border border-zinc-700 text-sm text-white outline-none focus:border-red-500/50"
               />
             </div>
