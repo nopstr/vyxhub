@@ -55,7 +55,7 @@ ON CONFLICT (provider_id, provider) DO NOTHING;
 UPDATE public.profiles SET
   display_name = 'Luna Vyx', username = 'lunavyx',
   bio = E'✨ Fitness model & cosplay enthusiast 🎮\nDaily posts • Custom content available\n🔥 Top 1% creator\n📍 Los Angeles, CA',
-  is_creator = true, is_verified = true, subscription_price = 12.99,
+  is_creator = true, is_verified = false, subscription_price = 12.99,
   creator_category = 'female', tags = ARRAY['fitness','cosplay','lingerie','lifestyle'],
   location = 'Los Angeles, CA', website_url = 'https://lunavyx.com',
   welcome_message = 'Hey babe! Thanks for subscribing 💕 Check my pinned post for my content schedule!',
@@ -68,7 +68,7 @@ WHERE id = 'a1111111-1111-1111-1111-111111111111';
 UPDATE public.profiles SET
   display_name = 'Jade Rivers', username = 'jaderivers',
   bio = E'🌿 Nature lover & free spirit\nArtistic nudes • Behind the scenes\n💎 Premium content daily\nDM me for collabs',
-  is_creator = true, is_verified = true, subscription_price = 9.99,
+  is_creator = true, is_verified = false, subscription_price = 9.99,
   creator_category = 'female', tags = ARRAY['artistic','nature','photography','beauty'],
   location = 'Portland, OR',
   welcome_message = 'Welcome to my world! 🌿 I post new content every single day. Enjoy!',
@@ -81,7 +81,7 @@ WHERE id = 'a2222222-2222-2222-2222-222222222222';
 UPDATE public.profiles SET
   display_name = 'Marcus Steel', username = 'marcussteel',
   bio = E'💪 Fitness coach & model\nWorkout routines • Physique updates\n🏆 IFBB competitor\n📧 Business: marcus@steel.fit',
-  is_creator = true, is_verified = true, subscription_price = 7.99,
+  is_creator = true, is_verified = false, subscription_price = 7.99,
   creator_category = 'male', tags = ARRAY['fitness','bodybuilding','workout','motivation'],
   location = 'Miami, FL', website_url = 'https://marcussteel.fit',
   welcome_message = 'Yo! Welcome aboard 💪 Check out my workout plans in the pinned post.',
@@ -107,7 +107,7 @@ WHERE id = 'a4444444-4444-4444-4444-444444444444';
 UPDATE public.profiles SET
   display_name = 'Sky Noir', username = 'skynoir',
   bio = E'🖤 Alternative model & artist\nGothic aesthetics • Dark art\n🎨 Every photo is a story\n🌙 Nocturnal creature',
-  is_creator = true, is_verified = true, subscription_price = 11.99,
+  is_creator = true, is_verified = false, subscription_price = 11.99,
   creator_category = 'nonbinary', tags = ARRAY['alternative','gothic','art','photography','tattoos'],
   location = 'Berlin, Germany', amazon_wishlist_url = 'https://amazon.com/wishlist/skynoir',
   welcome_message = 'Welcome to the dark side 🖤 New art drops every week.',
