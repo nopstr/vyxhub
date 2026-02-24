@@ -46,6 +46,7 @@ const baseTabs = [
   { id: 'account', label: 'Account', icon: Shield },
   { id: 'notifications', label: 'Notifications', icon: Bell },
   { id: 'creator', label: 'Creator', icon: CreditCard },
+  { id: 'billing', label: 'Billing & Subscriptions', icon: DollarSign },
 ]
 
 function Toggle({ checked, onChange, label, description }) {
@@ -1807,6 +1808,7 @@ export default function SettingsPage() {
     account: <AccountSettings />,
     notifications: <NotificationSettings />,
     creator: <CreatorSettings />,
+    billing: <BillingSettings />,
     management: <ManagementUploadSettings />,
   }
 
@@ -2291,6 +2293,163 @@ function TaxInfoSection() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function BillingSettings() {
+  const { profile } = useAuthStore()
+  const [subscriptions, setSubscriptions] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [extending, setExtending] = useState(null)
+
+  useEffect(() => {
+    fetchSubscriptions()
+  }, [])
+
+  const fetchSubscriptions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select(`
+          id,
+          status,
+          current_period_end,
+          payment_method,
+          creator:creator_id (
+            id,
+            username,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq('subscriber_id', profile.id)
+        .in('status', ['active', 'canceled'])
+        .order('current_period_end', { ascending: false })
+
+      if (error) throw error
+      setSubscriptions(data || [])
+    } catch (err) {
+      console.error('Error fetching subscriptions:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExtendCrypto = async (subId) => {
+    setExtending(subId)
+    try {
+      const { data, error } = await supabase.rpc('extend_crypto_subscription', {
+        p_subscription_id: subId
+      })
+      if (error) throw error
+      
+      toast.success('Subscription extended successfully!')
+      fetchSubscriptions()
+    } catch (err) {
+      toast.error(err.message || 'Failed to extend subscription')
+    } finally {
+      setExtending(null)
+    }
+  }
+
+  if (loading) {
+    return <div className="flex justify-center py-12"><Loader2 className="animate-spin text-zinc-500" size={24} /></div>
+  }
+
+  const isPlus = profile?.is_plus && profile?.plus_expires_at && new Date(profile.plus_expires_at) > new Date()
+
+  return (
+    <div className="space-y-8">
+      {/* Heatly+ Status */}
+      <section>
+        <SectionHeader icon={Star} title="Heatly+ Status" description="Your premium membership" />
+        <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-2xl p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-12 h-12 rounded-xl flex items-center justify-center",
+                isPlus ? "bg-amber-500/10" : "bg-zinc-800"
+              )}>
+                <Star className={isPlus ? "text-amber-400" : "text-zinc-500"} size={24} />
+              </div>
+              <div>
+                <h4 className="font-bold text-white">Heatly+</h4>
+                <p className="text-sm text-zinc-400">
+                  {isPlus 
+                    ? `Active until ${new Date(profile.plus_expires_at).toLocaleDateString()}`
+                    : 'Not subscribed'}
+                </p>
+              </div>
+            </div>
+            {!isPlus && (
+              <Button onClick={() => window.location.href = '/plus'} variant="primary">
+                Upgrade
+              </Button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Creator Subscriptions */}
+      <section>
+        <SectionHeader icon={Users} title="Creator Subscriptions" description="Manage your active subscriptions" />
+        
+        {subscriptions.length === 0 ? (
+          <div className="text-center py-8 bg-zinc-900/30 rounded-2xl border border-zinc-800/50">
+            <p className="text-zinc-500">You don't have any active subscriptions.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {subscriptions.map(sub => {
+              const isCrypto = sub.payment_method === 'crypto'
+              const endDate = new Date(sub.current_period_end)
+              const now = new Date()
+              const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24))
+              const canExtend = isCrypto && sub.status === 'active' && daysUntilExpiry <= 30 // Can only extend if within current month
+
+              return (
+                <div key={sub.id} className="flex items-center justify-between p-4 bg-zinc-900/30 border border-zinc-800/50 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <Avatar src={sub.creator.avatar_url} alt={sub.creator.display_name} size="md" />
+                    <div>
+                      <h4 className="font-bold text-white">{sub.creator.display_name}</h4>
+                      <p className="text-xs text-zinc-400">@{sub.creator.username}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-md font-medium",
+                          sub.status === 'active' ? "bg-emerald-500/10 text-emerald-400" : "bg-zinc-800 text-zinc-400"
+                        )}>
+                          {sub.status.toUpperCase()}
+                        </span>
+                        <span className="text-xs text-zinc-500">
+                          Ends {endDate.toLocaleDateString()}
+                        </span>
+                        {isCrypto && (
+                          <span className="text-[10px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded-md font-medium">
+                            CRYPTO
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {canExtend && (
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      loading={extending === sub.id}
+                      onClick={() => handleExtendCrypto(sub.id)}
+                    >
+                      Extend 1 Month
+                    </Button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

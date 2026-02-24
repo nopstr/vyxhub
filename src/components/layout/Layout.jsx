@@ -10,10 +10,10 @@ export default function Layout() {
       <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-red-600/5 blur-[150px] rounded-full -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
       <div className="fixed bottom-0 right-0 w-[400px] h-[400px] bg-orange-600/3 blur-[120px] rounded-full translate-x-1/3 translate-y-1/3 pointer-events-none" />
 
-      <div className="max-w-[1440px] mx-auto flex min-h-screen relative">
+      <div className="max-w-[1440px] mx-auto flex h-screen overflow-hidden relative">
         <Sidebar />
 
-        <main className="flex-1 min-w-0 border-r border-zinc-800/50">
+        <main className="flex-1 min-w-0 border-r border-zinc-800/50 h-screen overflow-y-auto custom-scrollbar">
           <Outlet />
 
           {/* Legal footer */}

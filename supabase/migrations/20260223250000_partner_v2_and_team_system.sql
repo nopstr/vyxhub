@@ -118,7 +118,7 @@ CREATE POLICY "Staff can update own status"
 
 
 -- ─── 5. DEDICATED PARTNER SUPPORT ──────────────────────────────────
--- Gold partners get a dedicated support agent assigned by a lead.
+-- Partner Golds get a dedicated support agent assigned by a lead.
 
 CREATE TABLE IF NOT EXISTS dedicated_partner_support (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

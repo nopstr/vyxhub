@@ -9,6 +9,7 @@ const publicNavItems = [
   { to: '/', icon: Home, label: 'Home' },
   { to: '/explore', icon: TrendingUp, label: 'Explore' },
   { to: '/reels', icon: Video, label: 'Reels' },
+  { to: '/livestreams', icon: Video, label: 'Livestreams' },
 ]
 
 const authNavItems = [
@@ -56,8 +57,8 @@ export default function Sidebar() {
   const navigate = useNavigate()
 
   return (
-    <div className="hidden md:block w-20 xl:w-64 flex-shrink-0 border-r border-zinc-800/50">
-      <nav className="sticky top-0 h-screen flex flex-col py-4 px-2 xl:px-4">
+    <div className="hidden md:block w-20 xl:w-64 flex-shrink-0 border-r border-zinc-800/50 h-screen overflow-y-auto custom-scrollbar">
+      <nav className="flex flex-col py-4 px-2 xl:px-4 min-h-full">
       {/* Logo */}
       <NavLink to="/" className="flex items-center gap-3 px-4 py-3 mb-6">
         <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-white/10 flex-shrink-0">

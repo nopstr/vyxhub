@@ -23,6 +23,7 @@ const SettingsPage = lazy(() => import('./pages/settings/SettingsPage'))
 const CreatorDashboardPage = lazy(() => import('./pages/dashboard/CreatorDashboardPage'))
 const BecomeCreatorPage = lazy(() => import('./pages/BecomeCreatorPage'))
 const ReelsPage = lazy(() => import('./pages/reels/ReelsPage'))
+const LivestreamsPage = lazy(() => import('./pages/livestreams/LivestreamsPage'))
 const PostDetailPage = lazy(() => import('./pages/post/PostDetailPage'))
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -197,6 +198,7 @@ export default function App() {
 
           {/* Reels - public full-screen layout */}
           <Route path="/reels" element={<ReelsPage />} />
+          <Route path="/livestreams" element={<LivestreamsPage />} />
 
             {/* Catch-all — show 404 */}
             <Route path="*" element={<NotFoundPage />} />

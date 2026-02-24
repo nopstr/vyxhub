@@ -355,8 +355,8 @@ export default function ProfilePage() {
             <h1 className="text-2xl font-black text-white">{profile.display_name}</h1>
             {profile.is_verified && <ShieldCheck size={20} className="text-red-400 fill-red-400/10" />}
             {profile.partner_tier === 'verified' && <ShieldCheck size={20} className="text-emerald-400" title="Verified Partner" />}
-            {profile.partner_tier === 'red' && <ShieldCheck size={20} className="text-red-400" title="Red Partner" />}
-            {profile.partner_tier === 'gold' && <ShieldCheck size={20} className="text-amber-400" title="Gold Partner" />}
+            {profile.partner_tier === 'red' && <ShieldCheck size={20} className="text-red-400" title="Partner Red" />}
+            {profile.partner_tier === 'gold' && <ShieldCheck size={20} className="text-amber-400" title="Partner Gold" />}
             {profile.is_plus && profile.plus_expires_at && new Date(profile.plus_expires_at) > new Date() && (
               <Crown size={18} className="text-amber-400 fill-amber-400/10" />
             )}

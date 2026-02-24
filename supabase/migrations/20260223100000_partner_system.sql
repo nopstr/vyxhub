@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════
 -- HEATLY PARTNER BADGE SYSTEM
--- Red Partner  = 500+ active subscribers for 3 consecutive months → Livestreaming
--- Gold Partner  = 1000+ active subscribers for 3 consecutive months → 1-on-1 Calls
+-- Partner Red  = 500+ active subscribers for 3 consecutive months → Livestreaming
+-- Partner Gold  = 1000+ active subscribers for 3 consecutive months → 1-on-1 Calls
 -- Staff can override partner_tier to 'red', 'gold', or 'both'
 -- ═══════════════════════════════════════════════════════════════════════
 

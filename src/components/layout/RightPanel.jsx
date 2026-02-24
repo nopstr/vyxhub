@@ -246,8 +246,8 @@ export default function RightPanel() {
   }
 
   return (
-    <div className="hidden lg:block w-80 flex-shrink-0 border-l border-zinc-800/50">
-      <aside className="sticky top-0 h-screen overflow-y-auto no-scrollbar py-6 pl-6 pr-4">
+    <div className="hidden lg:block w-80 flex-shrink-0 border-l border-zinc-800/50 h-screen overflow-y-auto custom-scrollbar">
+      <aside className="py-6 pl-6 pr-4 min-h-full">
       {/* Search Overlay */}
       <SearchOverlay
         open={showSearchOverlay}

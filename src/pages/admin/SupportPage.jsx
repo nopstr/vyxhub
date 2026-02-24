@@ -1492,7 +1492,7 @@ function TeamOverview({ teamType = 'support' }) {
   )
 }
 
-// ─── Dedicated Partner Support (Gold partners) ─────────────────────
+// ─── Dedicated Partner Support (Partner Golds) ─────────────────────
 function DedicatedPartnerSupport() {
   const { profile } = useAuthStore()
   const [assignments, setAssignments] = useState([])
@@ -1576,7 +1576,7 @@ function DedicatedPartnerSupport() {
                     <p className="text-sm font-medium text-white truncate">
                       {a.partner_display_name || a.partner_username}
                     </p>
-                    <p className="text-[10px] text-amber-400">Gold Partner</p>
+                    <p className="text-[10px] text-amber-400">Partner Gold</p>
                   </div>
                 </div>
 
@@ -1619,12 +1619,12 @@ function DedicatedPartnerSupport() {
         )}
       </div>
 
-      {/* Unassigned Gold Partners (leads only) */}
+      {/* Unassigned Partner Golds (leads only) */}
       {isLead && unassignedGold.length > 0 && (
         <div>
           <h3 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
             <UserCheck size={16} className="text-emerald-400" />
-            Unassigned Gold Partners
+            Unassigned Partner Golds
             <span className="text-xs text-zinc-500 font-normal">({unassignedGold.length})</span>
           </h3>
 
@@ -1636,7 +1636,7 @@ function DedicatedPartnerSupport() {
                   <p className="text-sm font-medium text-white truncate">
                     {partner.display_name || partner.username}
                   </p>
-                  <p className="text-[10px] text-amber-400">Gold Partner — needs support agent</p>
+                  <p className="text-[10px] text-amber-400">Partner Gold — needs support agent</p>
                 </div>
 
                 <select

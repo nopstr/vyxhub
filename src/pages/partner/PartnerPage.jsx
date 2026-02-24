@@ -263,7 +263,7 @@ export default function PartnerPage() {
           ]}
         />
         <TierCard
-          label="Red Partner"
+          label="Partner Red"
           requirements={['500 subscribers + $5,000 revenue/month for 3 months']}
           unlocked={isRed}
           permanent={false}
@@ -277,12 +277,12 @@ export default function PartnerPage() {
           features={[
             'Everything in Verified',
             '1-on-1 Video Calls with subscribers',
-            'Red partner checkmark badge',
+            'Partner Red checkmark badge',
             'Priority support',
           ]}
         />
         <TierCard
-          label="Gold Partner"
+          label="Partner Gold"
           requirements={['1,000 subscribers + $15,000 revenue/month for 3 months']}
           unlocked={isGold}
           permanent={false}
@@ -296,7 +296,7 @@ export default function PartnerPage() {
           features={[
             'Everything in Verified & Red',
             'Livestreaming to your subscribers',
-            'Gold partner checkmark badge',
+            'Partner Gold checkmark badge',
             'Dedicated partner support agent',
             'Apply for Heatly-managed account',
           ]}
@@ -334,7 +334,7 @@ export default function PartnerPage() {
               </div>
               <div className="bg-red-500/5 border border-red-500/10 rounded-xl p-3 text-sm text-red-300/70">
                 <Zap size={14} className="inline mr-1" />
-                1-on-1 video calls will be available in messages. Red Partners will be first to access them.
+                1-on-1 video calls will be available in messages. Partner Reds will be first to access them.
               </div>
             </div>
           )}
@@ -362,7 +362,7 @@ export default function PartnerPage() {
               </div>
               <div className="bg-amber-500/5 border border-amber-500/10 rounded-xl p-3 text-sm text-amber-300/70">
                 <Zap size={14} className="inline mr-1" />
-                Livestreaming is launching soon. Gold Partners will be the first to access it.
+                Livestreaming is launching soon. Partner Golds will be the first to access it.
               </div>
             </div>
           )}
@@ -396,11 +396,11 @@ export default function PartnerPage() {
               a: 'Maintain 100+ active subscribers for 3 consecutive months. The system evaluates your status automatically at the start of each month. Once earned, Verified status is permanent.'
             },
             {
-              q: 'How do I reach Red Partner?',
+              q: 'How do I reach Partner Red?',
               a: 'Maintain 500+ active subscribers and $5,000+ in monthly revenue for 3 consecutive months. Red unlocks 1-on-1 calls and priority support. This status can be lost if you drop below thresholds.'
             },
             {
-              q: 'How do I reach Gold Partner?',
+              q: 'How do I reach Partner Gold?',
               a: 'Maintain 1,000+ active subscribers and $15,000+ in monthly revenue for 3 consecutive months. Gold unlocks livestreaming, dedicated support, and the ability to apply for a Heatly-managed account.'
             },
             {
@@ -413,7 +413,7 @@ export default function PartnerPage() {
             },
             {
               q: 'What is a Heatly-managed account?',
-              a: 'Gold Partners can apply to have Heatly\'s team manage their content scheduling, optimization, and growth strategy. A dedicated team member handles your account.'
+              a: 'Partner Golds can apply to have Heatly\'s team manage their content scheduling, optimization, and growth strategy. A dedicated team member handles your account.'
             },
           ].map((item, i) => (
             <details key={i} className="group p-4 rounded-2xl bg-zinc-900/30 border border-zinc-800/50">

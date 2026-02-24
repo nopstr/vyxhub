@@ -451,9 +451,9 @@ export default function CreatePost({ onSuccess }) {
   const fileAccept = postType === 'video' ? 'video/*' : postType === 'set' ? 'image/*' : 'image/*,video/*'
 
   return (
-    <div className="p-5 border-b border-zinc-800/50">
+    <div className="p-5 border-b border-zinc-800/50 bg-black/40">
       {/* Post Type Selector */}
-      <div className="flex gap-1 mb-4 bg-zinc-900/50 rounded-xl p-1">
+      <div className="flex gap-1 mb-4 bg-zinc-900/30 rounded-xl p-1">
         {POST_TYPES.map(pt => (
           <button
             key={pt.key}
