@@ -185,7 +185,9 @@ function SuggestedCreators() {
                 {creator.partner_tier === 'red' && <ShieldCheck size={13} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
                 {creator.partner_tier === 'gold' && <ShieldCheck size={13} className="text-amber-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
               </div>
-              <span className="text-xs text-zinc-500">@{creator.username}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-zinc-500">@{creator.username}</span>
+              </div>
             </div>
           </Link>
         ))}

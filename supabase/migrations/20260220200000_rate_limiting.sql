@@ -8,7 +8,7 @@ BEGIN
   -- Check for posts in the last 10 seconds (spam prevention)
   SELECT COUNT(*) INTO recent_posts_count
   FROM posts
-  WHERE user_id = NEW.user_id
+  WHERE author_id = NEW.author_id
     AND created_at > NOW() - INTERVAL '10 seconds';
 
   IF recent_posts_count > 0 THEN
@@ -18,7 +18,7 @@ BEGIN
   -- Check for posts in the last 24 hours (abuse prevention)
   SELECT COUNT(*) INTO daily_posts_count
   FROM posts
-  WHERE user_id = NEW.user_id
+  WHERE author_id = NEW.author_id
     AND created_at > NOW() - INTERVAL '24 hours';
 
   IF daily_posts_count >= 100 THEN
