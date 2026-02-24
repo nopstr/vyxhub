@@ -4,7 +4,7 @@ import {
   MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
-  Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet, Crown, Send
+  Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet, Crown, ClipboardList
 } from 'lucide-react'
 import SecureVideoPlayer from '../ui/SecureVideoPlayer'
 import ProtectedImage from '../ui/ProtectedImage'
@@ -15,6 +15,7 @@ import { useSubscriptionCache } from '../../stores/subscriptionCache'
 import { getBlurPreviewUrl } from '../../lib/storage'
 import Avatar from '../ui/Avatar'
 import Badge from '../ui/Badge'
+import Button from '../ui/Button'
 import Dropdown, { DropdownItem, DropdownDivider } from '../ui/Dropdown'
 import ReportModal from '../ReportModal'
 import TipModal from '../TipModal'
@@ -738,22 +739,8 @@ export default function PostCard({ post }) {
               </div>
             </div>
 
-            {/* Right side: tip + time (mobile) + 3 dots */}
+            {/* Right side: time (mobile) + 3 dots */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {/* Tip Button — next to 3 dots */}
-              {!isOwn && author.is_creator && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (!user) return toast.error('Sign in to send tips')
-                    setShowTipModal(true)
-                  }}
-                  className="p-1.5 hover:bg-amber-500/10 rounded-lg text-zinc-500 hover:text-amber-400 transition-colors cursor-pointer"
-                  title="Send a tip"
-                >
-                  <DollarSign size={18} />
-                </button>
-              )}
               <span className="md:hidden text-zinc-500 text-xs">{formatRelativeTime(post.created_at)}</span>
               <Dropdown
                 trigger={
@@ -969,35 +956,50 @@ export default function PostCard({ post }) {
               <Share size={18} className="group-hover:scale-110 transition-transform" />
             </button>
 
-            {/* Subscribe / Request Button */}
+            {/* Tip + Subscribe / Request — profile-style buttons */}
             {!isOwn && author.is_creator && (
-              isSubscribed ? (
-                <button
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (!user) return toast.error('Sign in to send requests')
-                    navigate(`/messages?to=${author.username}`)
+                    if (!user) return toast.error('Sign in to send tips')
+                    setShowTipModal(true)
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors group cursor-pointer"
-                  title={`Send request to ${author.display_name}`}
+                  className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
                 >
-                  <Send size={16} className="group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-bold hidden sm:inline">Request</span>
-                </button>
-              ) : (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (!user) return toast.error('Sign in to subscribe')
-                    setShowSubscribeInline(true)
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 transition-colors group cursor-pointer"
-                  title={`Subscribe to ${author.display_name}`}
-                >
-                  <Crown size={16} className="group-hover:scale-110 transition-transform" />
-                  <span className="text-xs font-bold hidden sm:inline">Subscribe</span>
-                </button>
-              )
+                  <DollarSign size={14} />
+                  <span className="hidden sm:inline">Tip</span>
+                </Button>
+                {isSubscribed ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (!user) return toast.error('Sign in to send a request')
+                      navigate(`/messages?to=${author.username}`)
+                    }}
+                  >
+                    <ClipboardList size={14} />
+                    <span className="hidden sm:inline">Request</span>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="premium"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (!user) return toast.error('Sign in to subscribe')
+                      setShowSubscribeInline(true)
+                    }}
+                  >
+                    <Zap size={14} className="fill-current" />
+                    <span className="hidden sm:inline">Subscribe{author.subscription_price > 0 ? ` $${author.subscription_price}/mo` : ''}</span>
+                  </Button>
+                )}
+              </div>
             )}
 
             {/* Repost Button */}
