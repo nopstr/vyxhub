@@ -48,30 +48,30 @@ function TrendingSection() {
         <TrendingUp size={14} className="text-orange-400" />
         Trending Creators
       </h3>
-      <div className="space-y-1">
+      <div className="space-y-2">
         {trending.map(creator => (
           <Link
             key={creator.username || creator.id}
             to={`/@${creator.username}`}
-            className="block p-3 rounded-2xl hover:bg-zinc-800/30 cursor-pointer transition-colors"
+            className="flex items-center gap-3 p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors"
           >
-            <div className="flex items-center gap-2">
-              <Avatar src={creator.avatar_url} alt={creator.display_name} size="sm" />
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1">
-                  <p className="font-bold text-sm text-white truncate">{creator.display_name}</p>
-                  {creator.is_verified && <ShieldCheck size={12} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
-                  {creator.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
-                  {creator.partner_tier === 'red' && <ShieldCheck size={11} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
-                  {creator.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
-                </div>
-                <p className="text-xs text-zinc-500">@{creator.username}</p>
+            <Avatar src={creator.avatar_url} alt={creator.display_name} size="md" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-bold text-white truncate">{creator.display_name}</span>
+                {creator.is_verified && <ShieldCheck size={14} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
+                {creator.partner_tier === 'verified' && <ShieldCheck size={13} className="text-emerald-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
+                {creator.partner_tier === 'red' && <ShieldCheck size={13} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
+                {creator.partner_tier === 'gold' && <ShieldCheck size={13} className="text-amber-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
               </div>
-              {creator.new_followers_24h > 0 && (
-                <span className="text-[10px] text-orange-400 font-bold bg-orange-500/10 px-1.5 py-0.5 rounded-md">
-                  +{formatNumber(creator.new_followers_24h)}
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-zinc-500">@{creator.username}</span>
+                {creator.new_followers_24h > 0 && (
+                  <span className="text-[10px] text-orange-400 font-bold bg-orange-500/10 px-1.5 py-0.5 rounded-md">
+                    +{formatNumber(creator.new_followers_24h)}
+                  </span>
+                )}
+              </div>
             </div>
           </Link>
         ))}

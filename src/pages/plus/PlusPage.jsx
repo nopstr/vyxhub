@@ -1,18 +1,45 @@
+/**
+ * PlusPage.jsx
+ * 
+ * This component renders the Heatly+ subscription page.
+ * It dynamically displays different pricing, benefits, and UI elements
+ * depending on whether the current user is a regular user or a creator.
+ * 
+ * Key Features:
+ * - Displays subscription benefits (USER_BENEFITS vs CREATOR_BENEFITS).
+ * - Handles subscription purchases via the PaymentModal.
+ * - Handles subscription cancellations via a Supabase RPC call.
+ * - Shows active subscription status and renewal dates.
+ */
+
+// React hooks for state management
 import { useState } from 'react'
+// Routing hook for navigation
 import { useNavigate } from 'react-router-dom'
+// UI Icons from lucide-react
 import {
   Crown, ShieldCheck, MessageSquare, TrendingUp,
   BarChart3, Percent, Star, Eye, Sparkles, Check,
   ChevronRight, ArrowLeft
 } from 'lucide-react'
+// Global state store for authentication and user profile data
 import { useAuthStore } from '../../stores/authStore'
+// Reusable UI components
 import Button from '../../components/ui/Button'
 import PaymentModal from '../../components/PaymentModal'
+// Toast notifications for user feedback
 import { toast } from 'sonner'
+// Utility for conditionally joining Tailwind CSS classes
 import { cn } from '../../lib/utils'
+// Supabase client for database interactions
 import { supabase } from '../../lib/supabase'
+// Global constants for pricing and fees
 import { PLUS_USER_PRICE, PLUS_CREATOR_PRICE, PLUS_FEE_PERCENT, PLATFORM_FEE_PERCENT } from '../../lib/constants'
 
+/**
+ * Array of benefits displayed to regular users.
+ * Each object contains an icon component, a title, and a description.
+ */
 const USER_BENEFITS = [
   { icon: Eye, title: 'No Platform Ads', description: 'Browse your feed without any sponsored or affiliate ads' },
   { icon: Crown, title: 'Heatly+ Badge', description: 'Stand out with an exclusive gold badge on your profile and posts' },
@@ -20,6 +47,10 @@ const USER_BENEFITS = [
   { icon: ShieldCheck, title: 'Priority Support', description: 'Get faster responses from our support team' },
 ]
 
+/**
+ * Array of benefits displayed to creators.
+ * Creators get additional perks like algorithm boosts and reduced platform fees.
+ */
 const CREATOR_BENEFITS = [
   { icon: Eye, title: 'No Platform Ads', description: 'Browse your feed without any sponsored or affiliate ads' },
   { icon: TrendingUp, title: 'Algorithm Boost', description: '35% more reach in the feed — your content gets seen by more people' },
@@ -31,6 +62,16 @@ const CREATOR_BENEFITS = [
   { icon: ShieldCheck, title: 'Priority Support', description: 'Get faster responses from our support team' },
 ]
 
+/**
+ * BenefitCard Component
+ * 
+ * A reusable UI component to display a single subscription benefit.
+ * 
+ * @param {Object} props
+ * @param {React.Component} props.icon - The Lucide icon component to display.
+ * @param {string} props.title - The title of the benefit.
+ * @param {string} props.description - The detailed description of the benefit.
+ */
 function BenefitCard({ icon: Icon, title, description }) {
   return (
     <div className="flex gap-4 p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 hover:border-amber-500/20 transition-colors">
@@ -45,17 +86,32 @@ function BenefitCard({ icon: Icon, title, description }) {
   )
 }
 
+/**
+ * Main PlusPage Component
+ * 
+ * Renders the entire Heatly+ subscription page.
+ */
 export default function PlusPage() {
+  // Retrieve current user, their profile data, and a function to refresh the profile
   const { user, profile, fetchProfile } = useAuthStore()
+  // Hook to programmatically navigate between routes
   const navigate = useNavigate()
+  // State to track loading status during API calls (e.g., cancelling subscription)
   const [loading, setLoading] = useState(false)
+  // State to control the visibility of the cryptocurrency payment modal
   const [showCrypto, setShowCrypto] = useState(false)
 
+  // --- Subscription Tier Logic ---
   // Determine which tier to show based on user type — they ONLY see their own
+  // Check if the current user is registered as a creator
   const isCreator = profile?.is_creator === true
+  // Set the subscription tier string for metadata
   const tier = isCreator ? 'creator' : 'user'
+  // Determine the monthly price based on the user's role
   const price = isCreator ? PLUS_CREATOR_PRICE : PLUS_USER_PRICE
+  // Select the appropriate array of detailed benefit objects
   const benefits = isCreator ? CREATOR_BENEFITS : USER_BENEFITS
+  // Select the appropriate array of short benefit strings for the pricing card
   const benefitsList = isCreator ? [
     '35% algorithm boost — more reach',
     `Only ${PLUS_FEE_PERCENT}% platform fee (save 5%)`,
@@ -72,8 +128,16 @@ export default function PlusPage() {
     'Priority support queue',
   ]
 
+  // --- Subscription Status Check ---
+  // Verify if the user currently has an active Heatly+ subscription
+  // It checks the boolean flag AND ensures the expiration date is in the future
   const isPlus = profile?.is_plus && profile?.plus_expires_at && new Date(profile.plus_expires_at) > new Date()
 
+  /**
+   * Handles the click event on the Subscribe button.
+   * Redirects unauthenticated users to the login page.
+   * Opens the payment modal for authenticated users.
+   */
   const handleSubscribe = () => {
     if (!user) {
       navigate('/auth')
@@ -82,6 +146,11 @@ export default function PlusPage() {
     setShowCrypto(true)
   }
 
+  /**
+   * Callback function triggered when a cryptocurrency payment is successful.
+   * Closes the modal, shows a success message, and refreshes the user profile
+   * to reflect their new Heatly+ status.
+   */
   const handleCryptoSuccess = async () => {
     setShowCrypto(false)
     toast.success('Welcome to Heatly+! Your premium benefits are now active.')
@@ -90,6 +159,11 @@ export default function PlusPage() {
     }
   }
 
+  /**
+   * Handles the cancellation of an active Heatly+ subscription.
+   * Prompts the user for confirmation, then calls a Supabase RPC function
+   * to process the cancellation on the backend.
+   */
   const handleCancel = async () => {
     if (!confirm('Are you sure? Your benefits will remain until the end of your billing period.')) return
     setLoading(true)
@@ -107,7 +181,8 @@ export default function PlusPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Header */}
+      {/* --- Page Header --- */}
+      {/* Sticky header with back button, title, and a quick subscribe button (or active status badge) */}
       <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/50 px-5 py-4">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="text-zinc-400 hover:text-white transition-colors cursor-pointer">
@@ -133,7 +208,8 @@ export default function PlusPage() {
         </div>
       </header>
 
-      {/* Hero */}
+      {/* --- Hero Section --- */}
+      {/* Visually striking hero area with dynamic text based on user type (Creator vs User) */}
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-amber-500/5 via-transparent to-transparent" />
         <div className="absolute top-10 left-1/4 w-72 h-72 bg-amber-500/10 blur-[120px] rounded-full" />
@@ -159,7 +235,8 @@ export default function PlusPage() {
         </div>
       </div>
 
-      {/* Benefits List */}
+      {/* --- Detailed Benefits List --- */}
+      {/* Renders the full list of BenefitCards with icons and descriptions */}
       <div className="px-5 mb-8">
         <h3 className="text-lg font-bold text-white mb-4">
           {isCreator ? 'Creator Benefits' : 'Your Benefits'}
@@ -171,7 +248,8 @@ export default function PlusPage() {
         </div>
       </div>
 
-      {/* Single Pricing Card */}
+      {/* --- Pricing Card --- */}
+      {/* Displays the monthly cost, a bulleted list of features, and the main call-to-action button */}
       <div className="px-5 mb-8">
         <div className={cn(
           'relative rounded-3xl border p-6',
@@ -220,7 +298,8 @@ export default function PlusPage() {
         </div>
       </div>
 
-      {/* Active subscription info */}
+      {/* --- Active Subscription Management --- */}
+      {/* Only visible if the user has an active subscription. Shows renewal date and cancel button. */}
       {isPlus && (
         <div className="px-5 mb-8">
           <div className="p-5 rounded-2xl bg-zinc-900/50 border border-zinc-800/50">
@@ -252,7 +331,8 @@ export default function PlusPage() {
         </div>
       )}
 
-      {/* FAQ */}
+      {/* --- Frequently Asked Questions --- */}
+      {/* Expandable accordion items answering common questions. Questions vary by user type. */}
       <div className="px-5 pb-12">
         <h3 className="text-lg font-bold text-white mb-4">FAQ</h3>
         <div className="space-y-3">
@@ -278,7 +358,8 @@ export default function PlusPage() {
         </div>
       </div>
 
-      {/* Payment Modal */}
+      {/* --- Payment Modal --- */}
+      {/* Hidden by default. Renders the crypto payment flow when showCrypto is true. */}
       {showCrypto && (
         <PaymentModal
           open={showCrypto}
