@@ -134,7 +134,6 @@ function MediaGrid({ media, isUnlocked = true, watermarkEnabled = true }) {
                 className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                 containerClassName="w-full h-full"
                 watermark={watermarkEnabled}
-                onClick={(e) => e.stopPropagation()}
               />
             )}
             {i === 3 && media.length > 4 && (

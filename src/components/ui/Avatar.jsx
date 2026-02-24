@@ -9,9 +9,12 @@ const sizes = {
   '2xl': 'w-28 h-28 text-2xl',
 }
 
-export default function Avatar({ src, alt, size = 'md', className, status, ring }) {
+export default function Avatar({ src, alt, size = 'md', className, status, ring, onClick }) {
   return (
-    <div className={cn('relative flex-shrink-0', className)}>
+    <div 
+      className={cn('relative flex-shrink-0', onClick && 'cursor-pointer', className)}
+      onClick={onClick}
+    >
       {src ? (
         <img
           src={src}

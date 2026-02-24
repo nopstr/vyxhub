@@ -17,6 +17,7 @@ import VirtualizedPost from '../../components/feed/VirtualizedPost'
 import ReportModal from '../../components/ReportModal'
 import TipModal from '../../components/TipModal'
 import SubscribeModal from '../../components/SubscribeModal'
+import ImageModal from '../../components/ui/ImageModal'
 import Dropdown, { DropdownItem, DropdownDivider } from '../../components/ui/Dropdown'
 import { SkeletonProfile, SkeletonPost } from '../../components/ui/Spinner'
 import { formatNumber, formatRelativeTime, cn } from '../../lib/utils'
@@ -40,6 +41,7 @@ export default function ProfilePage() {
   const [showCustomRequestModal, setShowCustomRequestModal] = useState(false)
   const [showTipModal, setShowTipModal] = useState(false)
   const [showSubscribeModal, setShowSubscribeModal] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(null)
 
   const cleanUsername = username?.replace('@', '')
   const isOwnProfile = myProfile?.username === cleanUsername
@@ -229,7 +231,12 @@ export default function ProfilePage() {
       {/* Banner */}
       <div className="h-48 md:h-56 bg-gradient-to-br from-red-900/40 via-zinc-900 to-orange-900/40 relative">
         {profile.banner_url && (
-          <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
+          <img 
+            src={profile.banner_url} 
+            alt="" 
+            className="w-full h-full object-cover cursor-pointer" 
+            onClick={() => setSelectedImage([{ url: profile.banner_url }])}
+          />
         )}
       </div>
 
@@ -242,6 +249,7 @@ export default function ProfilePage() {
             size="2xl"
             ring
             className="border-4 border-[#050505] rounded-3xl"
+            onClick={profile.avatar_url ? () => setSelectedImage([{ url: profile.avatar_url }]) : undefined}
           />
           <div className="flex items-center gap-2 pb-2">
             {isOwnProfile ? (
@@ -515,6 +523,14 @@ export default function ProfilePage() {
           }}
         />
       )}
+
+      {selectedImage && (
+        <ImageModal
+          images={selectedImage}
+          initialIndex={0}
+          onClose={() => setSelectedImage(null)}
+        />
+      )}
     </div>
   )
 }
@@ -710,3 +726,7 @@ function ContentGridCard({ post, type, isOwnProfile, isSubscribed }) {
     </Link>
   )
 }
+
+
+
+
