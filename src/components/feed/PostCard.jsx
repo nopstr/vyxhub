@@ -808,7 +808,7 @@ export default function PostCard({ post }) {
                   <DropdownItem icon={Pin} onClick={handlePin}>
                     {post.is_pinned ? 'Unpin from profile' : 'Pin to profile'}
                   </DropdownItem>
-                  <DropdownItem icon={Megaphone} onClick={() => navigate('/dashboard?tab=ads')}>Promote post</DropdownItem>
+                  <DropdownItem icon={Megaphone} onClick={() => navigate(`/dashboard?tab=ads&promote=${post.id}`)}>Promote post</DropdownItem>
                   <DropdownDivider />
                   <DropdownItem icon={Trash2} danger onClick={handleDelete}>Delete post</DropdownItem>
                 </>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   DollarSign, TrendingUp, Users, Eye, Flame, Image, MessageCircle,
   ArrowUpRight, ArrowDownRight, Calendar, BarChart3, Send, Download,
   Clock, CheckCircle, XCircle, ChevronDown, Filter, FileText,
   Megaphone, ClipboardList, ArrowLeft, Loader2, Star, Package,
   Tag, Link2, Trash2, Percent, CalendarClock, Gift, Wallet, AlertTriangle,
-  Banknote, ShieldCheck, Lock
+  Banknote, ShieldCheck, Lock, X as XIcon, ExternalLink
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -1383,16 +1384,17 @@ function ReferralsTab({ userId }) {
 
 // ─── Ads Manager Tab ────────────────────────────────────────────────────────
 
-function AdsManagerTab({ userId }) {
+function AdsManagerTab({ userId, initialPostId }) {
   const [pricing, setPricing] = useState(null)
   const [activeAds, setActiveAds] = useState([])
   const [completedAds, setCompletedAds] = useState([])
   const [posts, setPosts] = useState([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [previewPost, setPreviewPost] = useState(null)
   // Form state
   const [promoType, setPromoType] = useState('post')
-  const [selectedPostId, setSelectedPostId] = useState(null)
+  const [selectedPostId, setSelectedPostId] = useState(initialPostId || null)
   const [selectedDuration, setSelectedDuration] = useState(null)
 
   useEffect(() => { fetchData() }, [userId])
@@ -1402,17 +1404,17 @@ function AdsManagerTab({ userId }) {
     try {
       const [pricingRes, activeRes, completedRes, postsRes] = await Promise.all([
         supabase.rpc('get_ad_pricing'),
-        supabase.from('content_promotions').select('*, post:post_id(id, content, post_type, media_count)')
+        supabase.from('content_promotions').select('*, post:post_id(id, content, post_type, media(id))')
           .eq('creator_id', userId).eq('status', 'active').order('created_at', { ascending: false }),
         supabase.from('content_promotions').select('*, post:post_id(id, content, post_type)')
           .eq('creator_id', userId).in('status', ['completed', 'cancelled']).order('created_at', { ascending: false }).limit(10),
-        supabase.from('posts').select('id, content, post_type, media_count, created_at')
-          .eq('author_id', userId).order('created_at', { ascending: false }).limit(20),
+        supabase.from('posts').select('id, content, post_type, created_at, media(id)')
+          .eq('author_id', userId).eq('is_draft', false).order('created_at', { ascending: false }).limit(20),
       ])
       setPricing(pricingRes.data)
       setActiveAds(activeRes.data || [])
       setCompletedAds(completedRes.data || [])
-      setPosts(postsRes.data || [])
+      setPosts((postsRes.data || []).map(p => ({ ...p, media_count: p.media?.length || 0 })))
       if (pricingRes.data?.durations?.[1]) {
         setSelectedDuration(pricingRes.data.durations[1])
       }
@@ -1458,25 +1460,6 @@ function AdsManagerTab({ userId }) {
 
   return (
     <div className="space-y-5">
-      {/* Pricing Info */}
-      <SectionCard title="Ad Pricing" icon={DollarSign}>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-zinc-400">Base rate</span>
-            <span className="text-sm font-bold text-white">${pricing?.base_rate_per_hour}/hr</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-zinc-400">Current multiplier</span>
-            <span className="text-sm font-bold text-amber-400">{pricing?.multiplier}x</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-zinc-400">Active ads on platform</span>
-            <span className="text-sm font-bold text-zinc-300">{pricing?.active_ads}</span>
-          </div>
-          <p className="text-[11px] text-zinc-600">Pricing increases dynamically based on how many ads are currently running.</p>
-        </div>
-      </SectionCard>
-
       {/* Create Promotion */}
       <SectionCard title="Create Promotion" icon={Megaphone}>
         <div className="space-y-4">
@@ -1514,19 +1497,28 @@ function AdsManagerTab({ userId }) {
               <label className="block text-sm font-medium text-zinc-300 mb-2">Select Post</label>
               <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-zinc-800 p-2">
                 {posts.map(p => (
-                  <button
+                  <div
                     key={p.id}
                     onClick={() => setSelectedPostId(p.id)}
                     className={cn(
-                      'w-full text-left px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer',
+                      'flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors cursor-pointer',
                       selectedPostId === p.id ? 'bg-red-600/20 border border-red-500/30 text-white' : 'bg-zinc-800/30 text-zinc-400 hover:text-white hover:bg-zinc-800/50'
                     )}
                   >
-                    <p className="truncate">{p.content?.slice(0, 80) || `[${p.post_type}]`}</p>
-                    <span className="text-[10px] text-zinc-600">
-                      {p.post_type} · {p.media_count || 0} media · {new Date(p.created_at).toLocaleDateString()}
-                    </span>
-                  </button>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate">{p.content?.slice(0, 80) || `[${p.post_type}]`}</p>
+                      <span className="text-[10px] text-zinc-600">
+                        {p.post_type} · {p.media_count || 0} media · {new Date(p.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPreviewPost(p) }}
+                      className="ml-2 p-1 rounded-md text-zinc-500 hover:text-white hover:bg-zinc-700/50 transition-colors flex-shrink-0 cursor-pointer"
+                      title="View post"
+                    >
+                      <ExternalLink size={14} />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -1625,6 +1617,39 @@ function AdsManagerTab({ userId }) {
             ))}
           </div>
         </SectionCard>
+      )}
+
+      {/* Post Preview Modal */}
+      {previewPost && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setPreviewPost(null)}>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b border-zinc-800/50">
+              <h3 className="text-sm font-bold text-white">Post Preview</h3>
+              <button onClick={() => setPreviewPost(null)} className="p-1 hover:bg-zinc-800 rounded-lg text-zinc-500 transition-colors cursor-pointer">
+                <XIcon size={18} />
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs text-zinc-500">
+                <span className="px-2 py-0.5 bg-zinc-800 rounded-full capitalize">{previewPost.post_type}</span>
+                <span>{previewPost.media_count || 0} media</span>
+                <span>{new Date(previewPost.created_at).toLocaleDateString()}</span>
+              </div>
+              <p className="text-sm text-zinc-300 whitespace-pre-wrap">{previewPost.content || <span className="italic text-zinc-600">No text content</span>}</p>
+            </div>
+            <div className="p-4 pt-0 flex gap-2">
+              <Button
+                size="sm"
+                variant={selectedPostId === previewPost.id ? 'primary' : 'outline'}
+                onClick={() => { setSelectedPostId(previewPost.id); setPreviewPost(null) }}
+                className="flex-1"
+              >
+                {selectedPostId === previewPost.id ? '✓ Selected' : 'Select for Promotion'}
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setPreviewPost(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1936,7 +1961,10 @@ function WalletTab({ userId }) {
 
 export default function CreatorDashboardPage() {
   const { profile, user } = useAuthStore()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') || 'overview'
+  const initialPromotePostId = searchParams.get('promote') || null
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [analytics, setAnalytics] = useState(null)
   const [period, setPeriod] = useState('30d')
   const [loading, setLoading] = useState(true)
@@ -2017,7 +2045,7 @@ export default function CreatorDashboardPage() {
         {activeTab === 'promotions' && <PromotionsTab userId={user.id} />}
         {activeTab === 'referrals' && <ReferralsTab userId={user.id} />}
         {activeTab === 'requests' && <CustomRequestsTab userId={user.id} />}
-        {activeTab === 'ads' && <AdsManagerTab userId={user.id} />}
+        {activeTab === 'ads' && <AdsManagerTab userId={user.id} initialPostId={initialPromotePostId} />}
         {activeTab === 'export' && <EarningsExportTab userId={user.id} />}
       </div>
     </div>
