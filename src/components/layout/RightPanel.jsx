@@ -28,7 +28,7 @@ function TrendingSection() {
     // Fallback: popularity sort
     const { data } = await supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_url, is_verified, follower_count')
+      .select('id, username, display_name, avatar_url, is_verified, partner_tier, follower_count')
       .eq('is_creator', true)
       .order('follower_count', { ascending: false })
       .limit(4)
@@ -147,7 +147,7 @@ function SuggestedCreators() {
 
     let query = supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_url, is_verified, follower_count')
+      .select('id, username, display_name, avatar_url, is_verified, partner_tier, follower_count')
       .eq('is_creator', true)
       .order('follower_count', { ascending: false })
       .limit(5)
