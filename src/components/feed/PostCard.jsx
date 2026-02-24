@@ -710,10 +710,10 @@ export default function PostCard({ post }) {
               <div className="flex items-center gap-1.5 min-w-0">
                 <Link to={`/@${author.username}`} className="flex items-center gap-1.5 min-w-0 hover:underline">
                   <span className="font-bold text-zinc-100 truncate">{author.display_name}</span>
-                  {author.is_verified && <ShieldCheck size={15} className="text-red-400 fill-red-400/10 flex-shrink-0" />}
-                  {author.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0" title="Verified Partner" />}
-                  {author.partner_tier === 'red' && <ShieldCheck size={14} className="text-red-400 flex-shrink-0" title="Partner Red" />}
-                  {author.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" title="Partner Gold" />}
+                  {author.is_verified && <ShieldCheck size={15} className="text-red-400  flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
+                  {author.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" title="Verified Partner" />}
+                  {author.partner_tier === 'red' && <ShieldCheck size={14} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" title="Partner Red" />}
+                  {author.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" title="Partner Gold" />}
                   {author.is_plus && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
                     <Crown size={14} className="text-amber-400 fill-amber-400/10 flex-shrink-0" />
                   )}

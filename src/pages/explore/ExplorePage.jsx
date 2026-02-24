@@ -66,10 +66,10 @@ function CreatorCard({ profile }) {
             <h3 className="font-bold text-white truncate group-hover:text-red-300 transition-colors">
               {profile.display_name}
             </h3>
-            {profile.is_verified && <ShieldCheck size={15} className="text-red-400 flex-shrink-0" />}
-            {profile.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0" />}
-            {profile.partner_tier === 'red' && <ShieldCheck size={14} className="text-red-400 flex-shrink-0" />}
-            {profile.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0" />}
+            {profile.is_verified && <ShieldCheck size={15} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
+            {profile.partner_tier === 'verified' && <ShieldCheck size={14} className="text-emerald-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
+            {profile.partner_tier === 'red' && <ShieldCheck size={14} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
+            {profile.partner_tier === 'gold' && <ShieldCheck size={14} className="text-amber-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
           </div>
           <p className="text-xs text-zinc-500">@{profile.username}</p>
         </div>
@@ -597,10 +597,10 @@ export default function ExplorePage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-bold text-white truncate">{post.author?.display_name}</span>
-                            {post.author?.is_verified && <ShieldCheck size={12} className="text-red-400" />}
-                            {post.author?.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400" />}
-                            {post.author?.partner_tier === 'red' && <ShieldCheck size={11} className="text-red-400" />}
-                            {post.author?.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400" />}
+                            {post.author?.is_verified && <ShieldCheck size={12} className="text-red-400 fill-current [&>path:last-child]:stroke-white" />}
+                            {post.author?.partner_tier === 'verified' && <ShieldCheck size={11} className="text-emerald-400 fill-current [&>path:last-child]:stroke-white" />}
+                            {post.author?.partner_tier === 'red' && <ShieldCheck size={11} className="text-red-400 fill-current [&>path:last-child]:stroke-white" />}
+                            {post.author?.partner_tier === 'gold' && <ShieldCheck size={11} className="text-amber-400 fill-current [&>path:last-child]:stroke-white" />}
                           </div>
                           <span className="text-xs text-zinc-500">@{post.author?.username}</span>
                         </div>

@@ -244,10 +244,10 @@ function ReportQueue() {
                       <span className="text-sm font-medium text-white">{report.reported_user?.display_name}</span>
                       <div className="flex items-center gap-1.5 text-xs text-zinc-500">
                         <span>@{report.reported_user?.username}</span>
-                        {report.reported_user?.is_verified && <ShieldCheck size={11} className="text-red-400" />}
-                        {report.reported_user?.partner_tier === 'verified' && <ShieldCheck size={10} className="text-emerald-400" />}
-                        {report.reported_user?.partner_tier === 'red' && <ShieldCheck size={10} className="text-red-400" />}
-                        {report.reported_user?.partner_tier === 'gold' && <ShieldCheck size={10} className="text-amber-400" />}
+                        {report.reported_user?.is_verified && <ShieldCheck size={11} className="text-red-400 fill-current [&>path:last-child]:stroke-white" />}
+                        {report.reported_user?.partner_tier === 'verified' && <ShieldCheck size={10} className="text-emerald-400 fill-current [&>path:last-child]:stroke-white" />}
+                        {report.reported_user?.partner_tier === 'red' && <ShieldCheck size={10} className="text-red-400 fill-current [&>path:last-child]:stroke-white" />}
+                        {report.reported_user?.partner_tier === 'gold' && <ShieldCheck size={10} className="text-amber-400 fill-current [&>path:last-child]:stroke-white" />}
                         {report.reported_user?.is_suspended && <span className="text-amber-400">Suspended</span>}
                         {report.reported_user?.is_banned && <span className="text-red-400">Banned</span>}
                       </div>
@@ -476,7 +476,7 @@ function UserModeration() {
                     <span className="text-sm text-zinc-500">@{user.username}</span>
                     {user.is_verified && (
                       <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <ShieldCheck size={10} /> Verified
+                        <ShieldCheck size={10} className="fill-current [&>path:last-child]:stroke-white" /> Verified
                       </span>
                     )}
                     {user.partner_tier && (
@@ -486,7 +486,7 @@ function UserModeration() {
                         user.partner_tier === 'red' ? 'bg-red-500/10 text-red-400' :
                         'bg-emerald-500/10 text-emerald-400'
                       )}>
-                        <ShieldCheck size={10} /> {user.partner_tier.charAt(0).toUpperCase() + user.partner_tier.slice(1)} Partner
+                        <ShieldCheck size={10} className="fill-current [&>path:last-child]:stroke-white" /> {user.partner_tier.charAt(0).toUpperCase() + user.partner_tier.slice(1)} Partner
                       </span>
                     )}
                     {user.is_creator && (
@@ -1314,7 +1314,7 @@ function ModerationLog() {
             )}>
               {action.action_type.includes('ban') ? <Ban size={14} className="text-red-400" /> :
                action.action_type.includes('suspend') ? <AlertTriangle size={14} className="text-amber-400" /> :
-               action.action_type.includes('verify') ? <ShieldCheck size={14} className="text-red-400" /> :
+               action.action_type.includes('verify') ? <ShieldCheck size={14} className="text-red-400 fill-current [&>path:last-child]:stroke-white" /> :
                action.action_type.includes('auto_') ? <Bot size={14} className="text-orange-400" /> :
                action.action_type.includes('appeal') ? <Scale size={14} className="text-purple-400" /> :
                action.action_type.includes('ip') ? <Globe size={14} className="text-red-400" /> :
@@ -1463,7 +1463,7 @@ function TeamOverview({ teamType = 'support' }) {
                 )}>
                   {action.action_type?.includes('ban') ? <Ban size={13} className="text-red-400" /> :
                    action.action_type?.includes('suspend') ? <AlertTriangle size={13} className="text-amber-400" /> :
-                   action.action_type?.includes('verify') ? <ShieldCheck size={13} className="text-red-400" /> :
+                   action.action_type?.includes('verify') ? <ShieldCheck size={13} className="text-red-400 fill-current [&>path:last-child]:stroke-white" /> :
                    action.action_type?.includes('appeal') ? <Scale size={13} className="text-purple-400" /> :
                    action.action_type?.includes('resolve') ? <CheckCircle size={13} className="text-emerald-400" /> :
                    <Clock size={13} className="text-zinc-400" />}

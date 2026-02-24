@@ -247,7 +247,7 @@ function SplitManager() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white text-sm">{user.display_name}</span>
                       <span className="text-xs text-zinc-500">@{user.username}</span>
-                      {user.is_verified && <ShieldCheck size={12} className="text-red-400" />}
+                      {user.is_verified && <ShieldCheck size={12} className="text-red-400 fill-current [&>path:last-child]:stroke-white" />}
                       {user.is_managed && <span className="text-[10px] bg-purple-500/10 text-purple-400 px-1.5 py-0.5 rounded">Managed</span>}
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">

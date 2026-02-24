@@ -707,7 +707,7 @@ function AccountSettings() {
       {/* Two-Factor Authentication */}
       <div className="pt-4 border-t border-zinc-800">
         <h3 className="flex items-center gap-2 text-sm font-bold text-white mb-3">
-          <ShieldCheck size={16} className="text-red-400" /> Two-Factor Authentication
+          <ShieldCheck size={16} className="text-red-400 fill-current [&>path:last-child]:stroke-white" /> Two-Factor Authentication
         </h3>
         {mfaFactors.length > 0 ? (
           <div className="space-y-3">

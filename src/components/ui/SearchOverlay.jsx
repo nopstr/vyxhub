@@ -205,7 +205,7 @@ export default function SearchOverlay({ open, onClose, initialQuery = '' }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm font-medium text-zinc-200 truncate">{item.label}</span>
-                    {item.is_verified && <ShieldCheck size={12} className="text-red-400 flex-shrink-0" />}
+                    {item.is_verified && <ShieldCheck size={12} className="text-red-400 flex-shrink-0 fill-current [&>path:last-child]:stroke-white" />}
                   </div>
                   {item.sublabel && (
                     <span className="text-xs text-zinc-500 truncate block">{item.sublabel}</span>

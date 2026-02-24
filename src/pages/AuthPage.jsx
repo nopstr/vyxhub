@@ -143,7 +143,7 @@ export default function AuthPage() {
             <form onSubmit={handleMfaVerify} className="space-y-4">
               <div className="text-center mb-2">
                 <div className="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center mx-auto mb-3">
-                  <ShieldCheck size={24} className="text-red-400" />
+                  <ShieldCheck size={24} className="text-red-400 fill-current [&>path:last-child]:stroke-white" />
                 </div>
                 <h2 className="text-lg font-bold text-white">Two-Factor Authentication</h2>
                 <p className="text-sm text-zinc-500 mt-1">Enter the 6-digit code from your authenticator app</p>

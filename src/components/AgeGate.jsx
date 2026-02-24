@@ -80,7 +80,7 @@ export default function AgeGate({ children }) {
         <div className="bg-zinc-950 border border-zinc-800/50 rounded-3xl p-8 shadow-2xl">
           {/* Icon */}
           <div className="w-16 h-16 bg-red-600/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-            <ShieldCheck size={32} className="text-red-400" />
+            <ShieldCheck size={32} className="text-red-400 fill-current [&>path:last-child]:stroke-white" />
           </div>
 
           {/* Title */}
