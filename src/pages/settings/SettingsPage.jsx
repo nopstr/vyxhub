@@ -942,7 +942,7 @@ function CreatorSettings() {
   const [section, setSection] = useState('general')
 
   const [form, setForm] = useState({
-    subscription_price: profile?.subscription_price || 9.99,
+    subscription_price: profile?.subscription_price != null && profile.subscription_price >= MIN_SUBSCRIPTION_PRICE ? profile.subscription_price : 9.99,
     accepts_tips: profile?.accepts_tips ?? true,
     creator_category: profile?.creator_category || 'other',
     tags: profile?.tags?.join(', ') || '',
@@ -968,11 +968,16 @@ function CreatorSettings() {
   })
 
   const handleBecomeCreator = async () => {
+    const price = parseFloat(form.subscription_price)
+    if (!price || price < MIN_SUBSCRIPTION_PRICE) {
+      toast.error(`Minimum subscription price is $${MIN_SUBSCRIPTION_PRICE}`)
+      return
+    }
     setSaving(true)
     try {
       await updateProfile({
         is_creator: true,
-        subscription_price: form.subscription_price,
+        subscription_price: Math.max(price, MIN_SUBSCRIPTION_PRICE),
         creator_category: form.creator_category,
       })
       toast.success('Creator profile activated!')
@@ -987,8 +992,14 @@ function CreatorSettings() {
     setSaving(true)
     try {
       const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
+      const subPrice = parseFloat(form.subscription_price)
+      if (!subPrice || subPrice < MIN_SUBSCRIPTION_PRICE) {
+        toast.error(`Minimum subscription price is $${MIN_SUBSCRIPTION_PRICE}`)
+        setSaving(false)
+        return
+      }
       await updateProfile({
-        subscription_price: parseFloat(form.subscription_price) || 9.99,
+        subscription_price: Math.max(subPrice, MIN_SUBSCRIPTION_PRICE),
         accepts_tips: form.accepts_tips,
         creator_category: form.creator_category,
         tags,
