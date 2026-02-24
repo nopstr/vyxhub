@@ -739,8 +739,52 @@ export default function PostCard({ post }) {
               </div>
             </div>
 
-            {/* Right side: time (mobile) + 3 dots */}
+            {/* Right side: tip/subscribe + time (mobile) + 3 dots */}
             <div className="flex items-center gap-1 flex-shrink-0">
+              {!isOwn && author.is_creator && (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (!user) return toast.error('Sign in to send tips')
+                      setShowTipModal(true)
+                    }}
+                    className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+                  >
+                    <DollarSign size={14} />
+                    <span className="hidden sm:inline">Tip</span>
+                  </Button>
+                  {isSubscribed ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!user) return toast.error('Sign in to send a request')
+                        navigate(`/messages?to=${author.username}`)
+                      }}
+                    >
+                      <ClipboardList size={14} />
+                      <span className="hidden sm:inline">Request</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="premium"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (!user) return toast.error('Sign in to subscribe')
+                        setShowSubscribeInline(true)
+                      }}
+                    >
+                      <Zap size={14} className="fill-current" />
+                      <span className="hidden sm:inline">Subscribe{author.subscription_price > 0 ? ` $${author.subscription_price}/mo` : ''}</span>
+                    </Button>
+                  )}
+                </div>
+              )}
               <span className="md:hidden text-zinc-500 text-xs">{formatRelativeTime(post.created_at)}</span>
               <Dropdown
                 trigger={
@@ -955,52 +999,6 @@ export default function PostCard({ post }) {
             >
               <Share size={18} className="group-hover:scale-110 transition-transform" />
             </button>
-
-            {/* Tip + Subscribe / Request — profile-style buttons */}
-            {!isOwn && author.is_creator && (
-              <div className="flex items-center gap-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    if (!user) return toast.error('Sign in to send tips')
-                    setShowTipModal(true)
-                  }}
-                  className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                >
-                  <DollarSign size={14} />
-                  <span className="hidden sm:inline">Tip</span>
-                </Button>
-                {isSubscribed ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (!user) return toast.error('Sign in to send a request')
-                      navigate(`/messages?to=${author.username}`)
-                    }}
-                  >
-                    <ClipboardList size={14} />
-                    <span className="hidden sm:inline">Request</span>
-                  </Button>
-                ) : (
-                  <Button
-                    variant="premium"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (!user) return toast.error('Sign in to subscribe')
-                      setShowSubscribeInline(true)
-                    }}
-                  >
-                    <Zap size={14} className="fill-current" />
-                    <span className="hidden sm:inline">Subscribe{author.subscription_price > 0 ? ` $${author.subscription_price}/mo` : ''}</span>
-                  </Button>
-                )}
-              </div>
-            )}
 
             {/* Repost Button */}
             {!isOwn && (
