@@ -55,7 +55,7 @@ ON CONFLICT (provider_id, provider) DO NOTHING;
 UPDATE public.profiles SET
   display_name = 'Luna Vyx', username = 'lunavyx',
   bio = E'✨ Fitness model & cosplay enthusiast 🎮\nDaily posts • Custom content available\n🔥 Top 1% creator\n📍 Los Angeles, CA',
-  is_creator = true, is_verified = true, partner_tier = 'gold', subscription_price = 12.99,
+  is_creator = true, is_verified = false, partner_tier = 'gold', subscription_price = 12.99,
   creator_category = 'female', tags = ARRAY['fitness','cosplay','lingerie','lifestyle'],
   location = 'Los Angeles, CA', website_url = 'https://lunavyx.com',
   welcome_message = 'Hey babe! Thanks for subscribing 💕 Check my pinned post for my content schedule!',
@@ -68,7 +68,7 @@ WHERE id = 'a1111111-1111-1111-1111-111111111111';
 UPDATE public.profiles SET
   display_name = 'Jade Rivers', username = 'jaderivers',
   bio = E'🌿 Nature lover & free spirit\nArtistic nudes • Behind the scenes\n💎 Premium content daily\nDM me for collabs',
-  is_creator = true, is_verified = true, partner_tier = 'red', subscription_price = 9.99,
+  is_creator = true, is_verified = false, partner_tier = 'red', subscription_price = 9.99,
   creator_category = 'female', tags = ARRAY['artistic','nature','photography','beauty'],
   location = 'Portland, OR',
   welcome_message = 'Welcome to my world! 🌿 I post new content every single day. Enjoy!',
@@ -81,7 +81,7 @@ WHERE id = 'a2222222-2222-2222-2222-222222222222';
 UPDATE public.profiles SET
   display_name = 'Marcus Steel', username = 'marcussteel',
   bio = E'💪 Fitness coach & model\nWorkout routines • Physique updates\n🏆 IFBB competitor\n📧 Business: marcus@steel.fit',
-  is_creator = true, is_verified = true, partner_tier = 'verified', subscription_price = 7.99,
+  is_creator = true, is_verified = false, partner_tier = 'verified', subscription_price = 7.99,
   creator_category = 'male', tags = ARRAY['fitness','bodybuilding','workout','motivation'],
   location = 'Miami, FL', website_url = 'https://marcussteel.fit',
   welcome_message = 'Yo! Welcome aboard 💪 Check out my workout plans in the pinned post.',
