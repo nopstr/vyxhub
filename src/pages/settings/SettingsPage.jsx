@@ -6,7 +6,7 @@ import {
   DollarSign, Globe, MessageCircle, Droplets, MapPin,
   Link as LinkIcon, Star, Package, ShieldCheck, Zap,
   Flame, AlertTriangle, KeyRound, Upload, Image, Film, FileText,
-  CheckCircle, XCircle, Clock, Loader2, Radio, Phone
+  CheckCircle, XCircle, Clock, Loader2, Radio, Phone, Users
 } from 'lucide-react'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
@@ -2314,8 +2314,8 @@ function BillingSettings() {
         .select(`
           id,
           status,
-          current_period_end,
-          payment_method,
+          expires_at,
+          segpay_subscription_id,
           creator:creator_id (
             id,
             username,
@@ -2324,8 +2324,8 @@ function BillingSettings() {
           )
         `)
         .eq('subscriber_id', profile.id)
-        .in('status', ['active', 'canceled'])
-        .order('current_period_end', { ascending: false })
+        .in('status', ['active', 'cancelled'])
+        .order('expires_at', { ascending: false })
 
       if (error) throw error
       setSubscriptions(data || [])
@@ -2402,8 +2402,8 @@ function BillingSettings() {
         ) : (
           <div className="space-y-3">
             {subscriptions.map(sub => {
-              const isCrypto = sub.payment_method === 'crypto'
-              const endDate = new Date(sub.current_period_end)
+              const isCrypto = !sub.segpay_subscription_id
+              const endDate = new Date(sub.expires_at)
               const now = new Date()
               const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24))
               const canExtend = isCrypto && sub.status === 'active' && daysUntilExpiry <= 30 // Can only extend if within current month
