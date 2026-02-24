@@ -4,7 +4,7 @@ import {
   MessageCircle, Share, Bookmark, MoreHorizontal,
   Lock, Zap, ShieldCheck, Trash2, Flag, UserX, Pin,
   Flame, ThumbsUp, Sparkles, Play, DollarSign, Grid3x3, Film, Image,
-  Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet, Crown
+  Repeat2, VolumeX, Edit2, EyeOff, Megaphone, Wallet, Crown, Send
 } from 'lucide-react'
 import SecureVideoPlayer from '../ui/SecureVideoPlayer'
 import ProtectedImage from '../ui/ProtectedImage'
@@ -738,8 +738,22 @@ export default function PostCard({ post }) {
               </div>
             </div>
 
-            {/* Right side: time (mobile) + 3 dots */}
+            {/* Right side: tip + time (mobile) + 3 dots */}
             <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Tip Button — next to 3 dots */}
+              {!isOwn && author.is_creator && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!user) return toast.error('Sign in to send tips')
+                    setShowTipModal(true)
+                  }}
+                  className="p-1.5 hover:bg-amber-500/10 rounded-lg text-zinc-500 hover:text-amber-400 transition-colors cursor-pointer"
+                  title="Send a tip"
+                >
+                  <DollarSign size={18} />
+                </button>
+              )}
               <span className="md:hidden text-zinc-500 text-xs">{formatRelativeTime(post.created_at)}</span>
               <Dropdown
                 trigger={
@@ -955,35 +969,35 @@ export default function PostCard({ post }) {
               <Share size={18} className="group-hover:scale-110 transition-transform" />
             </button>
 
-            {/* Tip Button */}
+            {/* Subscribe / Request Button */}
             {!isOwn && author.is_creator && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (!user) return toast.error('Sign in to send tips')
-                  setShowTipModal(true)
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-500 hover:text-amber-400 transition-colors group cursor-pointer"
-                title="Send a tip"
-              >
-                <DollarSign size={18} className="group-hover:scale-110 transition-transform" />
-              </button>
-            )}
-
-            {/* Direct Subscribe — for Heatly+ creators, shown to non-subscribers */}
-            {!isOwn && !isSubscribed && author.is_creator && author.is_plus && author.plus_tier === 'creator' && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  if (!user) return toast.error('Sign in to subscribe')
-                  setShowSubscribeInline(true)
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 transition-colors group cursor-pointer"
-                title={`Subscribe to ${author.display_name}`}
-              >
-                <Crown size={16} className="group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-bold hidden sm:inline">Subscribe</span>
-              </button>
+              isSubscribed ? (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!user) return toast.error('Sign in to send requests')
+                    navigate(`/messages?to=${author.username}`)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-zinc-500 hover:text-red-400 hover:bg-red-500/10 transition-colors group cursor-pointer"
+                  title={`Send request to ${author.display_name}`}
+                >
+                  <Send size={16} className="group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold hidden sm:inline">Request</span>
+                </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    if (!user) return toast.error('Sign in to subscribe')
+                    setShowSubscribeInline(true)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-amber-500/70 hover:text-amber-400 hover:bg-amber-500/10 transition-colors group cursor-pointer"
+                  title={`Subscribe to ${author.display_name}`}
+                >
+                  <Crown size={16} className="group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold hidden sm:inline">Subscribe</span>
+                </button>
+              )
             )}
 
             {/* Repost Button */}
