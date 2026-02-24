@@ -741,7 +741,7 @@ export default function PostCard({ post }) {
 
             {/* Right side: tip/subscribe + time (mobile) + 3 dots */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {!isOwn && author.is_creator && (
+              {!isOwn && author.is_creator && author.is_plus && author.plus_expires_at && new Date(author.plus_expires_at) > new Date() && (
                 <div className="flex items-center gap-1">
                   {author.accepts_tips !== false && (
                     <Button
