@@ -943,6 +943,7 @@ function CreatorSettings() {
 
   const [form, setForm] = useState({
     subscription_price: profile?.subscription_price || 9.99,
+    accepts_tips: profile?.accepts_tips ?? true,
     creator_category: profile?.creator_category || 'other',
     tags: profile?.tags?.join(', ') || '',
     welcome_message: profile?.welcome_message || '',
@@ -988,6 +989,7 @@ function CreatorSettings() {
       const tags = form.tags.split(',').map(t => t.trim()).filter(Boolean)
       await updateProfile({
         subscription_price: parseFloat(form.subscription_price) || 9.99,
+        accepts_tips: form.accepts_tips,
         creator_category: form.creator_category,
         tags,
         welcome_message: form.welcome_message,
@@ -1250,6 +1252,13 @@ function CreatorSettings() {
               )}
             </div>
           </div>
+
+          <Toggle
+            checked={form.accepts_tips}
+            onChange={(v) => setForm(f => ({ ...f, accepts_tips: v }))}
+            label="Enable Tips"
+            description="Show the Tip button on your profile and posts"
+          />
 
           <Toggle
             checked={form.is_accepting_customs}

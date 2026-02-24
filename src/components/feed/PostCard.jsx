@@ -743,45 +743,51 @@ export default function PostCard({ post }) {
             <div className="flex items-center gap-1 flex-shrink-0">
               {!isOwn && author.is_creator && (
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (!user) return toast.error('Sign in to send tips')
-                      setShowTipModal(true)
-                    }}
-                    className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
-                  >
-                    <DollarSign size={14} />
-                    <span className="hidden sm:inline">Tip</span>
-                  </Button>
-                  {isSubscribed ? (
+                  {author.accepts_tips !== false && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (!user) return toast.error('Sign in to send a request')
-                        navigate(`/messages?to=${author.username}`)
+                        if (!user) return toast.error('Sign in to send tips')
+                        setShowTipModal(true)
                       }}
+                      className="text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
                     >
-                      <ClipboardList size={14} />
-                      <span className="hidden sm:inline">Request</span>
+                      <DollarSign size={14} />
+                      <span className="hidden sm:inline">Tip</span>
                     </Button>
+                  )}
+                  {isSubscribed ? (
+                    author.accepts_custom_requests && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!user) return toast.error('Sign in to send a request')
+                          navigate(`/messages?to=${author.username}`)
+                        }}
+                      >
+                        <ClipboardList size={14} />
+                        <span className="hidden sm:inline">Request</span>
+                      </Button>
+                    )
                   ) : (
-                    <Button
-                      variant="premium"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        if (!user) return toast.error('Sign in to subscribe')
-                        setShowSubscribeInline(true)
-                      }}
-                    >
-                      <Zap size={14} className="fill-current" />
-                      <span className="hidden sm:inline">Subscribe{author.subscription_price > 0 ? ` $${author.subscription_price}/mo` : ''}</span>
-                    </Button>
+                    author.subscription_price > 0 && (
+                      <Button
+                        variant="premium"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!user) return toast.error('Sign in to subscribe')
+                          setShowSubscribeInline(true)
+                        }}
+                      >
+                        <Zap size={14} className="fill-current" />
+                        <span className="hidden sm:inline">Subscribe ${author.subscription_price}/mo</span>
+                      </Button>
+                    )
                   )}
                 </div>
               )}

@@ -301,7 +301,7 @@ export default function ProfilePage() {
                 >
                   {isFollowing ? 'Following' : 'Follow'}
                 </Button>
-                {profile.is_creator && (
+                {profile.is_creator && profile.accepts_tips !== false && (
                   <Button
                     variant="outline"
                     size="sm"
